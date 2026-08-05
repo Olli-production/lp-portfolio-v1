@@ -1,0 +1,1329 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oliviero Petrucci — Software Designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;1,9..40,300&family=IBM+Plex+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F3F2EC;
+  --brown:#4A3226;
+  --ink:#2B1A0F;
+  --line:#B2998C;          /* filetto di THINKER / BUILDER */
+  --blue:#174FFE;
+  --grotesk:"Space Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --sans:"DM Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;  /* i tag dei progetti */
+}
+*{margin:0;padding:0;box-sizing:border-box}
+/* la carta anche sul body: la sezione progetti sta fuori da .sticky e senza
+   questo scorrerebbe su crema liscio. Durante l'intro non si vede: .sticky ha
+   un fondo opaco che la copre, ed è quello che fa il passaggio al marrone. */
+body{
+  font-family:var(--grotesk);
+  background:var(--cream) url("bg.webp") repeat;
+  background-size:512px 512px;
+}
+/* scroll bloccato durante l'autoplay dell'intro (solo mobile) */
+body.locked{overflow:hidden}
+body.locked .scroller{touch-action:none}
+/* grana procedurale: serve alla fase marrone, dove bg.webp non c'è.
+   Tenuta bassa per non sommarsi troppo a quella già dentro bg.webp */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:60;
+  opacity:.14;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.55'/></svg>");
+}
+
+/* la storia dura quanto lo scroll.
+   775vh = atto 1 (intro -> 806), +620vh = atto 2 (808/809: parole fuori campo,
+   stellina in volo, nastro). ACT1 nel JS deve restare 775/1395.
+   Era 620+300, poi 775+475: alzati per rallentare il racconto, l'atto 2 di più.
+   L'ultimo aumento (475 -> 620) è il prezzo di far partire il nastro insieme al
+   claim invece che a q .15: su meno frazione, per tracciarne altrettanto a
+   parità di velocità, serve più scroll. */
+.scroller{height:1395vh}
+.sticky{position:sticky;top:0;height:100svh;overflow:hidden;background:var(--cream)}
+
+/* la carta vera. Sta sotto a tutto e si ritira quando lo schermo va al marrone,
+   scoprendo il colore di .sticky */
+.paper{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  /* piastrella invece dell'immagine intera: la grana è uniforme (stessa media
+     agli angoli e al centro), quindi ripeterla è indistinguibile e resta 1:1
+     a ogni viewport, invece di essere stirata da cover */
+  background:url("bg.webp") repeat;
+  background-size:512px 512px;
+}
+
+/* ---------- logo ---------- */
+.logo{
+  position:absolute;left:50%;top:50%;
+  width:clamp(190px,20vw,340px);
+  /* origine dello zoom sulla pupilla sinistra, in frazioni del viewBox
+     allargato: (50.35+16)/325 e (120.45+3)/185 */
+  transform-origin:20.415% 66.729%;
+  /* niente will-change qui: un layer composito verrebbe rasterizzato una volta
+     e poi ingrandito, cioè sfocato. Senza, Chrome ridisegna nitido a ogni
+     frame e paga solo la porzione dentro il viewport. */
+}
+.logo svg{width:100%;height:auto;display:block}
+/* i tracciati sono chiusi e pieni: per "disegnarli" traccio il loro contorno
+   con stroke-dashoffset, poi il tratto diventa massa */
+.logo path{fill-opacity:0;stroke-width:1.6;stroke-linejoin:round}
+
+/* La pupilla che si dilata. Cerchio già grande quanto serve, scalato in
+   RIDUZIONE: ingrandire un layer rasterizzato sfoca, ridurlo no. Ed è solo
+   transform, quindi il compositore non ridisegna niente a ogni frame.
+   Colore fisso: cambiarlo costringerebbe a riverniciare tutto il layer. */
+.iris{
+  position:absolute;z-index:3;pointer-events:none;
+  border-radius:50%;background:var(--ink);   /* identico alla pupilla: nessuno stacco */
+  transform-origin:50% 50%;will-change:transform;
+}
+
+/* ---------- tipografia ---------- */
+/* center, non space-between: nella fase grande le righe più la parola blu
+   sono più alte del viewport, e space-between fa traboccare tutto dal fondo
+   (BUILD fuori schermo). Centrato, l'eccedenza si divide fra sopra e sotto.
+   L'aggancio ai bordi di fine scroll lo calcola il JS. */
+/* pointer-events:none — le parole non sono interattive, e senza questo lo
+   stage (che copre tutto lo schermo) rubava l'hover al logo sotto */
+.stage{position:absolute;inset:0;z-index:4;pointer-events:none;display:flex;flex-direction:column;justify-content:center}
+/* flex-shrink:0 — senza, quando le parole sono più alte del viewport il flex
+   le comprime per farle entrare, e con preserveAspectRatio="none" questo le
+   deforma invece di lasciarle sbordare */
+.row{position:relative;will-change:transform;flex:0 0 auto}
+/* preserveAspectRatio="none": la parola riempie sempre la riga e si comprime
+   in orizzontale, come nel Figma. Restringendo il viewBox alle sole THINK /
+   BUILD, allargarlo fa entrare ER senza cambiare il testo. */
+.row svg{display:block;width:100%;height:100%}
+.row text{
+  font-family:var(--grotesk);font-weight:700;
+  fill:var(--tf,var(--cream));
+  stroke:var(--ts,var(--cream));
+  stroke-width:1.1;
+  paint-order:stroke;
+}
+/* su mobile le righe usano i vettori esatti THINKER/BUILDER (condensati) al
+   posto del <text> stirato. Stesso schema colore: fill cream -> trasparente,
+   stroke cream -> LINE, così il finale (805) è solo contorno. */
+.row .vec{display:none}
+.row .vec path{
+  fill:var(--tf,var(--cream));
+  stroke:var(--ts,var(--cream));
+  stroke-width:1.1;paint-order:stroke;
+  vector-effect:non-scaling-stroke;
+}
+
+.word{height:31vh;margin:-1vh 0;position:relative;z-index:2;flex:0 0 auto}
+
+/* la & delle fasi grandi (801 / 807): al centro esatto, fra le due parole.
+   translate invece di transform: il transform resta libero, qui non serve. */
+.amp{
+  position:absolute;left:50%;top:50%;translate:-50% -50%;
+  height:160px;width:auto;z-index:5;pointer-events:none;
+}
+
+/* ---------- interfaccia finale ---------- */
+/* fixed e fuori da .sticky: header e footer sono già la cornice del 808/809 e
+   restano tali per la sezione progetti, che scorre sotto di loro. Da dentro
+   .sticky se ne sarebbero andati via insieme allo sticky. */
+.id{
+  position:fixed;left:2vw;right:2vw;top:1.6vh;z-index:5;
+  display:flex;align-items:center;gap:16px;
+  font-family:var(--sans);font-variation-settings:"opsz" 14;
+  font-size:24px;letter-spacing:-.48px;color:#212121;
+}
+.id .who{display:flex;align-items:center;gap:16px}
+/* il nome è l'h1 del documento: i titoli dei progetti sono h2 e senza questo
+   la pagina partirebbe da un livello 2. Resa identica a prima. */
+.id h1{font-size:inherit;font-weight:500}
+.id em{font-style:italic;font-weight:300;color:#554135}
+.id .contact{
+  margin-left:auto;color:var(--blue);text-decoration:none;
+  display:inline-flex;align-items:center;gap:.5rem;
+  font-size:16px;font-weight:300;letter-spacing:-.32px;
+}
+.id .contact span{transition:transform .35s cubic-bezier(.16,1,.3,1)}
+.id .contact:hover span{transform:translateX(.35rem)}
+
+.social{
+  position:fixed;left:8vw;right:8vw;bottom:1.6vh;z-index:5;
+  display:flex;justify-content:space-between;
+  font-family:var(--sans);font-variation-settings:"opsz" 14;
+  font-size:16px;font-weight:300;letter-spacing:-.32px;color:#212121;
+}
+.social a{color:inherit;text-decoration:none}
+.social a:hover{color:var(--blue)}
+
+.hint{
+  position:fixed;left:50%;bottom:2.2vh;transform:translateX(-50%);z-index:61;
+  font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink);
+}
+
+/* ---------- atto 2: frame 808 / 809 ---------- */
+/* fixed e non absolute: la stellina e il filetto restano ancorati al viewport
+   anche quando la sezione progetti scorrerà sotto lo sticky. */
+/* nasce già grande quanto sarà nel 809 e viene rimpicciolita: ingrandire un
+   layer rasterizzato lo sgrana, ridurlo no. Stessa ragione dell'.iris.
+   Il lato vero lo mette measure(), che conosce l'altezza del viewport. */
+/* la stellina non passa più il testimone a un secondo elemento: nella sezione
+   progetti è questa che vola nell'angolo opposto e diventa il marchio, quindi
+   basta l'opacità dell'atto 2. Lo z-index lo abbassa il JS all'atterraggio:
+   nel Figma il marchio sta DIETRO le righe. */
+.star{
+  position:fixed;left:0;top:0;width:386px;height:386px;z-index:62;
+  pointer-events:none;opacity:var(--sa,0);will-change:transform;
+}
+.star svg{display:block;width:100%;height:100%;overflow:visible}
+/* fill che se ne va e stroke che compare: due opacità sullo stesso path,
+   non due elementi. non-scaling-stroke, altrimenti il filetto si ingrossa
+   con la scala del volo. */
+/* --sw arriva dal JS: il tracciato vive in un viewBox 541 riscalato, quindi
+   lo spessore in unità va corretto per restare 1.6px a schermo a ogni scala */
+.star path{
+  fill:#174FFE;fill-opacity:var(--sf,1);
+  stroke:#174FFE;stroke-width:var(--sw,1.6);stroke-opacity:var(--ss,0);
+}
+/* il claim del 809: sta sopra la stellina, a destra del suo centro */
+.claim{
+  position:fixed;left:14.1%;top:18.9%;width:42.2%;z-index:62;
+  opacity:calc(var(--ca,0) * var(--cb,1));pointer-events:none;   /* stessa ragione di .star */
+  font-family:var(--sans);font-variation-settings:"opsz" 14;
+  font-size:32px;font-weight:300;letter-spacing:-.64px;color:var(--ink);
+}
+/* le frasi si formano una dopo l'altra "dalla polvere": opacità e sfocatura le
+   scrive dust() a ogni frame, qui c'è solo lo stato prima del primo frame.
+   Restano inline (niente inline-block): a scatola, ognuna diventerebbe
+   indivisibile e la riga andrebbe a capo dove capita. Per questo la polvere è
+   blur + opacità e non una traslazione — sugli inline transform non si applica. */
+.claim span{opacity:0}
+/* il nastro (Vector 15 del Figma): entra dall'alto e si disegna con lo scroll.
+   Il 809 ne mostra solo il primo tratto: qui sta il tracciato INTERO (1839 x
+   1093.9, ruotato 90° come nel frame), piazzato in modo che quel primo tratto
+   cada dov'è nel 809. Il resto continua sotto la piega, per la sezione
+   progetti. Unità di frame (1440x900) riscalate sull'altezza del viewport. */
+/* centro a (764.95, 819.5) del frame: è il valore che fa cadere l'imbocco del
+   nastro a x=1143.5, cioè dov'è nel 808. */
+/* --ry: nella sezione progetti il nastro smette di stare fermo e sale col
+   documento. Va prima delle altre transform, così trasla nel sistema dello
+   schermo e non in quello ruotato di 90° — e su questo conta il JS, che lo
+   calcola in pixel di schermo per tenere la punta a metà altezza. */
+/* La larghezza segue il viewBox: 2760/1839 di 204.33vh. Sono i due numeri che
+   tengono il tracciato a 1 unità = 1 px su un viewport da 900. Se si allunga
+   ancora il percorso vanno rifatti tutti e tre — larghezza, viewBox e `top`. */
+/* `top` compensa l'allargamento: ruotato di 90°, l'elemento cresce in
+   VERTICALE, e senza compensare tutta la scena dell'atto 2 si alzerebbe di
+   mezza crescita. 91.06% + (2760-1839)·0.0555% = 142.24%. */
+.ribbon{
+  position:fixed;left:53.12%;top:142.24%;z-index:1;pointer-events:none;
+  width:306.68vh;height:121.54vh;
+  transform:translateY(var(--ry,0px)) translate(-50%,-50%) rotate(90deg);
+}
+/* overflow:visible — l'SVG radice ritaglia al viewBox, e la coda aggiunta ne
+   esce: il Vector 15 finisce a y=1083.9, a un soffio dal bordo 1093.9, e
+   qualunque proseguimento che ne rispetti la tangente in arrivo deve per forza
+   uscire da quel lato. Ritagliata, la banda appariva TRONCATA a metà campo,
+   con un buco netto e i due monconi allineati sul bordo del viewBox.
+   Non è un caso da risolvere allargando il viewBox: quello è anche la scala
+   del disegno, e allargarlo rimpicciolirebbe tutto il nastro. */
+.ribbon svg{display:block;width:100%;height:100%;overflow:visible}
+/* la barra in alto compare nell'atto 2 (808): il vetro dietro l'header */
+.topbar{
+  position:fixed;left:0;top:0;width:100%;height:80px;z-index:4;opacity:0;
+  background:rgba(255,255,255,.01);backdrop-filter:blur(5px);pointer-events:none;
+}
+/* il marchio nell'header: stesso disegno dell'intro, rimontato con <use>.
+   Niente opacità propria: entra insieme al nome, con tutto il blocco .id */
+.id .mark{width:70.274px;height:40px;flex:0 0 auto}
+.id .mark svg{width:100%;height:100%;display:block}
+/* pupille: le muove tutte il JS con l'attributo transform (sguardo + blink).
+   Niente transform o transition CSS qui, vincerebbero sull'attributo. */
+.pu{transition:none}
+
+/* ---------- sezione progetti: frame 810 / 811 / 812 ---------- */
+/* Non è un atto dello sticky: è un blocco nel flusso, dopo lo scroller. Le
+   righe scorrono davvero, header/footer/marchio restano fissi. Del motore
+   dell'intro qui resta solo il nastro, che continua a disegnarsi.
+   z-index 3: sopra il nastro (1) e il marchio (2), sotto header e footer (5),
+   che nel Figma coprono le righe col loro vetro. */
+.projects{
+  /* will-change: il JS la trasla a ogni frame per riportarla sotto l'inerzia
+     dello scroll. Qui non c'è nessuna scala in gioco, solo una traslazione:
+     il layer si rasterizza una volta alla misura giusta e il testo resta
+     nitido. (Diverso dal logo dell'intro, che invece viene ingrandito 50×.) */
+  position:relative;z-index:3;will-change:transform;
+  /* 31.9vh = 287/900, dove comincia la lista nel 810. Più 250vh di campo vuoto
+     davanti: è l'aria in cui la stellina attraversa lo schermo e la banda si
+     allunga, senza che le righe arrivino addosso a metà del gesto. Il frame
+     810 del Figma è quel momento, e il vuoto è ciò che gli dà il tempo.
+     Non è un numero libero: il volo finisce a 2.8 schermi (il .62 di `f`, che
+     corre su 4.5 schermi), e la prima riga deve arrivare dopo. Toccando questo
+     va rivisto il fattore di corsa di `f` nel JS, e viceversa. */
+  padding-top:281.9vh;
+  /* coda della pagina: serve al nastro, che continua a tracciarsi qui e
+     finisce col documento, e su touch anche all'ultima riga, che si accende
+     quando supera la metà dello schermo — con meno spazio resterebbe spenta
+     per sempre, la pagina finirebbe prima che ci arrivi. */
+  padding-bottom:calc(50vh + 260px);
+}
+/* border-top sulla lista + un divider sotto ogni riga: nel Figma l'ultima
+   "riga" del componente è proprio un divider da solo */
+.proj-list{list-style:none;border-top:1px solid #BFCFFF}
+.proj{border-bottom:1px solid #BFCFFF}
+
+.proj-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:40px 24px}
+.proj-left{display:flex;align-items:flex-start;gap:24px;flex:1 1 0;min-width:0}
+.proj-text{display:flex;flex-direction:column;gap:12px;flex:1 1 0;min-width:0}
+
+/* la stellina della riga è la stessa forma della grande: un <use> sul suo
+   tracciato, niente secondo asset. Piena quando la riga è accesa, a contorno
+   quando è spenta — due opacità sullo stesso path, come per .star.
+   Colori e spessore stanno qui e non su un selettore discendente: dentro
+   l'ombra di un <use> il CSS non entra, passano solo le proprietà ereditate.
+   stroke-width è in unità del viewBox 541: 35 ≈ 1.3px sui 20px a schermo. */
+.proj-star{
+  width:20px;height:20px;flex:0 0 auto;overflow:visible;
+  fill:var(--blue);fill-opacity:0;
+  stroke:var(--blue);stroke-opacity:1;stroke-width:35;
+  transition:fill-opacity .5s cubic-bezier(.16,1,.3,1),stroke-opacity .5s cubic-bezier(.16,1,.3,1);
+}
+/* La riga si accende all'hover. `.on` resta il canale di JS e serve ancora a
+   due casi: reduced-motion (tutte accese) e i dispositivi senza puntatore, dove
+   l'hover non esiste e l'accensione resta guidata dallo scroll.
+   :is() e non tre regole ripetute — la specificità è quella di `.proj.on`. */
+:is(.proj.on,.proj:hover) .proj-star{fill-opacity:1;stroke-opacity:0}
+
+/* Le righe spente non collassano: nel Figma il testo è trasparente ma occupa
+   lo stesso spazio, e tutte le righe restano alte uguali. Quindi opacity e
+   colore, mai display: così accendere una riga non sposta le altre e lo
+   scroll non salta sotto le dita. */
+.proj h2{
+  font-family:var(--grotesk);font-weight:700;
+  font-size:clamp(30px,5.2vw,56px);line-height:1.1;letter-spacing:-1.12px;
+  color:#B2998C;transition:color .5s cubic-bezier(.16,1,.3,1);
+}
+:is(.proj.on,.proj:hover) h2{color:#554135}
+.proj-desc{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:18px;line-height:1.5;letter-spacing:-.36px;color:#484848;
+}
+.proj-tags{list-style:none;display:flex;flex-wrap:wrap;gap:8px}
+.proj-tags li{
+  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:-.12px;
+  color:#554135;padding:6px 10px;border-radius:999px;
+  border:1px solid transparent;                       /* il bordo compare con la riga */
+  transition:border-color .5s cubic-bezier(.16,1,.3,1);
+}
+:is(.proj.on,.proj:hover) .proj-tags li{border-color:#BFCFFF}
+.proj-year{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:14px;letter-spacing:-.28px;color:#554135;
+}
+.proj-desc,.proj-tags,.proj-year{opacity:0;transition:opacity .5s cubic-bezier(.16,1,.3,1)}
+:is(.proj.on,.proj:hover) :is(.proj-desc,.proj-tags,.proj-year){opacity:1}
+
+/* il marchio della sezione: qui c'è solo il titolo. La stellina non è un
+   secondo disegno che compare, è QUELLA del 809 che vola fin qui girando su sé
+   stessa (lo fa il JS su .star) e si ferma esattamente su questo riquadro —
+   lato 386.05/900 dell'altezza, centro 88.37%/69.83%, inclinazione 72.35°.
+   Nel Figma il marchio sta DIETRO le righe: z 2 < 3. */
+.proj-mark{
+  position:fixed;left:88.37%;top:69.83%;width:42.9vh;height:42.9vh;z-index:2;
+  pointer-events:none;opacity:var(--mo,0);
+  transform:translate(-50%,-50%);
+}
+/* la stellina ferma serve solo a reduced-motion, dove non c'è nessun volo:
+   negli altri casi la nasconde il JS e al suo posto atterra .star.
+   stroke-width la mette measure(): il lato dipende dal viewport e va corretto
+   per restare 1.4px a schermo (stessa ragione di --sw sulla stellina grande) */
+.proj-mark-star{
+  display:block;width:100%;height:100%;overflow:visible;
+  fill:none;stroke:var(--blue);
+  transform:rotate(72.35deg);            /* l'inclinazione che ha nel 810 */
+}
+/* il testo non ruota con la stellina: bordo destro sul suo centro, centrato
+   in verticale su di esso — è così che sta nel frame */
+.proj-mark-label{
+  position:absolute;right:50%;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;align-items:flex-end;
+}
+.proj-mark-label b{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:500;
+  font-size:5.33vh;letter-spacing:-.96px;color:var(--ink);white-space:nowrap;   /* 48/900 */
+}
+/* "selezionati" è testo vettorializzato nel Figma (corsivo con la stessa grana
+   del resto): asset esportato, non ricostruito a mano */
+.proj-mark-label img{display:block;width:24.9vh;height:auto}                    /* 224/900 */
+
+/* ---------- mobile: frame 805 ---------- */
+@media (max-width:640px){
+  .scroller{height:500vh}      /* era 400: stesso rallentamento del desktop */
+
+  /* header verticale: nome (Space Grotesk) + sub in alto, contattami in basso */
+  .id{
+    flex-direction:column;align-items:flex-start;justify-content:space-between;
+    left:0;right:0;top:0;height:280px;padding:24px;gap:0;
+    transition:height .4s cubic-bezier(.16,1,.3,1),padding .4s cubic-bezier(.16,1,.3,1);
+  }
+  /* nella sezione progetti quei 280px coprirebbero le righe che gli scorrono
+     dietro — "contattami" finiva sopra le descrizioni. Qui l'header diventa la
+     stessa barra del desktop, col vetro acceso dal JS. */
+  body.in-projects .id{
+    flex-direction:row;align-items:center;justify-content:flex-start;
+    height:80px;padding:0 24px;gap:12px;
+  }
+  body.in-projects .id em{display:none}            /* in riga non ci sta */
+  body.in-projects .id .contact{margin-left:auto}
+  .id .mark{display:none}     /* l'atto 2 è solo desktop: qui occuperebbe spazio a vuoto */
+  .id .who{flex-direction:column;align-items:flex-start;gap:2px}
+  .id h1{font-family:var(--grotesk)}         /* nome in Space Grotesk su mobile */
+  .id .contact{margin-left:0}
+
+  /* footer: DM Sans Medium, marrone scuro, banda in fondo */
+  .social{
+    left:0;right:0;bottom:0;padding:0 24px;height:80px;align-items:center;
+    font-weight:500;color:#2b1a0f;
+  }
+
+  /* righe: vettori condensati al posto del testo stirato */
+  .row .txt{display:none}
+  .row .vec{display:block}
+
+  /* "designer" attraversa in diagonale: stesso SVG, ruotato -60°.
+     Fuori dal flusso flex (niente più spaziatore fra le righe), centrato.
+     Sbordare dai bordi è voluto: .sticky ha overflow:hidden e lo ritaglia
+     allo schermo, come il frame 805 lo ritaglia ai bordi. */
+  .word{
+    position:absolute;top:50%;left:50%;margin:0;
+    width:230vw;height:28vw;                  /* aspetto ~8:1 del tracciato */
+    transform:translate(-50%,-50%) rotate(-60deg);
+    transform-origin:center;
+  }
+
+  .amp{height:100px}
+
+  /* la sezione progetti c'è anche qui, ma senza l'atto 2 non ci sono né
+     stellina né nastro: il marchio resterebbe un testo senza il suo segno.
+     Manca il frame Figma per il mobile: misure tarate a mano sul 390x844. */
+  .proj-mark{display:none}
+  .projects{padding-top:120px}
+  .proj-row{padding:24px;gap:12px}
+  .proj-left{gap:12px}
+  .proj-desc{font-size:16px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .scroller{height:100svh}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="scroller">
+  <div class="sticky" id="sticky">
+
+    <div class="paper" id="paper"></div>
+
+    <div class="logo" id="logo">
+      <!-- viewBox allargato: i tracciati vanno da x -14.4 a 307.2 e da y -1.3
+           a 179.4, fuori dal 300x171 originale. L'SVG radice ritaglia di
+           default, quindi lente destra, base e ricciolo restavano tagliati. -->
+      <!-- il marchio nell'header rimonta questi stessi tracciati con <use>,
+           uno per pezzo: dentro l'ombra di un <use> non si entra, e le pupille
+           devono restare raggiungibili per farle seguire il puntatore.
+           L'ordine dei path è l'ordine del gesto (ricciolo per ultimo): non
+           riordinarli, il disegno dell'intro segue il DOM. -->
+      <svg viewBox="-16 -3 325 185" xmlns="http://www.w3.org/2000/svg">
+        <path id="logoRim" fill="#174FFE" stroke="#174FFE" fill-rule="evenodd" clip-rule="evenodd" d="M38.8262 59.9755C64.039 51.8009 99.691 55.4308 117.256 77.1453C117.549 77.5074 117.453 78.0445 117.052 78.2829C113.274 80.5336 109.309 81.0237 105.215 80.6174C104.853 80.5815 104.508 80.4374 104.219 80.216C93.7383 72.1947 83.0434 68.5065 63.9557 68.5065C-7.09673 68.5065 -1.1185 157.989 63.6617 157.989C100.426 157.989 118.623 130.871 114.262 106.102C114.151 105.47 114.631 104.882 115.272 104.865C118.686 104.777 122.137 103.503 125.444 102.077C126.065 101.809 126.802 102.165 126.884 102.837C126.925 103.168 126.953 103.481 126.993 103.879C127.04 104.344 127.4 104.73 127.847 104.865C131.304 105.904 143.607 110.58 157.808 108.48C161.217 107.976 169.502 105.689 172.292 104.863C172.97 104.662 172.844 103.89 172.943 103.189C182.212 37.1726 300 41.3012 300 111.971C300 143.844 273.927 170.496 236.17 170.758C205.323 170.973 176.96 151.311 172.876 120.262C172.804 119.715 172.325 119.351 171.792 119.491C168.225 120.423 156.134 123.892 141.6 122.251C138.307 121.879 131.287 120.322 128.196 119.587C127.6 119.445 127.01 119.867 126.928 120.474C121.329 162.136 74.4013 179.357 38.8262 166.528C-11.4955 148.383 -14.3687 77.2222 38.8262 59.9755ZM236.17 68.9888C165.118 68.9889 171.391 157.989 236.17 157.989C300.951 157.989 307.223 68.9888 236.17 68.9888Z"/>
+        <!-- le pupille dell'intro si muovono col <g>, non col path: il <use>
+             dell'header punta al path, e una transform lì la erediterebbe -->
+        <g class="pu"><path id="pupilL" fill="#2B1A0F" stroke="#2B1A0F" d="M50.3494 142.729C62.6541 142.729 72.629 132.754 72.629 120.449C72.629 108.145 62.6541 98.1699 50.3494 98.1699C38.0448 98.1699 28.0699 108.145 28.0699 120.449C28.0699 132.754 38.0448 142.729 50.3494 142.729Z"/></g>
+        <g class="pu"><path id="pupilR" fill="#2B1A0F" stroke="#2B1A0F" d="M222.379 142.729C234.684 142.729 244.659 132.754 244.659 120.449C244.659 108.145 234.684 98.1699 222.379 98.1699C210.075 98.1699 200.1 108.145 200.1 120.449C200.1 132.754 210.075 142.729 222.379 142.729Z"/></g>
+        <path id="logoCurl" fill="#2B1A0F" stroke="#2B1A0F" d="M136.847 0.305719C124.887 -1.23616 112.918 3.12463 105.272 11.7959C97.4314 20.6883 93.6653 33.4963 99.1373 47.6927C103.195 58.2191 111.634 65.0996 120.843 68.7628C124.603 70.2588 128.609 71.2199 132.746 71.736C134.46 71.9498 135.239 74.0393 133.925 75.1604C131.505 77.2243 128.854 79.1087 125.929 80.8494C115.849 86.848 106.006 88.5626 97.856 84.6428C94.7117 83.1306 90.9372 84.4545 89.4254 87.5998C87.9136 90.7452 89.237 94.5214 92.3813 96.0337C105.717 102.447 120.04 98.9045 131.83 92.0404L132.389 91.7111C141.488 86.2956 148.364 79.7108 153.808 71.6907C154.118 71.2342 154.597 70.9205 155.14 70.822C173.873 67.422 193.162 58.1097 205.617 47.0998L206.253 46.531C212.016 41.3109 216.445 35.451 218.835 29.4992C221.222 23.5542 221.769 16.9062 218.583 11.0479C215.954 6.21473 211.517 2.78755 205.844 1.85061C200.335 0.941005 194.432 2.49166 188.698 5.9165C185.702 7.70566 184.724 11.5854 186.512 14.582C188.301 17.5784 192.179 18.5572 195.174 16.7683C199.186 14.3719 202.065 14.0367 203.786 14.3208C205.341 14.5777 206.58 15.4244 207.485 17.0874C207.485 17.0876 207.485 17.0876 207.485 17.0875C207.485 17.0873 207.485 17.0874 207.485 17.0875C208.305 18.5947 208.604 21.0694 207.111 24.7885C205.62 28.5013 202.535 32.8484 197.772 37.1624C189.918 44.2772 178.302 50.8214 165.972 54.9771C164.382 55.5131 162.934 53.9197 163.522 52.3478C163.924 51.2741 164.315 50.1824 164.699 49.0723C172.48 26.5211 159.219 3.18997 136.847 0.305719ZM114.748 20.1563C119.485 14.7838 127.228 11.8087 135.232 12.8406C148.769 14.5858 155.693 26.7965 154.991 38.4249C154.579 45.2526 152.539 52.5847 147.663 56.226C141.028 61.181 132.065 61.7642 124.661 58.0571C117.886 54.6654 113.208 50.651 110.509 43.648C106.631 33.586 110.206 25.3076 114.748 20.1563Z"/>
+      </svg>
+    </div>
+
+    <div class="iris" id="iris"></div>
+
+    <div class="stage">
+      <div class="row" id="rowTop">
+        <svg preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <text class="txt" data-short="5" vector-effect="non-scaling-stroke">THINKER</text>
+          <!-- vettori mobile: THINK 0..277, ER 280..390; ritaglio a ~279 = THINK -->
+          <g class="vec" data-short="279">
+            <path d="M21.6112 400V68.5714H0V0H57.2061V68.5714H35.5949V400H21.6112Z"/>
+            <path d="M62.4914 400V0H76.4752V165.143H104.019V0H118.003V400H104.019V233.714H76.4752V400H62.4914Z"/>
+            <path d="M127.775 400V0H141.759V400H127.775Z"/>
+            <path d="M151.47 400V0H178.061L192.786 348.571H194.693V0H208.465V400H181.875L167.149 51.4286H165.242V400H151.47Z"/>
+            <path d="M218.203 400V0H232.186V158.857H234.093L258.141 0H276.045L245.111 197.143L277.104 400H258.671L234.093 237.714H232.186V400H218.203Z"/>
+            <path d="M280.28 400V0H327.951V68.5714H294.263V164H324.985V232.571H294.263V331.429H328.587V400H280.28Z"/>
+            <path d="M334.701 400V0H366.906C371.567 0 375.628 4.38095 379.088 13.1429C382.549 21.9048 385.233 34.2857 387.14 50.2857C389.047 66.2857 390 85.1429 390 106.857V113.714C390 137.714 388.941 157.143 386.822 172C384.703 186.857 382.09 197.714 378.982 204.571V214.857C381.807 215.619 383.997 220.952 385.551 230.857C387.104 240.381 387.881 253.143 387.881 269.143V400H373.897V280C373.897 270.857 373.438 263.429 372.52 257.714C371.673 252 370.225 249.143 368.177 249.143H348.684V400H334.701ZM348.684 180.571H365.423C368.742 180.571 371.32 175.81 373.156 166.286C375.063 156.381 376.016 143.429 376.016 127.429V121.714C376.016 105.714 375.098 92.9524 373.262 83.4286C371.426 73.5238 368.813 68.5714 365.423 68.5714H348.684V180.571Z"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="word" id="word"></div>
+
+      <div class="row" id="rowBot">
+        <svg preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <text class="txt" data-short="5" vector-effect="non-scaling-stroke">BUILDER</text>
+          <!-- vettori mobile: BUILD 0..272, ER 280..390; ritaglio a ~276 = BUILD -->
+          <g class="vec" data-short="276">
+            <path d="M0 392.157V327.171H9.7944V64.986H0V0H38.3258C42.8681 0 46.8072 4.10831 50.1429 12.3249C53.5497 20.1681 56.1757 31.5593 58.021 46.4986C59.9373 61.0644 60.8955 78.6181 60.8955 99.1597V104.762C60.8955 122.689 60.2567 137.442 58.9792 149.02C57.7017 160.224 56.1757 169.001 54.4013 175.35C52.698 181.326 51.0655 185.621 49.5041 188.235V198.319C51.0655 200.56 52.769 204.855 54.6143 211.204C56.4597 217.18 58.0211 225.957 59.2986 237.535C60.6471 249.113 61.3214 264.239 61.3214 282.913V288.515C61.3214 310.177 60.3631 328.852 58.4468 344.538C56.5305 359.851 53.8691 371.615 50.4624 379.832C47.1266 388.049 43.223 392.157 38.7517 392.157H0ZM23.8472 324.93H37.0483C40.1002 324.93 42.5487 321.008 44.394 313.165C46.3103 305.322 47.2686 294.118 47.2686 279.552V273.95C47.2686 259.384 46.3459 248.179 44.5006 240.336C42.6553 232.493 40.1711 228.571 37.0483 228.571H23.8472V324.93ZM23.8472 161.345H36.8354C39.7453 161.345 42.1229 157.423 43.9682 149.58C45.8845 141.737 46.8427 130.906 46.8427 117.087V111.485C46.8427 97.2923 45.9201 86.4613 44.0748 78.9916C42.2295 71.1485 39.8163 67.2269 36.8354 67.2269H23.8472V161.345Z"/>
+            <path d="M97.3117 400C91.2079 400 85.9558 394.211 81.5555 382.633C77.2261 370.682 73.8903 353.875 71.5482 332.213C69.277 310.177 68.1414 284.22 68.1414 254.342V0H82.1942V256.583C82.1942 280.486 83.4717 299.346 86.0268 313.165C88.6528 326.984 92.4145 333.894 97.3117 333.894C102.209 333.894 105.935 326.984 108.49 313.165C111.116 299.346 112.429 280.486 112.429 256.583V0H126.482V254.342C126.482 284.22 125.311 310.177 122.969 332.213C120.697 353.875 117.362 370.682 112.961 382.633C108.632 394.211 103.415 400 97.3117 400Z"/>
+            <path d="M135.837 392.157V0H149.89V392.157H135.837Z"/>
+            <path d="M159.649 392.157V0H173.702V324.93H207.769V392.157H159.649Z"/>
+            <path d="M210.963 392.157V327.171H220.757V64.986H210.963V0H241.623C251.63 0 259.225 13.4454 264.406 40.3361C269.658 66.8534 272.284 106.443 272.284 159.104V233.053C272.284 285.714 269.658 325.49 264.406 352.381C259.225 378.898 251.63 392.157 241.623 392.157H210.963ZM234.81 324.93H241.836C247.514 324.93 251.666 317.087 254.292 301.401C256.918 285.714 258.231 263.679 258.231 235.294V156.863C258.231 128.105 256.918 106.069 254.292 90.7563C251.666 75.07 247.514 67.2269 241.836 67.2269H234.81V324.93Z"/>
+            <path d="M279.738 392.157V0H327.645V67.2269H293.79V160.784H324.664V228.011H293.79V324.93H328.284V392.157H279.738Z"/>
+            <path d="M334.428 392.157V0H366.792C371.476 0 375.557 4.29505 379.035 12.8852C382.512 21.4753 385.209 33.6134 387.126 49.2997C389.042 64.986 390 83.4734 390 104.762V111.485C390 135.014 388.935 154.062 386.806 168.627C384.677 183.193 382.051 193.838 378.928 200.56V210.644C381.767 211.391 383.967 216.62 385.529 226.331C387.09 235.668 387.871 248.179 387.871 263.866V392.157H373.818V274.51C373.818 265.546 373.357 258.263 372.434 252.661C371.582 247.059 370.127 244.258 368.069 244.258H348.48V392.157H334.428ZM348.48 177.031H365.301C368.637 177.031 371.227 172.362 373.073 163.025C374.989 153.315 375.947 140.616 375.947 124.93V119.328C375.947 103.641 375.024 91.1298 373.179 81.7927C371.334 72.0822 368.708 67.2269 365.301 67.2269H348.48V177.031Z"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- src percent-encoded: il file si chiama "&.svg" e & in un attributo
+         HTML aprirebbe un'entità -->
+    <img class="amp" id="amp" src="%26.svg" alt="" aria-hidden="true">
+
+  </div>
+</div>
+
+<!-- header, footer e vetro stanno fuori dallo sticky: dal 806 in poi sono la
+     cornice fissa del racconto, e la sezione progetti scorre sotto di loro -->
+<div class="topbar" id="topbar"></div>
+
+<div class="id" id="ui-id">
+  <span class="mark" id="mark"><svg viewBox="-16 -3 325 185" xmlns="http://www.w3.org/2000/svg"><use href="#logoRim"/><use class="pu" href="#pupilL"/><use class="pu" href="#pupilR"/><use href="#logoCurl"/></svg></span>
+  <div class="who"><h1>Oliviero Petrucci</h1><em>Software Designer</em></div>
+  <a class="contact" href="mailto:olivieropetrucci@gmail.com">contattami <span>&#8594;</span></a>
+</div>
+
+<div class="social" id="ui-social">
+  <a href="#">LinkedIn</a><a href="#">Instagram</a><a href="#">Github</a>
+</div>
+
+<!-- frame 810/811/812. Blocco nel flusso: le righe scorrono davvero e quella
+     che passa per il centro dello schermo è quella accesa.
+     Descrizioni, tag e anno sono ancora i segnaposto del Figma, uguali per
+     tutte e quattro le righe: vanno riempiti coi contenuti veri. -->
+<section class="projects" id="projects" aria-label="Progetti selezionati">
+  <ol class="proj-list">
+    <li class="proj">
+      <div class="proj-row">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>InvolveU</h2>
+            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
+            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2023</p>
+      </div>
+    </li>
+    <li class="proj">
+      <div class="proj-row">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>Carbon Footprint Mobility</h2>
+            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
+            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2023</p>
+      </div>
+    </li>
+    <li class="proj">
+      <div class="proj-row">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>ESG Datastore</h2>
+            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
+            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2023</p>
+      </div>
+    </li>
+    <li class="proj">
+      <div class="proj-row">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>ZTravel Smart</h2>
+            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
+            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2023</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<!-- il marchio della sezione. La stellina qui dentro è ferma e serve solo a
+     reduced-motion: negli altri casi il JS la nasconde e ci fa atterrare
+     quella del 809, che attraversa il campo girando su sé stessa. Il titolo
+     si forma dopo, frase per frase. -->
+<div class="proj-mark" id="projMark" aria-hidden="true">
+  <svg class="proj-mark-star" id="markStar" viewBox="0 0 541 541"><use href="#starPath"/></svg>
+  <div class="proj-mark-label"><b>progetti</b><img src="selezionati.svg" alt=""></div>
+</div>
+
+<div class="hint" id="hint">Scroll ↓</div>
+
+<!-- atto 2: la stellina staccata dal puntino della i (stessa forma di
+     stellina.svg, stesso disturbo del tratto), il testo che le compare
+     accanto e il filetto che scende dall'alto -->
+<!-- stellina-2.svg: stesso disegno, tracciato grande e senza filtro. Il filtro
+     della versione piccola veniva rasterizzato a 47px e poi ingrandito dalla
+     transform, ed è per quello che si sgranava. -->
+<div class="star" id="star">
+  <svg viewBox="0 0 541 541" xmlns="http://www.w3.org/2000/svg">
+    <!-- id: la stessa forma serve alle stelline delle righe progetto e al
+         marchio della sezione, rimontati con <use> invece di un altro asset -->
+    <path id="starPath" d="M145.062 68.9799C148.97 -0.809893 239.699 -25.1208 277.979 33.3649L326.198 107.037C338.969 126.549 360.249 138.835 383.532 140.139L471.443 145.062C541.232 148.97 565.544 239.698 507.059 277.978L433.385 326.198C413.874 338.968 401.589 360.248 400.285 383.531L395.361 471.442C391.453 541.232 300.725 565.543 262.445 507.058L214.225 433.385C201.455 413.873 180.175 401.588 156.892 400.284L68.9803 395.361C-0.809426 391.453 -25.1203 300.723 33.3653 262.444L107.038 214.225C126.549 201.454 138.835 180.174 140.139 156.891L145.062 68.9799Z"/>
+  </svg>
+</div>
+<!-- una frase per <span>: sono le unità della comparsa "dalla polvere", si
+     formano una dopo l'altra. Lo spazio fra i tag è testo vero, quindi le righe
+     vanno a capo come se i tag non ci fossero. -->
+<p class="claim" id="claim"><span>Progetto sistemi complessi</span> <span>coniugando rigore tecnico, raffinatezza estetica</span> <span>e un&rsquo;esperienza utente funzionale.</span></p>
+
+<!-- Vector 15 del Figma (ribbon.svg): tracciato unico, stroke 20, quindi si
+     disegna con stroke-dashoffset invece di essere svelato da una maschera.
+     Fino a x=1829 è l'export del Figma, intatto: è quel tratto che dà le pose
+     del 808 e del 809. Da lì in poi è una CODA AGGIUNTA A MANO (l'ultima riga
+     della `d`), con un ricciolo: serve lunghezza. La sezione traccia alla
+     stessa andatura dell'atto 2, e col solo Vector 15 il nastro finiva dopo
+     due schermi di sezione, lasciando la punta ferma per tutto il resto.
+     Il raccordo a 1829 è C1: il primo punto di controllo prosegue la tangente
+     in arrivo (167, 370.5), altrimenti lì si vede uno spigolo.
+     Ricorda che il tutto è ruotato di 90°: la x del tracciato scorre verso il
+     basso dello schermo, la y da destra a sinistra. -->
+<div class="ribbon" id="ribbon">
+  <svg viewBox="0 0 2760 1093.9" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path id="ribbonPath" d="M10.0001 168.397C155.5 10.3976 616.759 -53.7474 857 90.3974C1052 207.397 945.5 434.398 643 514.898C387.024 583.017 418 977.397 602.5 1043.9C787 1110.4 982.285 804.797 1178.5 724.898C1359 651.398 1662 713.397 1829 1083.9C1912.5 1269.2 2080 1080 2160 780C2240 480 2520 380 2640 560C2760 740 2660 900 2500 860C2340 820 2360 640 2520 600" stroke="#BFCFFF" stroke-width="20" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<script src="designer-word.js"></script>
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mq     = matchMedia('(max-width:640px)');   // ramo mobile (frame 805)
+const HANDOFF = (.44 - .12) / .88;                // cur a fine autoplay mobile (p = .44)
+
+document.getElementById('word').innerHTML = window.DESIGNER_SVG;
+const svg    = document.getElementById('wordSvg');
+const cD     = document.getElementById('clipDesignRect');
+const cE     = document.getElementById('clipErRect');
+const sticky = document.getElementById('sticky');
+const logo   = document.getElementById('logo');
+const iris   = document.getElementById('iris');
+const hint   = document.getElementById('hint');
+const amp    = document.getElementById('amp');
+const rows   = [document.getElementById('rowTop'), document.getElementById('rowBot')];
+const paper  = document.getElementById('paper');
+const wordEl = document.getElementById('word');
+const star   = document.getElementById('star');
+const starDot = document.getElementById('starDot');       // la stellina dentro "designer"
+const claim  = document.getElementById('claim');
+const ribbon = document.getElementById('ribbonPath');
+const ribbonEl = document.getElementById('ribbon');
+const topbar = document.getElementById('topbar');
+const mark   = document.getElementById('mark');
+const scroller = document.querySelector('.scroller');
+const projects = document.getElementById('projects');
+const projRows = [...projects.querySelectorAll('.proj')];
+const projMark = document.getElementById('projMark');
+const markStar = document.getElementById('markStar');
+/* le unità della comparsa "dalla polvere": una frase del claim, e i due pezzi
+   del titolo della sezione ("progetti" + "selezionati" vettorializzato) */
+const claimSpans = [...claim.querySelectorAll('span')];
+const markParts  = [...projMark.querySelectorAll('.proj-mark-label > *')];
+
+/* ---------- comparsa "dalla polvere" ----------
+   Le frasi non compaiono insieme: ognuna parte con un ritardo fisso sulla
+   precedente e passa da velo sfocato a parola nitida. Non è una timeline, è la
+   stessa frazione traslata di `stagger` per ogni elemento — così resta guidata
+   dallo scroll e va avanti e indietro senza stato.
+   blur + opacità e basta: le frasi del claim sono inline (per non spezzare gli
+   a capo) e sugli inline le transform non si applicano. */
+const DUST_BLUR = 12;
+function dust(els, prog, stagger = .28){
+  const span = 1 - stagger * (els.length - 1);
+  els.forEach((el, i) => {
+    const a = out3(clamp((prog - i * stagger) / span));
+    el.style.opacity = a.toFixed(3);
+    /* 'none' e non blur(0px): a regime toglie del tutto il filtro, che
+       altrimenti terrebbe la frase su un layer rasterizzato e appena molle */
+    el.style.filter = a >= 1 ? 'none' : `blur(${(DUST_BLUR * (1 - a)).toFixed(2)}px)`;
+  });
+}
+
+/* ---------- atto 2 (frame 808/809) ----------
+   Lo scroller vale 1395vh: i primi 775vh sono l'atto 1 (intro -> 806, costanti
+   invariate), gli ultimi 620vh l'atto 2. Su mobile l'atto 2 non c'è ancora,
+   quindi ACT1 = 1 e q resta 0: nessuna regressione sul ramo 805.
+   Deve combaciare con .scroller nel CSS: le frazioni p e q si dividono questo
+   rapporto, non l'altezza in vh. */
+const ACT1 = mq.matches ? 1 : 775 / 1395;
+/* arrivo della stellina, preso dal frame 809 (1440x900): lato 386.05, ruotata
+   -45°, centro a (160, 170). In frazioni, così regge qualunque viewport. */
+/* STAR_X è più a sinistra del 809 (160): voluto, così un lato della stellina
+   esce dallo schermo. Muovere questo per regolare quanto sborda. */
+/* STAR_W è il lato a schermo (frazione dell'altezza), NON dipende dal viewBox
+   dell'asset: cambiare stellina-2.svg non cambia la resa, si tocca questo. */
+const STAR_W = 500 / 900, STAR_X = 90 / 1440, STAR_Y = 170 / 900, STAR_ROT = -45;
+/* dove la stessa stellina si ferma nella sezione progetti (frame 810): è il
+   riquadro di .proj-mark, ripetuto qui perché il volo lo calcola il JS.
+   Cambiando questi valori vanno cambiati anche left/top/width di .proj-mark. */
+const MARK_X = .8837, MARK_Y = .6983, MARK_W = 386.05 / 900, MARK_ROT = 72.35;
+/* angolo a cui l'atto 2 lascia la stellina, e angolo a cui la porta il volo.
+   MARK_ROT è l'inclinazione del 810 ma è definita a meno di un giro: l'angolo
+   d'arrivo vero è quello, riportato avanti rispetto a dove la stellina è
+   ferma, più i giri interi che si vogliono vedere. MARK_TURNS è quindi la
+   manopola dei giri e basta: cambiandolo la posa d'arrivo non si muove. */
+const STAR_END = -720 + STAR_ROT;
+const MARK_TURNS = 1;
+const MARK_END = STAR_END + MARK_TURNS * 360 + (((MARK_ROT - STAR_END) % 360) + 360) % 360;
+const CLAIM_IN = .45;      // q a cui il claim comincia a formarsi
+let starFrom = null;      // posizione di partenza, letta al primo frame dell'atto 2
+let starSize = 386;       // lato dell'elemento: la misura finale, la mette measure()
+/* il nastro si disegna: serve la lunghezza del tracciato per il dashoffset */
+const ribLen = ribbon.getTotalLength();
+ribbon.style.strokeDasharray = ribLen;
+/* quanto nastro è tracciato a fine atto: gli export del 808 e del 809 sono lo
+   stesso tracciato troncato (808 = prima curva, 809 = fino a 602.5,1043.9),
+   quindi il nastro non si deforma, si disegna. Cerco quel punto invece di
+   tarare la frazione a occhio. */
+/* 1200 campioni e non 600: il tracciato ora ha la coda aggiunta ed è quasi il
+   doppio, con 600 la risoluzione attorno al punto del 809 si dimezzerebbe */
+const RIB_END = (() => {
+  let best = 0, bd = Infinity;
+  for (let i = 0; i <= 1200; i++){
+    const p = ribbon.getPointAtLength(ribLen * i / 1200);
+    const d = Math.hypot(p.x - 602.5, p.y - 1043.9);
+    if (d < bd){ bd = d; best = i / 1200; }
+  }
+  return best;
+})();
+/* Quanti pixel di scroll servono alla sezione per tracciare il pezzo di nastro
+   che resta (1 - RIB_END), **alla stessa andatura dell'atto 2**.
+   Non è una taratura: è la velocità dell'atto 2 riportata di là. Spalmando il
+   resto su tutta la coda della pagina la banda dimezzava il passo al confine —
+   e tornando indietro lo raddoppiava, per questo lo scatto si sentiva di più
+   all'indietro. Il valore era già continuo, la velocità no.
+   Conseguenza voluta: il nastro finisce di tracciarsi prima della fine della
+   pagina, e l'ultimo tratto di sezione lo vede solo salire. Lo calcola
+   measure(): dipende dall'altezza del viewport. */
+let ribPx = 1;
+
+/* i tracciati in ordine di gesto: montatura, pupille, ricciolo per ultimo.
+   Le lunghezze sono in unità di viewBox, non cambiano col viewport. */
+const strokes = [...document.querySelectorAll('.logo path')].map(el => {
+  const len = el.getTotalLength();
+  el.style.strokeDasharray = len;
+  return {el, len};
+});
+const penTotal = strokes.reduce((t, s) => t + s.len, 0);
+strokes.reduce((start, s) => { s.start = start; return start + s.len; }, 0);
+
+/* ---------- colore ---------- */
+const CREAM = [243,242,236], BROWN = [74,50,38], INK = [43,26,15], LINE = [178,153,140];
+const mix  = (a, b, t) => `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`;
+const mixA = (a, t) => `rgba(${a.join(',')},${t})`;
+
+/* ---------- curve ---------- */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const seg   = (p, a, b) => clamp((p - a) / (b - a));
+const out3  = t => 1 - Math.pow(1 - t, 3);
+const inOut = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+
+/* ---------- misure ---------- */
+let zoomMax = 45, pupilR = 20, pupilX = 0, pupilY = 0, coverR = 800, wordBox = 0;
+let logoUnit = 1;   // px per unità di viewBox del logo: converte lo sguardo in pixel
+
+/* Ogni riga porta la parola lunga. Misuro dove finisce la parola corta:
+   quel valore è il viewBox iniziale, il totale è quello finale. */
+/* mobile: i vettori THINKER/BUILDER occupano viewBox 0..390 x 0..400.
+   mshort = x dove finisce THINK/BUILD (ritaglio iniziale), mfull = 390 (parola intera).
+   VPAD_M = margine verticale perché lo stroke di cima/base non venga tranciato. */
+const VPAD_M = 3;
+const words = rows.map(row => {
+  const t   = row.querySelector('text');
+  const vec = row.querySelector('.vec');
+  return {row, svg:row.querySelector('svg'), text:t, vec,
+          short:0, full:0, box:null,
+          mshort:+vec.dataset.short, mfull:390,
+          mbox:{x:0, y:-VPAD_M, height:400 + 2*VPAD_M}};
+});
+
+/* getBBox su <text> restituisce la cassa tipografica intera, ascendenti e
+   discendenti comprese: su testo tutto maiuscolo sarebbe un terzo di aria.
+   Ritaglio alla fascia delle maiuscole (Space Grotesk: cap height .70em). */
+const CAP = 70, BASE = 100;
+/* margine verticale attorno alla cap band: le maiuscole riempiono esatto 30..100,
+   quindi cima e base cadrebbero sul bordo del viewBox e lo stroke (non-scaling,
+   sporge fuori) verrebbe tranciato a metà — i tratti orizzontali apparivano più
+   sottili dei verticali. VPAD tiene i bordi dentro il viewport. */
+const VPAD = .5;
+function measureWords(){
+  /* su mobile le righe usano i vettori (mbox/mshort/mfull, costanti) e il <text>
+     è display:none: getSubStringLength/getComputedTextLength su un elemento non
+     renderizzato lancia un'eccezione e bloccherebbe tutto l'avvio. */
+  if (mq.matches) return;
+  words.forEach(w => {
+    w.text.setAttribute('font-size', 100);
+    w.text.setAttribute('x', 0);
+    w.text.setAttribute('y', BASE);
+    w.box   = {x:0, y:BASE - CAP - VPAD, height:CAP + 2*VPAD};
+    w.full  = w.text.getComputedTextLength();
+    w.short = w.text.getSubStringLength(0, +w.text.dataset.short);
+  });
+}
+
+/* frazioni della pupilla sinistra nel viewBox -16 -3 325 185 */
+const PUP_X = .20415, PUP_Y = .66729, PUP_R = 22.2795 / 325;
+
+function measure(){
+  // misuro a scala 1 ma con la traslazione di centratura già applicata:
+  // il punto di transform-origin non si muove poi sotto scale()
+  logo.style.transform = 'translate(-50%,-50%)';
+  const r = logo.getBoundingClientRect();
+  logoUnit = r.width / 325;               // il viewBox del logo è largo 325
+  pupilR  = PUP_R * r.width || 1;
+  pupilX  = r.left + PUP_X * r.width;
+  pupilY  = r.top  + PUP_Y * r.height;
+  // il disco è centrato sulla pupilla, non sullo schermo: per coprire serve
+  // la distanza dall'angolo più lontano
+  coverR = Math.max(
+    Math.hypot(pupilX, pupilY),
+    Math.hypot(innerWidth - pupilX, pupilY),
+    Math.hypot(pupilX, innerHeight - pupilY),
+    Math.hypot(innerWidth - pupilX, innerHeight - pupilY)
+  );
+  zoomMax = coverR / pupilR * 1.05;
+
+  /* .word ha margini negativi: offsetHeight non li conta, il flex sì. Senza
+     sommarli l'aggancio ai bordi resta corto di quei pixel. */
+  const wEl = document.querySelector('.word'), wcs = getComputedStyle(wEl);
+  wordBox = wEl.offsetHeight + parseFloat(wcs.marginTop) + parseFloat(wcs.marginBottom);
+
+  // il cerchio nasce già alla dimensione massima e viene rimpicciolito
+  /* la stellina viene disegnata alla sua misura finale (809) e poi ridotta */
+  starSize = innerHeight * STAR_W;
+  star.style.width = star.style.height = starSize.toFixed(1) + 'px';
+  /* i pixel in cui l'atto 2 traccia RIB_END, riportati sul pezzo che resta:
+     stessa andatura di là dal confine */
+  ribPx = Math.max(1, (1 - CLAIM_IN) * (1 - ACT1) * (scroller.offsetHeight - innerHeight)
+                      * (1 - RIB_END) / RIB_END);
+  /* il contorno del marchio vive nel viewBox 541 riscalato al lato reale:
+     stessa correzione di --sw, così resta 1.4px a schermo a ogni viewport */
+  markStar.style.strokeWidth = (1.4 * 541 / (projMark.offsetWidth || 1)).toFixed(3);
+
+  iris.style.width  = iris.style.height = (coverR * 2) + 'px';
+  iris.style.left   = (pupilX - coverR) + 'px';
+  iris.style.top    = (pupilY - coverR) + 'px';
+
+  measureWords();
+}
+
+/* Il disegno del logo va a tempo, non a scroll. Le fasi successive sono
+   tarate su una scala in cui il disegno occupava 0–.12: invece di rimettere
+   mano a ogni costante, rimappo lo scroll dentro quella scala. */
+const DRAW_MS = 1700, FILL_MS = 450;
+let introStart = 0, drawT = 0, fillT = 0;
+
+function apply(scroll){
+  /* lo scroll si divide in due atti: p guida il primo (invariato), q il secondo */
+  const p = .12 + (ACT1 >= 1 ? scroll : clamp(scroll / ACT1)) * .88;
+  const q = ACT1 >= 1 ? 0 : seg(scroll, ACT1, 1);
+
+  /* 0. il logo si disegna. Un'unica penna percorre tutti i tracciati: la
+        posizione avanza sulla lunghezza totale, così la velocità è costante
+        e non dipende da quanto è lungo il singolo tratto. */
+  /* inOut e non out3: quest'ultimo scaricava tre quarti del tratto nel primo
+     terzo del tempo, contraddicendo la velocità di penna costante fra i path.
+     Così parte e chiude morbido, con andatura regolare in mezzo. */
+  const pen = inOut(drawT) * penTotal;
+  strokes.forEach(s => {
+    s.el.style.strokeDashoffset = s.len - clamp(pen - s.start, 0, s.len);
+    s.el.style.fillOpacity      = fillT;
+    s.el.style.strokeOpacity    = 1 - fillT;
+  });
+
+  /* 1. zoom nella pupilla: l'origine del transform non si sposta, quindi la
+        pupilla resta ferma e cresce */
+  const z = seg(p, .12, .32);
+  const R = pupilR * (1 + Math.pow(z, 2.4) * zoomMax) * 1.02;
+  /* il logo cresce in rapporto 1:1 col disco: è questo che fa uscire dal
+     campo la montatura e vende lo zoom. Sganciarli la lascia in mezzo. */
+  const logoOn = R < coverR;
+  if (logoOn){
+    logo.style.visibility = 'visible';
+    logo.style.transform  = `translate(-50%,-50%) scale(${(R / pupilR).toFixed(3)})`;
+  } else if (logo.style.visibility !== 'hidden'){
+    logo.style.visibility = 'hidden';       // coperto dal disco: fuori dal paint
+  }
+
+  /* 2. il disco resta del colore della pupilla e non cambia mai: il marrone
+        arriva dal fondo sotto, scoperto dalla dissolvenza del disco */
+  /* entra solo a logo disegnato e riempito: prima si vedrebbe un disco pieno
+     sulla pupilla sinistra mentre la destra è ancora un contorno */
+  const irisOn = fillT * (1 - seg(p, .32, .40));
+  if (irisOn <= 0){
+    if (iris.style.display !== 'none') iris.style.display = 'none';
+  } else {
+    if (iris.style.display === 'none') iris.style.display = '';
+    iris.style.opacity   = irisOn;
+    /* il disco È la pupilla sinistra: deve seguirne sguardo e blink, o si
+       vedrebbe doppio e l'occhio sinistro non chiuderebbe mai.
+       Lo scarto è in unità di viewBox: va convertito in px e scalato come il logo. */
+    const gz = gazes[1], u = logoUnit * (R / pupilR);
+    iris.style.transform =
+      `translate(${(gz.x * u).toFixed(1)}px, ${(gz.y * u).toFixed(1)}px)` +
+      ` scale(${Math.min(R / coverR, 1).toFixed(4)}) scaleY(${(gz.sy ?? 1).toFixed(3)})`;
+  }
+
+  /* 3. fondo: crema -> marrone -> crema */
+  /* un solo valore per "quanto è marrone": sale mentre il disco copre lo
+     schermo, scende alla fine. La carta si ritira e torna con lui. */
+  const brown = clamp(seg(p, .24, .32) - seg(p, .68, .82));
+  sticky.style.background = mix(CREAM, BROWN, brown);
+  paper.style.opacity = 1 - brown;
+
+  /* 4. le parole: alte e sovrapposte, poi si stringono e aprono la finestra */
+  const inType = seg(p, .36, .44);   /* dopo che il disco è svanito, non sotto */
+  /* apertura ritardata a .50: prima le parole restano grandi e incastrate
+     (frame 801) per un tratto più lungo, poi si stringono verso il finale */
+  const shrink = inOut(seg(p, .50, .86));
+  const finH   = mq.matches ? .1517 : .2844;            // cap finale: 128/844 mobile (805), 256/900 desktop (806)
+  const bigH   = mq.matches ? .46 : .56;                // cap fase grande: su mobile più bassa, altrimenti le 2 parole traboccano e si accavallano
+  const h      = innerHeight * (bigH - (bigH - finH) * shrink);  // fase grande -> finale
+  const er     = out3(seg(p, .74, .93));
+
+  const M = mq.matches;
+  words.forEach(w => {
+    w.row.style.height = h.toFixed(1) + 'px';
+    const box   = M ? w.mbox   : w.box;      // mobile: vettori 0..390 x 0..400; desktop: cap band del <text>
+    const short = M ? w.mshort : w.short;
+    const full  = M ? w.mfull  : w.full;
+    const vbW   = short + (full - short) * er;
+    w.svg.setAttribute('viewBox', `${box.x} ${box.y} ${vbW.toFixed(1)} ${box.height}`);
+    /* colore su .row: eredita sia il <text> sia i path .vec.
+       fill cream -> trasparente, stroke cream -> LINE: filled in fase grande, solo contorno al finale (805/806) */
+    w.row.style.setProperty('--tf', mixA(CREAM, 1 - seg(p, .70, .84)));
+    w.row.style.setProperty('--ts', mix(CREAM, LINE, seg(p, .70, .84)));
+  });
+
+  /* due spinte opposte sulla stessa riga:
+     - spread la tira verso il centro, ed è ciò che le fa incastrare all'inizio
+     - attach la spinge al bordo, e vale solo quando ci sarebbe spazio avanzato.
+       Quando il testo è più alto del viewport lo spazio libero è zero, attach
+       si annulla da solo e resta il centrato: nessuna parola esce dal fondo. */
+  const prog   = out3(seg(p, .50, .86));   // rilascio dell'incastro (ritardato con shrink)
+  const spread = (1 - prog) * (mq.matches ? .03 : .24);   // su mobile quasi niente incastro: parole ai bordi (sopra/sotto), centro libero (frame 807)
+  const wb     = mq.matches ? 0 : wordBox;   // su mobile "designer" è fuori dal flusso: niente spaziatore fra le righe
+  const attach = Math.max(0, (innerHeight - (2 * h + wb)) / 2);
+  /* posizione finale del Figma 806: THINKER e BUILDER rientrano di 184/900
+     dai bordi verso il centro. Ma solo DOPO che "design" è scritta (seg .54-.66):
+     nella fase 801->802 le parole si aprono ai bordi per lasciare la finestra a
+     "design"; la convergenza verso il 806 arriva dopo, non subito. */
+  const settle = out3(seg(p, .66, .90));
+  const inset  = innerHeight * (mq.matches ? 284/844 : 184/900) * settle;   // rientro dai bordi: 284/844 mobile, 184/900 desktop
+  /* atto 2: THINKER esce a destra, BUILDER a sinistra. 1.3 volte la larghezza
+     perché la riga è larga quanto il viewport e deve sparire tutta. */
+  const exit = innerWidth * 1.3 * inOut(seg(q, 0, .55));
+  rows[0].style.transform = `translate(${exit.toFixed(1)}px, ${( h * spread - attach + inset).toFixed(1)}px)`;
+  rows[1].style.transform = `translate(${(-exit).toFixed(1)}px, ${(-h * spread + attach - inset).toFixed(1)}px)`;
+  document.querySelector('.stage').style.opacity = inType;
+  /* la & compare con le parole e ha finito di sfumare a .54, cioè nell'istante
+     esatto in cui la "d" di design comincia a scriversi: le due cose non si
+     sovrappongono mai */
+  amp.style.opacity = inType * (1 - seg(p, .50, .54));
+
+  /* 5. "design" si scrive, poi il viewBox si allarga e la mano prosegue in "er" */
+  cD.setAttribute('width', 1130 * out3(seg(p, .54, .66)));
+  const grow = inOut(seg(p, .70, .90));
+  svg.setAttribute('viewBox', `0 0 ${(1090 + 350 * grow).toFixed(1)} 172`);
+  cE.setAttribute('width', 380 * out3(seg(p, .76, .95)));
+
+  /* 6. interfaccia: entra col 806 e nell'atto 2 resta (nel 808/809 header e
+        footer ci sono ancora, l'header guadagna solo il marchio e il vetro) */
+  const ui = seg(p, .86, 1);
+  document.getElementById('ui-id').style.opacity = ui;
+  document.getElementById('ui-social').style.opacity = ui;
+  hint.style.opacity = mq.matches
+    ? seg(scroll, HANDOFF - .02, HANDOFF) * (1 - seg(scroll, HANDOFF, HANDOFF + .12))  // mobile: invita a scrollare a fine autoplay
+    : fillT * (1 - seg(scroll, 0, .06));                                               // desktop: appare a logo finito
+
+  /* 7. atto 2 (808/809): le parole escono, "designer" sfuma, la stellina si
+        stacca dalla i e cresce fino al 809, il nastro si disegna dall'alto e
+        l'header diventa la barra col marchio. Tutto sulla stessa q. */
+  /* la stellina di partenza è quella dentro la parola: leggo dove sta a
+     schermo al primo frame dell'atto 2, quando la scena è ferma sul 806 */
+  if (q > 0 && !starFrom){
+    const r = starDot.getBoundingClientRect();
+    starFrom = {x:r.left + r.width/2, y:r.top + r.height/2, w:r.width};
+  }
+  starDot.style.opacity = q > 0 ? 0 : 1;     // il puntino della i passa il testimone
+  wordEl.style.opacity  = 1 - seg(q, 0, .22);   // nel 808 "designer" è già sparita
+  star.style.setProperty('--sa', q > 0 ? 1 : 0);   // l'altro fattore è della sezione progetti
+
+  if (starFrom){
+    const t   = seg(q, .05, .8);
+    const fly = out3(t);                       // posizione e giri
+    const gro = 1 - Math.pow(1 - t, 2);        // la crescita corre prima: al 808
+                                               // la stellina è già a ~172px
+    const x = starFrom.x + (innerWidth  * STAR_X - starFrom.x) * fly;
+    const y = starFrom.y + (innerHeight * STAR_Y - starFrom.y) * fly;
+    const w = starFrom.w + (starSize - starFrom.w) * gro;
+    /* due giri e mezzo quarto: finisce sui -45° del 809.
+       scale sempre <= 1: l'elemento è già grande quanto il finale */
+    star.style.transform =
+      `translate(${(x - starSize/2).toFixed(1)}px, ${(y - starSize/2).toFixed(1)}px)` +
+      ` rotate(${((-720 + STAR_ROT) * fly).toFixed(1)}deg) scale(${(w / starSize).toFixed(4)})`;
+    star.style.setProperty('--sw', (1.6 * 541 / w).toFixed(4));   // contorno 1.6px a schermo
+    /* il pieno se ne va e resta il contorno (808 piena, 809 a filo) */
+    const ink = seg(q, .35, .7);
+    star.style.setProperty('--sf', 1 - ink);
+    star.style.setProperty('--ss', ink);
+  }
+
+  /* il claim: le frasi si formano dalla polvere una dopo l'altra. --ca è solo
+     l'interruttore del blocco (l'altro fattore è della sezione progetti), il
+     disegno vero lo fa dust(). Comincia a .45 e non a .6: con l'atto 2 più
+     lungo la frase è già tutta formata parecchio prima della fine, e resta
+     ferma e leggibile mentre il nastro continua a tracciarsi. */
+  claim.style.setProperty('--ca', q > CLAIM_IN ? 1 : 0);
+  dust(claimSpans, seg(q, CLAIM_IN, .95));
+  /* il nastro si disegna dall'alto. Parte con la prima frase del claim e non
+     prima (CLAIM_IN, non .15): partendo a .15 la banda era quasi tutta
+     tracciata quando la frase cominciava appena a formarsi, e le due cose non
+     si leggevano come una cosa sola. A fine atto è tracciato per RIB_END: il
+     resto tocca alla sezione progetti, che continuerà lo stesso dashoffset. */
+  /* avanzamento lineare, senza out3: quella curva scaricava i tre quarti del
+     tracciato nel primo terzo della corsa, e la banda scappava avanti mentre
+     la frase si stava ancora formando — lo stesso scarto che si voleva
+     togliere spostandone la partenza. Lineare è anche ciò che fa la coda nella
+     sezione progetti: al passaggio non c'è nessuno scatto di velocità. */
+  ribbon.style.strokeDashoffset = (ribLen * (1 - RIB_END * seg(q, CLAIM_IN, 1))).toFixed(1);
+  /* header: non se ne va, nell'atto 2 gli entra dietro il vetro del 808.
+     Il marchio no: quello è già lì dal 806, insieme al nome. */
+  topbar.style.opacity = seg(q, 0, .35);
+}
+
+/* ---------- sezione progetti (frame 810 / 811 / 812) ----------
+   Qui non c'è una timeline: le righe scorrono col documento come qualunque
+   pagina. Resta da guidare solo quello che è ancorato al viewport — il volo
+   della stellina dal 809 all'angolo del marchio, il titolo che si forma, il
+   nastro che finisce di tracciarsi. Le righe le accende l'hover, non lo scroll
+   (tranne su touch, dove l'hover non c'è). */
+/* La deriva del nastro non è più una manopola: si RICAVA dalla punta.
+   Richiesta dell'utente — mentre si scorre fra i progetti la fine della
+   striscia deve restare a metà altezza dello schermo. Invece di tarare di
+   quanti schermi sale, si chiede al tracciato dov'è la punta e si trasla di
+   quel tanto. Si auto-corregge: cambiando percorso, righe o altezza della
+   pagina resta centrata da sola.
+   Prima erano due costanti tarate a mano (un moltiplicatore dei pixel, poi
+   un numero di schermi) e tutte e due sono andate fuori registro alla prima
+   modifica della lunghezza della sezione.
+
+   La geometria di .ribbon, ripetuta qui perché il conto lo fa il JS. Con la
+   rotazione di 90° la x del tracciato è l'asse verticale dello schermo:
+     y_punta = RIB_TOP·vh + (p.x/RIB_VB)·RIB_W·vh - RIB_W·vh/2 + ry
+   Devono combaciare con top/width/viewBox nel CSS: se si tocca il tracciato
+   vanno aggiornati insieme. */
+const RIB_TOP = 1.4224, RIB_W = 3.0668, RIB_VB = 2760;
+let projOver = -1;
+/* su touch l'hover non esiste: lì le righe restano guidate dallo scroll */
+const canHover = matchMedia('(hover: hover)').matches;
+
+/* `over` = quanto si è scrollato oltre la fine dell'intro, in pixel: `overCur`
+   quello smussato, `overTarget` quello vero (serve alla correzione delle righe).
+   Entrambi li ricava `sync()` dall'unico inseguitore — vedi il suo commento. */
+let overCur = 0, overTarget = 0;
+
+function applyProjects(){
+  const over = overCur;
+  if (over === 0 && overTarget === 0 && projOver === 0) return;   // fermi prima della sezione
+  projOver = over;
+
+  /* Le righe sono DOM nel flusso: il browser le ha già mosse di `overTarget`,
+     1:1 con la rotella e sul thread del compositore. Tutto il resto della
+     sezione — stellina, nastro, marchio — si muove invece con `overCur`, che è
+     filtrato. Due moti diversi nello stesso campo: le righe arrivavano come uno
+     scroll qualunque, e il nastro, restando indietro di quel tanto, sembrava
+     dondolare — le "microrotazioni" non erano rotazioni, era ritardo relativo
+     su una curva grande.
+     Qui la differenza viene annullata: rimettendo giù la sezione di
+     `overTarget - overCur` appare mossa esattamente di `overCur`, come tutto il
+     resto. Un solo segnale in campo, e le righe ereditano l'inerzia.
+     Solo con un puntatore, però: al dito il contenuto deve stare incollato, e
+     un inseguitore lo farebbe scivolare via sotto il polpastrello. Lì lo scroll
+     nativo ha già la sua inerzia, ed è quella giusta. */
+  if (canHover) projects.style.transform = `translateY(${(overTarget - over).toFixed(1)}px)`;
+
+  const t = clamp(over / innerHeight);             // 809 -> 810
+  /* f: il volo della stellina verso il marchio. Ha bisogno di molta più corsa
+     di t — un giro completo più l'attesa del titolo in 100vh sarebbe una
+     frustata. 4.5 schermi: il volo finisce (a .62) intorno a 2.8 schermi.
+     È tarato sull'atto 2, non a occhio: lì la stellina attraversa il campo in
+     q .05→.8, cioè 465vh, e attraversarlo qui in 160vh la faceva sembrare
+     un'altra animazione, molto più veloce, attaccata alla fine della prima.
+     Va di pari passo col padding-top di .projects. */
+  const f = clamp(over / (innerHeight * 4.5));
+
+  /* lo sticky se ne va scorrendo, ma non è vuoto: su mobile la scena resta
+     quella del 805 e mentre esce se ne vede un pezzo sopra le righe. Sfumarlo
+     lo toglie di mezzo; su desktop non cambia niente, lì dentro è rimasta solo
+     la carta, identica a quella del body sotto. */
+  sticky.style.opacity = (1 - seg(t, 0, .5)).toFixed(3);
+
+  claim.style.setProperty('--cb', 1 - seg(t, 0, .35));
+
+  /* La stellina non passa il testimone a un secondo disegno: è la stessa, e
+     attraversa il campo dall'angolo del 809 a quello del marchio girando su sé
+     stessa. Da -765° (dove l'ha lasciata l'atto 2) a MARK_END: un giro pieno
+     più l'assestamento sull'inclinazione del 810. Erano due giri, ridotti su
+     richiesta dell'utente — si cambia MARK_TURNS, non questo blocco.
+     Scritto DOPO apply(), che a ogni frame riscrive la posa del 809: qui
+     l'ultimo a scrivere vince. Su mobile no: lì la stellina non è mai entrata.
+     Poi il titolo si forma dalla polvere, a volo finito. */
+  projMark.style.setProperty('--mo', 1);
+  if (!mq.matches){
+    const e  = inOut(seg(f, 0, .62));
+    const x0 = innerWidth * STAR_X, y0 = innerHeight * STAR_Y;
+    const x  = x0 + (innerWidth  * MARK_X - x0) * e;
+    const y  = y0 + (innerHeight * MARK_Y - y0) * e;
+    const w  = starSize + (innerHeight * MARK_W - starSize) * e;
+    const rot = STAR_END + (MARK_END - STAR_END) * e;
+    star.style.transform =
+      `translate(${(x - starSize/2).toFixed(1)}px, ${(y - starSize/2).toFixed(1)}px)` +
+      ` rotate(${rot.toFixed(1)}deg) scale(${(w / starSize).toFixed(4)})`;
+    star.style.setProperty('--sw', (1.6 * 541 / w).toFixed(4));   // contorno 1.6px a schermo
+    /* atterrata, scende dietro le righe: nel Figma il marchio sta sotto la
+       lista (z 2 < 3). In volo resta sopra, o sparirebbe a metà traiettoria. */
+    star.style.zIndex = e >= 1 ? 2 : 62;
+    /* il titolo comincia mentre la stellina sta ancora arrivando — a f .5 è a
+       un'incollatura dal posto ma non ferma — e chiude poco dopo
+       l'atterraggio: tirandolo fino a f 1 restava in formazione per un altro
+       schermo e mezzo, con le righe già in campo */
+    dust(markParts, seg(f, .5, .78));
+  }
+
+  /* su mobile l'header del 805 è alto 280px: nella sezione si compatta a barra
+     (CSS) e gli si accende dietro il vetro, o le righe che gli passano sotto
+     si leggerebbero attraverso il suo testo. Scritto dopo apply(), che sulla
+     topbar tiene q = 0 per tutto il ramo mobile. */
+  document.body.classList.toggle('in-projects', t > 0);
+  if (mq.matches) topbar.style.opacity = seg(t, .1, .6);
+
+  /* il nastro riprende da dove l'atto 2 l'ha lasciato (RIB_END) e intanto sale
+     col documento: sotto la piega c'è già il resto del tracciato.
+     Su mobile no: l'atto 2 non c'è, il nastro non è mai entrato in scena e
+     ricomparirebbe qui dal nulla. */
+  if (!mq.matches){
+    const drawn = ribLen * (RIB_END + (1 - RIB_END) * clamp(over / ribPx));
+    ribbon.style.strokeDashoffset = (ribLen - drawn).toFixed(1);
+    /* la traslazione che porta la punta a metà schermo (vedi RIB_TOP/RIB_W).
+       Entra con inOut sul primo schermo invece che di colpo: nell'atto 2 il
+       nastro non trasla, e al 809 la punta è già a ~50px dal centro — senza
+       raccordo quei 50px sarebbero uno scatto proprio sul confine. inOut parte
+       da velocità zero, quindi si aggancia liscio, e da uno schermo in poi la
+       punta è centrata come chiesto. */
+    const px = ribbon.getPointAtLength(drawn).x;
+    const ry = innerHeight * (.5 - RIB_TOP + RIB_W * (.5 - px / RIB_VB));
+    ribbonEl.style.setProperty('--ry',
+      (ry * inOut(clamp(over / innerHeight))).toFixed(1) + 'px');
+  }
+
+  /* Con un puntatore la riga si accende all'hover: lo fa il CSS, qui non c'è
+     niente da guidare. Senza puntatore (touch) l'hover non esiste e resterebbe
+     tutto spento, quindi lì l'accensione torna allo scroll: la riga accesa è
+     l'ultima che ha superato la metà dello schermo — non "quella che contiene
+     il centro", che lascerebbe la coda della pagina senza nessuna riga accesa.
+     Le righe spente restano alte uguali (testo trasparente, non tolto), quindi
+     accenderne una non sposta le altre e lo scroll non salta. */
+  if (!canHover){
+    const mid = innerHeight / 2;
+    let act = -1;
+    projRows.forEach((el, i) => { if (el.getBoundingClientRect().top <= mid) act = i; });
+    projRows.forEach((el, i) => el.classList.toggle('on', i === act));
+  }
+}
+
+/* ---------- gli occhi: sguardo che insegue il puntatore + blink all'hover ----------
+   Due soggetti con lo stesso comportamento: il marchio nell'header e il logo
+   grande dell'intro. Le misure sono in unità di viewBox (325 di larghezza),
+   quindi il movimento resta proporzionato a entrambe le dimensioni. */
+const PUP_TRAVEL = 12;      // quanto la pupilla esce dal centro: oltre ~14 tocca la lente
+const PUP_REACH  = 320;     // distanza in px oltre la quale lo sguardo è a fondo corsa
+const PUP_C  = [[50.35, 120.45], [222.38, 120.45]];   // centri delle pupille, in ordine di DOM
+const BLINK_MS = 190;
+
+const gazes = [mark, logo].map(el => ({
+  el, targets: [...el.querySelectorAll('.pu')],
+  tx:0, ty:0, x:0, y:0, blink:-1e9,
+}));
+
+addEventListener('pointermove', e => {
+  for (const g of gazes){
+    const r = g.el.getBoundingClientRect();
+    if (!r.width){ g.tx = g.ty = 0; continue; }       // nascosto (es. marchio su mobile)
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    const d  = Math.hypot(dx, dy) || 1;
+    const k  = PUP_TRAVEL * Math.min(1, d / PUP_REACH);
+    g.tx = dx / d * k;
+    g.ty = dy / d * k;
+  }
+}, {passive:true});
+
+gazes.forEach(g => g.el.addEventListener('pointerenter', () => { g.blink = performance.now(); }));
+
+function eyes(now){
+  for (const g of gazes){
+    /* il logo dell'intro apre gli occhi solo a disegno finito: prima le
+       pupille sono ancora un tratto in corso */
+    if (g.el === logo && fillT < 1){ g.tx = g.ty = 0; }
+    /* stessa inerzia della scena: lo sguardo insegue, non scatta */
+    g.x += (g.tx - g.x) * .12;
+    g.y += (g.ty - g.y) * .12;
+    /* blink: la pupilla si schiaccia in verticale e si riapre (1 -> 0 -> 1) */
+    const b  = clamp((now - g.blink) / BLINK_MS);
+    const sy = g.sy = b > 0 && b < 1 ? 1 - Math.sin(Math.PI * b) : 1;
+    g.targets.forEach((t, i) => {
+      const [cx, cy] = PUP_C[i];     // lo schiacciamento va attorno al centro della pupilla
+      t.setAttribute('transform',
+        `translate(${g.x.toFixed(2)} ${g.y.toFixed(2)})` +
+        ` translate(${cx} ${cy}) scale(1 ${sy.toFixed(3)}) translate(${-cx} ${-cy})`);
+    });
+  }
+}
+
+/* ---------- scroll con inerzia ----------
+   UN SOLO inseguitore, in pixel di documento. `cur` (la frazione dell'intro) e
+   `overCur` (i pixel oltre l'intro) non sono due inseguitori: sono due LETTURE
+   di questo, e per costruzione non possono contraddirsi.
+
+   Con due inseguitori separati si contraddicevano, ed è da lì che veniva lo
+   scattino sul 809 — più forte tornando indietro, perché è lì che il caso si
+   presenta. Nell'attimo del passaggio `overCur` era ancora sopra zero (la
+   sezione al comando) mentre `cur` era già sceso sotto 1, cioè l'intro aveva
+   ricominciato a riavvolgersi: due stati che insieme non hanno senso. Nel
+   fotogramma in cui `overCur` toccava lo zero il comando tornava ad `apply()`,
+   che disegnava il nastro alla lunghezza di quel `cur` più basso, e un pezzo di
+   banda spariva di colpo. Con una lettura sola il caso non esiste: finché
+   `overCur > 0`, `cur` vale esattamente 1.
+
+   Non rimettere un secondo inseguitore accanto a questo, per nessun motivo. */
+let scrollCur = 0, scrollTarget = 0;
+let cur = 0;
+let autoplay = false;    // mobile: l'intro va a tempo, con lo scroll bloccato
+let autoCur  = 0;        // il valore di cur mentre dura l'autoplay
+
+function sync(){
+  /* l'intro finisce dove finisce il SUO scroller, non dove finisce il
+     documento: la sezione progetti aggiunge altezza alla pagina e con
+     scrollHeight tutto il racconto si dilaterebbe fino al fondo */
+  const max = Math.max(1, scroller.offsetHeight - innerHeight);
+  const frac = clamp(scrollCur / max);
+  /* mobile: l'utente prende il comando a intro finita e scorre da HANDOFF a 1 */
+  cur = autoplay ? autoCur : (mq.matches ? HANDOFF + frac * (1 - HANDOFF) : frac);
+  overCur    = Math.max(0, scrollCur - max);
+  overTarget = Math.max(0, scrollTarget - max);
+}
+
+/* le misure del testo valgono solo a font caricato: prima di allora
+   getSubStringLength risponde con le metriche del fallback */
+document.fonts.ready.then(() => {
+  measure();
+  /* starFrom è in pixel di schermo: dopo un resize non vale più */
+  addEventListener('resize', () => {
+    starFrom = null; projOver = -1;    // entrambi sono in pixel di schermo
+    /* l'inseguitore va agganciato, non lasciato rincorrere: dopo un resize la
+       corsa residua sarebbe calcolata su un'altezza che non esiste più */
+    scrollCur = scrollTarget = scrollY;
+    measure();
+    if (!reduce) sync();     // senza ciclo `cur` resta quello che ha messo il ramo reduce
+    apply(cur); applyProjects();
+  }, {passive:true});
+
+  /* senza animazioni non c'è né scroll guidato né ciclo: la sezione progetti
+     va consegnata leggibile, cioè con tutte le righe accese */
+  if (reduce){
+    drawT = fillT = 1; cur = 1; apply(cur);   // cur, non 1 letterale: il resize ridisegna da lì
+    projRows.forEach(el => el.classList.add('on'));
+    projMark.style.setProperty('--mo', 1);
+    document.body.classList.add('in-projects');   // su mobile l'header va compatto comunque
+    return;
+  }
+
+  /* da qui in poi c'è il volo: la stellina ferma del marchio servirebbe solo a
+     raddoppiarla nell'angolo. Resta nel DOM per il ramo reduced-motion sopra,
+     che esce prima di questa riga. */
+  markStar.style.display = 'none';
+
+  const mobile = mq.matches;
+  /* desktop: tutta la storia è guidata dallo scroll.
+     mobile: l'intro (logo -> zoom -> comparsa THINK/BUILD) va in autoplay a tempo
+     con lo scroll bloccato; a fine intro passa il controllo all'utente, che scorre
+     da HANDOFF a 1 (apertura -> designer diagonale -> 805). */
+  autoplay = mobile;
+  if (mobile) document.body.classList.add('locked');   // scroll bloccato durante l'autoplay
+  /* niente listener di scroll: `scrollY` lo legge il ciclo, in cima al frame.
+     Deve combaciare al pixel con la posizione a cui il browser sta davvero
+     dipingendo la sezione, o la correzione applicata alle righe è sbagliata di
+     quel tanto e traballano — un evento di scroll saltato basterebbe. */
+  scrollCur = scrollTarget = mobile ? 0 : scrollY;
+  sync();
+  apply(cur);          // primo fotogramma subito: senza, il tratto del logo
+                       // resterebbe visibile finché non parte il ciclo
+
+  const DRAW = mobile ? 1300 : DRAW_MS;          // intro più svelta su mobile (~2.5s totali)
+  const FILL = mobile ? 300  : FILL_MS;
+  const AUTO_MS = 900;                            // avanzamento cur 0 -> HANDOFF dopo il disegno
+  const t0 = DRAW + FILL;
+
+  /* il cronometro parte al primo frame davvero disegnato, non al load: in una
+     scheda di sfondo requestAnimationFrame è sospeso, e partendo dal load
+     l'utente troverebbe l'intro già consumata quando torna sulla pagina */
+  requestAnimationFrame(function loop(now){
+    /* in cima al frame, PRIMA di ogni scrittura di stile: leggere scrollY dopo
+       aver scritto costringe il browser a ricalcolare il layout a ogni frame */
+    scrollTarget = scrollY;
+    if (!introStart) introStart = now;
+    const el = now - introStart;
+    drawT = clamp(el / DRAW);
+    fillT = clamp((el - DRAW) / FILL);
+
+    if (autoplay){                               // mobile fase 1: avanza cur a tempo
+      const a = clamp((el - t0) / AUTO_MS);
+      autoCur = HANDOFF * inOut(a);
+      if (a >= 1){ autoplay = false; document.body.classList.remove('locked'); }
+    }
+
+    scrollCur += (scrollTarget - scrollCur) * .09;   // inerzia: la scena insegue
+    if (Math.abs(scrollTarget - scrollCur) < .5) scrollCur = scrollTarget;
+    sync();                                          // cur e overCur, da qui
+    apply(cur);
+    /* dopo apply, non prima: la sezione riscrive il dashoffset del nastro
+       oltre RIB_END, e chi scrive per ultimo vince */
+    applyProjects();
+    eyes(now);
+    requestAnimationFrame(loop);
+  })(introStart);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# agent/tooling config, non fa parte del sito
+.claude/
+.impeccable/
+
+# strumento di sviluppo (screenshot via Chrome headless)
+shoot.js
+
+# copie di sicurezza locali di intro.html
+intro.pre-*.html
+
+# export Figma sorgente: i tracciati sono inline in intro.html, non letti a runtime
+THINKER.svg
+BUILDER.svg
+stellina-2.svg
+ribbon.svg
