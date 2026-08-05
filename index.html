@@ -360,6 +360,27 @@ body::after{
    del resto): asset esportato, non ricostruito a mano */
 .proj-mark-label img{display:block;width:24.9vh;height:auto}                    /* 224/900 */
 
+/* ---------- atto 3: frame 813 ---------- */
+/* Blocco VUOTO nel flusso, come .projects: serve solo a dare corsa allo scroll.
+   Tutto ciò che si vede è fixed — la stella (sempre quella, la muove il JS) e
+   questa frase. Niente sticky: non c'è nessuna scena da tenere ferma. */
+.finale{height:500vh}
+/* centrata sul centro dello schermo, cioè sul centro della stella: nel 813 il
+   blocco di testo e la stella hanno lo stesso centro */
+.finale-claim{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:63;
+  width:min(74vw,1048px);text-align:center;pointer-events:none;
+  font-family:var(--grotesk);font-weight:500;
+  font-size:clamp(28px,3.9vw,56px);line-height:1.1;letter-spacing:-1.12px;color:#212121;
+}
+/* le tre righe sono le unità di dust(). A blocco e non inline come quelle del
+   claim: qui gli a capo sono quelli del Figma, non quelli del flusso. */
+.finale-claim > span{display:block;opacity:0}
+.finale-claim i{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;
+  font-weight:300;font-style:italic;color:var(--blue);
+}
+
 /* ---------- mobile: frame 805 ---------- */
 @media (max-width:640px){
   .scroller{height:500vh}      /* era 400: stesso rallentamento del desktop */
@@ -412,6 +433,9 @@ body::after{
      Manca il frame Figma per il mobile: misure tarate a mano sul 390x844. */
   .proj-mark{display:none}
   .projects{padding-top:120px}
+  /* niente stella da portare al centro (l'atto 2 non c'è): resta solo la frase,
+     quindi basta molta meno corsa. Va di pari passo con FIN_RUN nel JS. */
+  .finale{height:220vh}
   .proj-row{padding:24px;gap:12px}
   .proj-left{gap:12px}
   .proj-desc{font-size:16px}
@@ -420,6 +444,11 @@ body::after{
 @media (prefers-reduced-motion:reduce){
   .scroller{height:100svh}
   .hint{display:none}
+  /* nessuna corsa da guidare: la frase finale torna nel flusso, già leggibile.
+     Senza questo resterebbero 500vh di pagina vuota e un testo mai acceso. */
+  .finale{height:auto;padding:22vh 24px}
+  .finale-claim{position:static;transform:none;width:auto}
+  .finale-claim > span{opacity:1}
 }
 </style>
 </head>
@@ -569,6 +598,18 @@ body::after{
   </ol>
 </section>
 
+<!-- frame 813. Blocco vuoto: dà solo la corsa di scroll. La stella che si porta
+     al centro è sempre la stessa (quella del 809, poi marchio della sezione), la
+     muove il JS; qui dentro c'è solo la frase, fissa e centrata sul suo centro.
+     Una riga per <span>: sono le unità della comparsa dalla polvere. -->
+<section class="finale" id="finale" aria-label="Chiusura">
+  <p class="finale-claim" id="finaleClaim">
+    <span>Ogni progetto è l&rsquo;occasione</span>
+    <span>per <i>imparare</i>, <i>sperimentare</i> e</span>
+    <span>superare i miei limiti</span>
+  </p>
+</section>
+
 <!-- il marchio della sezione. La stellina qui dentro è ferma e serve solo a
      reduced-motion: negli altri casi il JS la nasconde e ci fa atterrare
      quella del 809, che attraversa il campo girando su sé stessa. Il titolo
@@ -645,6 +686,8 @@ const projects = document.getElementById('projects');
 const projRows = [...projects.querySelectorAll('.proj')];
 const projMark = document.getElementById('projMark');
 const markStar = document.getElementById('markStar');
+const finale = document.getElementById('finale');
+const finParts = [...document.querySelectorAll('.finale-claim > span')];
 /* le unità della comparsa "dalla polvere": una frase del claim, e i due pezzi
    del titolo della sezione ("progetti" + "selezionati" vettorializzato) */
 const claimSpans = [...claim.querySelectorAll('span')];
@@ -696,8 +739,30 @@ const STAR_END = -720 + STAR_ROT;
 const MARK_TURNS = 1;
 const MARK_END = STAR_END + MARK_TURNS * 360 + (((MARK_ROT - STAR_END) % 360) + 360) % 360;
 const CLAIM_IN = .45;      // q a cui il claim comincia a formarsi
+
+/* ---------- atto 3 (frame 813) ----------
+   La stessa stella lascia il marchio, cresce e si porta al centro dello schermo
+   ribaltandosi sui tre assi. La posa d'arrivo NON è tarata a occhio: nel 813 la
+   stella misura 837.478 in altezza e 345.435 in larghezza su un frame da 900.
+   È la stessa forma quadrata di sempre vista di sbieco, e quel rapporto è il
+   coseno della rotazione su Y. Ricavarlo invece di scriverlo tiene la posa
+   agganciata al design. L'inclinazione nel piano è di nuovo 72.35°, la stessa
+   del 810 dove il marchio la lascia: sull'asse Z restano solo giri interi. */
+const FIN_W  = 837.478 / 900;
+const FIN_RY = Math.acos(345.435 / 837.478) * 180 / Math.PI;    // 65.64°
+const FIN_TURNS = 1;                      // giri interi del viaggio, sui tre assi
+const FIN_RUN = mq.matches ? 1 : 2.8;     // schermi di corsa: deve stare dentro .finale
+const FIN_DPS = 24;                       // gradi al secondo del giro automatico
+let fin0 = Infinity;      // `over` a cui comincia l'atto 3, lo misura measure()
+let finSpin = 0, finLast = 0;
+
 let starFrom = null;      // posizione di partenza, letta al primo frame dell'atto 2
-let starSize = 386;       // lato dell'elemento: la misura finale, la mette measure()
+let starSize = 386;       // lato a cui arriva il volo dell'atto 2 (809), da measure()
+/* lato dell'ELEMENTO. Non coincide più con starSize: la misura più grande che
+   la stella raggiunge è quella del 813, non quella del 809, e l'elemento deve
+   nascere già così grande — ingrandire un layer rasterizzato lo sgrana (§iris),
+   ridurlo no. Tutte le scale restano quindi <= 1. */
+let starBox  = 386;
 /* il nastro si disegna: serve la lunghezza del tracciato per il dashoffset */
 const ribLen = ribbon.getTotalLength();
 ribbon.style.strokeDasharray = ribLen;
@@ -819,13 +884,19 @@ function measure(){
   wordBox = wEl.offsetHeight + parseFloat(wcs.marginTop) + parseFloat(wcs.marginBottom);
 
   // il cerchio nasce già alla dimensione massima e viene rimpicciolito
-  /* la stellina viene disegnata alla sua misura finale (809) e poi ridotta */
+  /* la stellina viene disegnata alla PIÙ GRANDE delle sue misure (il 813) e da
+     lì in poi solo ridotta; starSize resta il lato a cui la porta il 809 */
   starSize = innerHeight * STAR_W;
-  star.style.width = star.style.height = starSize.toFixed(1) + 'px';
+  starBox  = innerHeight * Math.max(STAR_W, FIN_W);
+  star.style.width = star.style.height = starBox.toFixed(1) + 'px';
   /* i pixel in cui l'atto 2 traccia RIB_END, riportati sul pezzo che resta:
      stessa andatura di là dal confine */
   ribPx = Math.max(1, (1 - CLAIM_IN) * (1 - ACT1) * (scroller.offsetHeight - innerHeight)
                       * (1 - RIB_END) / RIB_END);
+  /* dove comincia l'atto 3: il valore di `over` a cui il bordo alto di .finale
+     tocca quello del viewport. Letto dal DOM, non tarato — aggiungendo righe
+     ai progetti si sposta da sé. */
+  fin0 = finale.offsetTop - (scroller.offsetHeight - innerHeight);
   /* il contorno del marchio vive nel viewBox 541 riscalato al lato reale:
      stessa correzione di --sw, così resta 1.4px a schermo a ogni viewport */
   markStar.style.strokeWidth = (1.4 * 541 / (projMark.offsetWidth || 1)).toFixed(3);
@@ -988,10 +1059,10 @@ function apply(scroll){
     const y = starFrom.y + (innerHeight * STAR_Y - starFrom.y) * fly;
     const w = starFrom.w + (starSize - starFrom.w) * gro;
     /* due giri e mezzo quarto: finisce sui -45° del 809.
-       scale sempre <= 1: l'elemento è già grande quanto il finale */
+       scale sempre <= 1: l'elemento è già grande quanto il finale (starBox) */
     star.style.transform =
-      `translate(${(x - starSize/2).toFixed(1)}px, ${(y - starSize/2).toFixed(1)}px)` +
-      ` rotate(${((-720 + STAR_ROT) * fly).toFixed(1)}deg) scale(${(w / starSize).toFixed(4)})`;
+      `translate(${(x - starBox/2).toFixed(1)}px, ${(y - starBox/2).toFixed(1)}px)` +
+      ` rotate(${((-720 + STAR_ROT) * fly).toFixed(1)}deg) scale(${(w / starBox).toFixed(4)})`;
     star.style.setProperty('--sw', (1.6 * 541 / w).toFixed(4));   // contorno 1.6px a schermo
     /* il pieno se ne va e resta il contorno (808 piena, 809 a filo) */
     const ink = seg(q, .35, .7);
@@ -1082,6 +1153,16 @@ function applyProjects(){
      un'altra animazione, molto più veloce, attaccata alla fine della prima.
      Va di pari passo col padding-top di .projects. */
   const f = clamp(over / (innerHeight * 4.5));
+  /* g: la corsa dell'atto 3, in schermi a partire dal bordo alto di .finale.
+     Non è una terza variabile accanto a p e q — esce sempre da `over`, cioè
+     dall'unico inseguitore della pagina. */
+  const g = clamp((over - fin0) / (innerHeight * FIN_RUN));
+  /* la frase del 813, dalla polvere come il claim. Su desktop comincia a volo
+     finito ("una volta posizionata", richiesta dell'utente); su mobile la stella
+     non c'è e la frase è tutto l'atto, quindi parte subito.
+     Calcolata qui e non dove viene disegnata: è anche il via del giro
+     automatico, e i due punti devono leggere lo stesso numero. */
+  const txt = mq.matches ? seg(g, 0, .6) : seg(g, .62, .9);
 
   /* lo sticky se ne va scorrendo, ma non è vuoto: su mobile la scena resta
      quella del 805 e mentre esce se ne vede un pezzo sopra le righe. Sfumarlo
@@ -1099,7 +1180,8 @@ function applyProjects(){
      Scritto DOPO apply(), che a ogni frame riscrive la posa del 809: qui
      l'ultimo a scrivere vince. Su mobile no: lì la stellina non è mai entrata.
      Poi il titolo si forma dalla polvere, a volo finito. */
-  projMark.style.setProperty('--mo', 1);
+  /* il marchio se ne va insieme alla stella: nel 813 non c'è più */
+  projMark.style.setProperty('--mo', 1 - seg(g, 0, .35));
   if (!mq.matches){
     const e  = inOut(seg(f, 0, .62));
     const x0 = innerWidth * STAR_X, y0 = innerHeight * STAR_Y;
@@ -1108,8 +1190,8 @@ function applyProjects(){
     const w  = starSize + (innerHeight * MARK_W - starSize) * e;
     const rot = STAR_END + (MARK_END - STAR_END) * e;
     star.style.transform =
-      `translate(${(x - starSize/2).toFixed(1)}px, ${(y - starSize/2).toFixed(1)}px)` +
-      ` rotate(${rot.toFixed(1)}deg) scale(${(w / starSize).toFixed(4)})`;
+      `translate(${(x - starBox/2).toFixed(1)}px, ${(y - starBox/2).toFixed(1)}px)` +
+      ` rotate(${rot.toFixed(1)}deg) scale(${(w / starBox).toFixed(4)})`;
     star.style.setProperty('--sw', (1.6 * 541 / w).toFixed(4));   // contorno 1.6px a schermo
     /* atterrata, scende dietro le righe: nel Figma il marchio sta sotto la
        lista (z 2 < 3). In volo resta sopra, o sparirebbe a metà traiettoria. */
@@ -1120,6 +1202,50 @@ function applyProjects(){
        schermo e mezzo, con le righe già in campo */
     dust(markParts, seg(f, .5, .78));
   }
+
+  /* ---------- atto 3 (frame 813) ----------
+     La stella lascia il marchio, cresce fino alla misura del 813 e si porta al
+     centro ribaltandosi sui tre assi. È sempre lo stesso elemento: qui si
+     riscrive la posa che il blocco sopra ha appena messo, e l'ultimo a scrivere
+     vince — lo stesso patto che applyProjects() ha con apply().
+     rotate() è l'asse Z: l'inclinazione nel piano è già quella giusta dal
+     marchio (72.35° in entrambi i frame), quindi lì restano solo giri interi.
+     rotateY porta alla compressione del 813, rotateX è il terzo giro e finisce
+     su un giro tondo, cioè piatto: è l'unico modo perché la sagoma d'arrivo
+     resti quella del Figma.
+     Nessuna perspective: il 813 è una proiezione ortogonale, e con la
+     prospettiva la sagoma non combacerebbe più.
+     ponytail: per più profondità basta perspective(...) come prima funzione
+     della lista, ma allora FIN_RY va ritarato sulla sagoma proiettata. */
+  if (!mq.matches && g > 0){
+    const e = inOut(seg(g, 0, .62));
+    const x = innerWidth  * MARK_X + (innerWidth  / 2 - innerWidth  * MARK_X) * e;
+    const y = innerHeight * MARK_Y + (innerHeight / 2 - innerHeight * MARK_Y) * e;
+    const w0 = innerHeight * MARK_W;
+    const w  = w0 + (innerHeight * FIN_W - w0) * e;
+    /* il giro automatico. Parte a FRASE FORMATA, non all'atterraggio: è
+       l'ordine che ha chiesto l'utente (si posiziona, compare la scritta, poi
+       gira) ed è anche l'unico modo di far vedere per un attimo la posa esatta
+       del 813 — appena il giro parte la sagoma non è più quella.
+       Viene reso moltiplicato per `e`: tornando indietro si sbroglia da solo
+       lungo il viaggio invece di saltare a zero. Il modulo tiene l'arretramento
+       entro un giro anche dopo una lunga sosta, e non si vede mai scattare,
+       perché mentre `e < 1` finSpin è fermo e quindi non può passare per il
+       salto del modulo. */
+    const now = performance.now();
+    const dt = finLast ? Math.min(.05, (now - finLast) / 1000) : 0;   // cap: schede in sfondo
+    finLast = now;
+    if (txt >= 1) finSpin += FIN_DPS * dt;
+    const ry = (FIN_TURNS * 360 + FIN_RY + finSpin % 360) * e;
+    star.style.transform =
+      `translate(${(x - starBox/2).toFixed(1)}px, ${(y - starBox/2).toFixed(1)}px)` +
+      ` rotate(${(MARK_END + FIN_TURNS * 360 * e).toFixed(1)}deg)` +
+      ` rotateY(${ry.toFixed(1)}deg) rotateX(${(FIN_TURNS * 360 * e).toFixed(1)}deg)` +
+      ` scale(${(w / starBox).toFixed(4)})`;
+    star.style.setProperty('--sw', (1.6 * 541 / w).toFixed(4));
+    star.style.zIndex = 62;      // torna davanti: qui sotto non ci sono più righe
+  }
+  dust(finParts, txt);
 
   /* su mobile l'header del 805 è alto 280px: nella sezione si compatta a barra
      (CSS) e gli si accende dietro il vetro, o le righe che gli passano sotto
@@ -1145,6 +1271,15 @@ function applyProjects(){
     const ry = innerHeight * (.5 - RIB_TOP + RIB_W * (.5 - px / RIB_VB));
     ribbonEl.style.setProperty('--ry',
       (ry * inOut(clamp(over / innerHeight))).toFixed(1) + 'px');
+    /* nel 813 il nastro non c'è, e comunque non poteva restare: con l'atto 3 la
+       pagina è più lunga di ribPx, cioè il tracciato FINISCE prima del fondo.
+       Da quel punto in poi la punta non avanza, quindi nemmeno --ry cambia, e
+       tutta la banda resterebbe inchiodata a schermo mentre la pagina scorre
+       (è il caso che ribPx evitava finché la pagina finiva prima).
+       La finestra non è tarata: è l'ultimo schermo PRIMA di ribPx, quindi il
+       nastro esce di scena esattamente quando smetterebbe di muoversi. Cambiando
+       tracciato o righe si sposta da sé. */
+    ribbonEl.style.opacity = (1 - seg(over, ribPx - innerHeight, ribPx)).toFixed(3);
   }
 
   /* Con un puntatore la riga si accende all'hover: lo fa il CSS, qui non c'è
