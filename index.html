@@ -642,23 +642,32 @@ body::after{
 <!-- Vector 15 del Figma (ribbon.svg): tracciato unico, stroke 20, quindi si
      disegna con stroke-dashoffset invece di essere svelato da una maschera.
      Fino a x=1829 è l'export del Figma, intatto: è quel tratto che dà le pose
-     del 808 e del 809. Da lì in poi è una CODA AGGIUNTA A MANO (l'ultima riga
-     della `d`), con un ricciolo: serve lunghezza. La sezione traccia alla
-     stessa andatura dell'atto 2, e col solo Vector 15 il nastro finiva dopo
-     due schermi di sezione, lasciando la punta ferma per tutto il resto.
-     LA LUNGHEZZA DELLA CODA È LA MANOPOLA del momento in cui il nastro esce di
-     scena: finisce di tracciarsi a `over = ribPx`, e ribPx cresce con la coda.
-     È tarata perché cada a fine progetti (ribPx ≈ fin0). Se cambiano le righe,
-     i vh dello scroller o la coda stessa, si rimisura: serve una lunghezza
-     totale pari a L809 * (1 + fin0 / k), con L809 = RIB_END*ribLen e
-     k = (1-CLAIM_IN)(1-ACT1)(scroller.offsetHeight - innerHeight).
+     del 808 e del 809. Da lì in poi è una CODA AGGIUNTA A MANO, e con la
+     sezione progetti finita col solo Vector 15 il nastro si esauriva dopo due
+     schermi, lasciando la punta ferma per tutto il resto.
+     LA CODA È ANCHE L'USCITA DI SCENA (richiesta dell'utente): non un fade —
+     vira a SINISTRA e la striscia se ne va dal bordo sinistro. Ricorda la
+     rotazione di 90°: la y del path è l'asse ORIZZONTALE dello schermo, e
+     cresce verso sinistra. La punta esce quando
+       py > 478 * (larghezza/altezza del viewport) + 547
+     (1312 su 1440x900). La coda arriva a py 3040, cioè regge fino a un
+     rapporto 5:1: nessun viewport realistico la lascia dentro.
+     Continua anche dopo, in giù: finché il tracciato si disegna, --ry insegue
+     la punta e alza tutto il resto, che così esce dal bordo alto. Se finisse
+     lì, il pezzo ancora in campo resterebbe inchiodato a schermo.
+     Misurato su 1440x900: la punta passa il bordo a `over` ~4650 — appena dopo
+     che l'ultima riga è uscita (~4330) — e alle 6000 non c'è più niente in
+     campo, molto prima che la stella del 813 si posi (~6600).
+     La velocità di tracciamento non dipende dalla lunghezza (è quella
+     dell'atto 2, L809/k unità per pixel), quindi allungare la coda sposta solo
+     il "quando", mai il "quanto veloce".
      Il raccordo a 1829 è C1: il primo punto di controllo prosegue la tangente
      in arrivo (167, 370.5), altrimenti lì si vede uno spigolo.
      Ricorda che il tutto è ruotato di 90°: la x del tracciato scorre verso il
      basso dello schermo, la y da destra a sinistra. -->
 <div class="ribbon" id="ribbon">
   <svg viewBox="0 0 2760 1093.9" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path id="ribbonPath" d="M10.0001 168.397C155.5 10.3976 616.759 -53.7474 857 90.3974C1052 207.397 945.5 434.398 643 514.898C387.024 583.017 418 977.397 602.5 1043.9C787 1110.4 982.285 804.797 1178.5 724.898C1359 651.398 1662 713.397 1829 1083.9C1912.5 1269.2 2080 1080 2160 780C2240 480 2520 380 2640 560C2760 740 2660 900 2500 860C2340 820 2360 640 2520 600C2620 575 2740 650 2660 740" stroke="#BFCFFF" stroke-width="20" stroke-linecap="round"/>
+    <path id="ribbonPath" d="M10.0001 168.397C155.5 10.3976 616.759 -53.7474 857 90.3974C1052 207.397 945.5 434.398 643 514.898C387.024 583.017 418 977.397 602.5 1043.9C787 1110.4 982.285 804.797 1178.5 724.898C1359 651.398 1662 713.397 1829 1083.9C1912.5 1269.2 2080 1080 2160 780C2240 480 2520 380 2640 560C2712 668 2740 820 2680 950C2620 1080 2720 1240 2860 1400C3000 1560 3080 1700 3160 1860C3240 2020 3340 2240 3420 2460C3500 2680 3560 2860 3620 3040" stroke="#BFCFFF" stroke-width="20" stroke-linecap="round"/>
   </svg>
 </div>
 
@@ -778,20 +787,15 @@ ribbon.style.strokeDasharray = ribLen;
    tarare la frazione a occhio. */
 /* 1200 campioni e non 600: il tracciato ora ha la coda aggiunta ed è quasi il
    doppio, con 600 la risoluzione attorno al punto del 809 si dimezzerebbe */
-/* nella stessa passata anche la x MASSIMA del tracciato: ruotato di 90° la x è
-   l'asse verticale dello schermo, quindi quella è il punto più basso del
-   disegno. Serve all'uscita di scena — vedi RIB_OUT. */
-const [RIB_END, RIB_MAXX] = (() => {
-  let best = 0, bd = Infinity, mx = 0;
+const RIB_END = (() => {
+  let best = 0, bd = Infinity;
   for (let i = 0; i <= 1200; i++){
     const p = ribbon.getPointAtLength(ribLen * i / 1200);
     const d = Math.hypot(p.x - 602.5, p.y - 1043.9);
     if (d < bd){ bd = d; best = i / 1200; }
-    if (p.x > mx) mx = p.x;
   }
-  return [best, mx];
+  return best;
 })();
-const RIB_TIPX = ribbon.getPointAtLength(ribLen).x;    // la punta, a tracciato finito
 /* Quanti pixel di scroll servono alla sezione per tracciare il pezzo di nastro
    che resta (1 - RIB_END), **alla stessa andatura dell'atto 2**.
    Non è una taratura: è la velocità dell'atto 2 riportata di là. Spalmando il
@@ -799,11 +803,11 @@ const RIB_TIPX = ribbon.getPointAtLength(ribLen).x;    // la punta, a tracciato 
    e tornando indietro lo raddoppiava, per questo lo scatto si sentiva di più
    all'indietro. Il valore era già continuo, la velocità no.
    Lo calcola measure(): dipende dall'altezza del viewport.
-   ribPx non si tara: è la CONSEGUENZA della lunghezza del tracciato, e la coda
-   della `d` è tarata perché cada a fine progetti (ribPx ≈ fin0, ~5040px su
-   1440x900). Lì il nastro finisce di tracciarsi ed esce di scena dal bordo
-   alto — vedi applyProjects(). Toccando la `d`, le righe o i vh dello scroller
-   quel punto si sposta: la manopola è la coda del tracciato, non questa riga. */
+   ribPx non si tara: è la CONSEGUENZA della lunghezza del tracciato. Ora vale
+   ~7120px su 1440x900, cioè il nastro continua a disegnarsi ben dentro l'atto
+   3 — ma fuori campo: è uscito dal bordo sinistro molto prima. Serve così,
+   perché finché si disegna --ry insegue la punta e porta via anche il resto.
+   La manopola del "quando" è la coda della `d`, non questa riga. */
 let ribPx = 1;
 
 /* i tracciati in ordine di gesto: montatura, pupille, ricciolo per ultimo.
@@ -1129,13 +1133,6 @@ function apply(scroll){
    Devono combaciare con top/width/viewBox nel CSS: se si tocca il tracciato
    vanno aggiornati insieme. */
 const RIB_TOP = 1.4224, RIB_W = 3.0668, RIB_VB = 2760;
-/* Di quanti schermi deve alzarsi la striscia per sparire davvero dal bordo alto.
-   Mezzo schermo porta via la punta, che a tracciato finito sta a metà altezza;
-   ma il ricciolo della coda le scende sotto, e quel tanto è la distanza fra la
-   x massima e la x della punta. Più uno spessore di tratto (20 unità) di
-   margine. Ricavato dal tracciato, non tarato: cambiando la coda si aggiorna
-   da sé. */
-const RIB_OUT = .5 + (RIB_MAXX - RIB_TIPX + 20) / RIB_VB * RIB_W;
 let projOver = -1;
 /* su touch l'hover non esiste: lì le righe restano guidate dallo scroll */
 const canHover = matchMedia('(hover: hover)').matches;
@@ -1290,19 +1287,14 @@ function applyProjects(){
        punta è centrata come chiesto. */
     const px = ribbon.getPointAtLength(drawn).x;
     const ry = innerHeight * (.5 - RIB_TOP + RIB_W * (.5 - px / RIB_VB));
-    /* USCITA DI SCENA (richiesta dell'utente: non un fade). A tracciato finito
-       la punta smetterebbe di avanzare e con lei --ry: tutta la banda resterebbe
-       inchiodata a schermo mentre la pagina scorre. Invece se ne va dal bordo
-       alto — e ci va da sola, alzandosi.
-       Il momento è "fine progetti" perché la coda del tracciato è lunga
-       apposta: ribPx ≈ fin0. Non si tara qui, si tara la `d` (vedi il tracciato).
-       Quanto alzarla non è tarato: lo dice RIB_OUT, ricavato dal tracciato.
-       inOut e non lineare: mentre si disegna la punta sta ferma a metà schermo,
-       e passare di colpo a un pixel per pixel sarebbe uno scatto di velocità
-       proprio sul confine. Stessa ragione per cui la deriva entra con inOut. */
+    /* USCITA DI SCENA (richiesta dell'utente: non un fade, e a SINISTRA).
+       Qui non c'è niente da guidare: la fa il tracciato. La coda vira a
+       sinistra — ruotato di 90°, la y del path è l'asse orizzontale dello
+       schermo — e la punta, che questa riga tiene a metà altezza, esce dal
+       bordo sinistro. Il corpo dietro intanto sale, perché la coda scende
+       anche in x e --ry insegue la punta. Vedi il tracciato per il quando. */
     ribbonEl.style.setProperty('--ry',
-      (ry * inOut(clamp(over / innerHeight))
-       - innerHeight * RIB_OUT * inOut(clamp((over - ribPx) / innerHeight))).toFixed(1) + 'px');
+      (ry * inOut(clamp(over / innerHeight))).toFixed(1) + 'px');
   }
 
   /* Con un puntatore la riga si accende all'hover: lo fa il CSS, qui non c'è
