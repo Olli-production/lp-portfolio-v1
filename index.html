@@ -763,6 +763,13 @@ function dust(els, prog, stagger = .28){
    Deve combaciare con .scroller nel CSS: le frazioni p e q si dividono questo
    rapporto, non l'altezza in vh. */
 const ACT1 = mq.matches ? 1 : 775 / 1395;
+/* La hero — il 806 su desktop, il 805 su mobile — è la cima della vera landing
+   page: arrivati lì non si torna indietro. Il modo NON è impedire lo scroll ma
+   togliere dal documento la corsa che l'atto 1 si era preso (vedi lockHero):
+   da quel momento si è davvero in cima, e scorrere in su non fa niente perché
+   non c'è più niente sopra. Questo interruttore dice ad apply() e a measure()
+   che l'atto 1 è consumato. Vale per la visita: ricaricando l'intro riparte. */
+let heroLocked = false;
 /* arrivo della stellina, preso dal frame 809 (1440x900): lato 386.05, ruotata
    -45°, centro a (160, 170). In frazioni, così regge qualunque viewport. */
 /* STAR_X è più a sinistra del 809 (160): voluto, così un lato della stellina
@@ -938,7 +945,11 @@ function measure(){
   star.style.width = star.style.height = starBox.toFixed(1) + 'px';
   /* i pixel in cui l'atto 2 traccia RIB_END, riportati sul pezzo che resta:
      stessa andatura di là dal confine */
-  ribPx = Math.max(1, (1 - CLAIM_IN) * (1 - ACT1) * (scroller.offsetHeight - innerHeight)
+  /* a hero raggiunta lo scroller È l'atto 2, quindi il fattore vale 1. Non è un
+     caso a parte: lo scroller si è accorciato esattamente della quota dell'atto
+     1, quindi il prodotto resta lo stesso numero di prima del taglio e il
+     nastro non cambia andatura nell'istante in cui la pagina si accorcia. */
+  ribPx = Math.max(1, (1 - CLAIM_IN) * (heroLocked ? 1 : 1 - ACT1) * (scroller.offsetHeight - innerHeight)
                       * (1 - RIB_END) / RIB_END);
   /* lo spaziatore va riempito PRIMA di leggere finale.offsetTop, o fin0 esce
      alto quanto tutta la sezione. Fuori dal flusso la sezione non occupa più
@@ -968,9 +979,12 @@ const DRAW_MS = 1700, FILL_MS = 450;
 let introStart = 0, drawT = 0, fillT = 0;
 
 function apply(scroll){
-  /* lo scroll si divide in due atti: p guida il primo (invariato), q il secondo */
-  const p = .12 + (ACT1 >= 1 ? scroll : clamp(scroll / ACT1)) * .88;
-  const q = ACT1 >= 1 ? 0 : seg(scroll, ACT1, 1);
+  /* lo scroll si divide in due atti: p guida il primo (invariato), q il secondo.
+     A hero raggiunta l'atto 1 è consumato e la sua corsa non esiste più nel
+     documento: p resta inchiodato a 1 e tutto lo scroller è dell'atto 2.
+     Forzati qui invece di azzerare ACT1, che manderebbe la divisione a NaN. */
+  const p = heroLocked ? 1 : .12 + (ACT1 >= 1 ? scroll : clamp(scroll / ACT1)) * .88;
+  const q = ACT1 >= 1 ? 0 : (heroLocked ? scroll : seg(scroll, ACT1, 1));
 
   /* 0. il logo si disegna. Un'unica penna percorre tutti i tracciati: la
         posizione avanza sulla lunghezza totale, così la velocità è costante
@@ -1086,9 +1100,12 @@ function apply(scroll){
   const ui = seg(p, .86, 1);
   document.getElementById('ui-id').style.opacity = ui;
   document.getElementById('ui-social').style.opacity = ui;
-  hint.style.opacity = mq.matches
+  /* spento a hero raggiunta: è l'invito a partire, non un elemento della hero.
+     Senza questo tornerebbe da sé — dopo il taglio `scroll` riparte da zero, e
+     zero è esattamente dove la formula del desktop lo accende. */
+  hint.style.opacity = heroLocked ? 0 : (mq.matches
     ? seg(scroll, HANDOFF - .02, HANDOFF) * (1 - seg(scroll, HANDOFF, HANDOFF + .12))  // mobile: invita a scrollare a fine autoplay
-    : fillT * (1 - seg(scroll, 0, .06));                                               // desktop: appare a logo finito
+    : fillT * (1 - seg(scroll, 0, .06)));                                              // desktop: appare a logo finito
 
   /* 7. atto 2 (808/809): le parole escono, "designer" sfuma, la stellina si
         stacca dalla i e cresce fino al 809, il nastro si disegna dall'alto e
@@ -1472,6 +1489,36 @@ function sync(){
   overCur = Math.max(0, scrollCur - max);
 }
 
+/* ---------- la hero diventa la cima della pagina ----------
+   Arrivati alla hero non si torna più indietro. Non impedendo lo scroll —
+   quello lascerebbe sopra una zona morta in cui la barra scorre e non succede
+   niente — ma TOGLIENDO dal documento la corsa che l'atto 1 si era preso. Da lì
+   in poi si è davvero in cima, e scorrere in su non fa niente perché sopra non
+   c'è più niente.
+   Il taglio è una TRASLAZIONE DELL'ORIGINE, ed è questo che lo rende invisibile:
+   `shift` viene sottratto nello stesso istante alla posizione dello scroll e
+   all'inseguitore, e la velocità non viene toccata. Chi lo attraversa in corsa
+   non se ne accorge, perché la scena non ha modo di accorgersene: tutti i
+   numeri da cui dipende sono cambiati insieme. L'unica cosa che si vede è la
+   barra di scorrimento che si accorcia, ed è giusto che si veda — la pagina è
+   davvero più corta di prima.
+   Non serve salvare niente: `heroLocked` basta a se stesso, e ricaricando la
+   pagina l'intro riparte da capo (scelta dell'utente: l'intro è il biglietto da
+   visita, chi arriva la deve vedere). */
+function lockHero(){
+  const max = scroller.offsetHeight - innerHeight;
+  const shift = ACT1 * max;                       // quanta corsa si prendeva l'atto 1
+  /* quel che resta è l'atto 2 più uno schermo. In vh e non in px: così i resize
+     lo riscalano da sé, senza dover ricordare l'altezza che stiamo buttando via.
+     Su mobile l'atto 2 non esiste, ACT1 vale 1 e resta esattamente 100vh. */
+  const rest = (1 - ACT1) * max + innerHeight;
+  heroLocked = true;
+  scroller.style.height = (rest / innerHeight * 100).toFixed(2) + 'vh';
+  scrollCur -= shift; scrollTarget -= shift;       // scrollVel NO: la corsa continua
+  scrollTo(0, Math.max(0, Math.round(scrollTarget)));
+  measure();      // max, ribPx e fin0 dipendono tutti dall'altezza dello scroller
+}
+
 /* le misure del testo valgono solo a font caricato: prima di allora
    getSubStringLength risponde con le metriche del fallback */
 document.fonts.ready.then(() => {
@@ -1559,6 +1606,14 @@ document.fonts.ready.then(() => {
       scrollCur = scrollTarget; scrollVel = 0;
     }
     sync();                                          // cur e overCur, da qui
+    /* la hero è raggiunta quando l'INSEGUITORE ci arriva, non la rotella: è lui
+       che decide cosa si vede, e tagliare sulla rotella toglierebbe la corsa
+       mentre la scena sta ancora finendo l'atto 1. Stessa regola del guardiano
+       in applyProjects(). Un altro sync() dopo, perché lockHero() ha appena
+       cambiato l'altezza su cui `cur` e `overCur` sono calcolati. */
+    if (!heroLocked && scrollCur >= ACT1 * (scroller.offsetHeight - innerHeight)){
+      lockHero(); sync();
+    }
     /* Nei progetti e nel 813 `cur` resta inchiodato a 1: apply() rifarebbe a
        ogni frame ~35 scritture di stile, tre setAttribute su SVG e un dust()
        con blur(), tutte con gli stessi valori del frame prima. Lavoro sul main
