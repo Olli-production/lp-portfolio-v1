@@ -271,6 +271,26 @@ body::after{
      per sempre, la pagina finirebbe prima che ci arrivi. */
   padding-bottom:calc(50vh + 260px);
 }
+/* Col puntatore la sezione ESCE DAL FLUSSO e la posiziona solo il JS.
+   Prima era nel flusso: il browser la scorreva, e applyProjects() annullava quello
+   scorrimento per rimetterla dove dice l'inseguitore. Due mani sullo stesso
+   oggetto, su due percorsi diversi del browser — lo scorrimento è del
+   compositore, la transform la scrive il main thread. Non serve perdere frame
+   perché tremoli: basta che le due arrivino a un frame di distanza, e la
+   differenza è tutto lo scatto di rotella di quel frame. Fuori dal flusso non
+   c'è niente da annullare, quindi il caso non esiste.
+   top:100svh perché a `over` = 0 la lista comincia appena sotto la piega: è
+   esattamente dove cadeva stando nel flusso dopo lo scroller.
+   Solo con un puntatore: al dito il contenuto deve restare incollato, e lì lo
+   scroll nativo del compositore è già la cosa giusta. Su touch resta nel flusso
+   e .proj-space resta alto zero. */
+@media (hover: hover){
+  .projects{position:fixed;left:0;right:0;top:100svh}
+}
+/* lo spazio che la sezione lasciava nel documento quando era nel flusso: senza,
+   .finale risalirebbe di tutta quell'altezza e con lei fin0. L'altezza la mette
+   measure(), che è l'unico posto che sa se la sezione è fuori dal flusso. */
+.proj-space{height:0}
 /* border-top sulla lista + un divider sotto ogni riga: nel Figma l'ultima
    "riga" del componente è proprio un divider da solo */
 .proj-list{list-style:none;border-top:1px solid #BFCFFF}
@@ -444,6 +464,13 @@ body::after{
 @media (prefers-reduced-motion:reduce){
   .scroller{height:100svh}
   .hint{display:none}
+  /* Qui non c'è nessun ciclo: applyProjects() non viene mai chiamata, quindi
+     nessuno scriverebbe la transform che posiziona la sezione, e da fissa
+     resterebbe inchiodata a schermo mentre la pagina le scorre sotto. Torna nel
+     flusso e la scorre il browser, che è esattamente ciò che serve quando non
+     c'è nulla da animare. Sta dopo il @media (hover: hover) apposta: stessa
+     specificità, vince l'ultima. Lo spaziatore lo azzera measure(). */
+  .projects{position:relative;top:auto}
   /* nessuna corsa da guidare: la frase finale torna nel flusso, già leggibile.
      Senza questo resterebbero 500vh di pagina vuota e un testo mai acceso. */
   .finale{height:auto;padding:22vh 24px}
@@ -597,6 +624,7 @@ body::after{
     </li>
   </ol>
 </section>
+<div class="proj-space" id="projSpace" aria-hidden="true"></div>
 
 <!-- frame 813. Blocco vuoto: dà solo la corsa di scroll. La stella che si porta
      al centro è sempre la stessa (quella del 809, poi marchio della sezione), la
@@ -699,6 +727,7 @@ const mark   = document.getElementById('mark');
 const scroller = document.querySelector('.scroller');
 const projects = document.getElementById('projects');
 const projRows = [...projects.querySelectorAll('.proj')];
+const projSpace = document.getElementById('projSpace');
 const projMark = document.getElementById('projMark');
 const markStar = document.getElementById('markStar');
 const finale = document.getElementById('finale');
@@ -911,6 +940,12 @@ function measure(){
      stessa andatura di là dal confine */
   ribPx = Math.max(1, (1 - CLAIM_IN) * (1 - ACT1) * (scroller.offsetHeight - innerHeight)
                       * (1 - RIB_END) / RIB_END);
+  /* lo spaziatore va riempito PRIMA di leggere finale.offsetTop, o fin0 esce
+     alto quanto tutta la sezione. Fuori dal flusso la sezione non occupa più
+     spazio nel documento, e questo glielo restituisce: `over` continua a
+     correre esattamente come quando ci stava dentro. Su touch la sezione è
+     ancora nel flusso e lo spazio lo occupa da sé, quindi zero. */
+  projSpace.style.height = (canHover && !reduce) ? projects.offsetHeight + 'px' : '0px';
   /* dove comincia l'atto 3: il valore di `over` a cui il bordo alto di .finale
      tocca quello del viewport. Letto dal DOM, non tarato — aggiungendo righe
      ai progetti si sposta da sé. */
@@ -1135,32 +1170,46 @@ function apply(scroll){
 const RIB_TOP = 1.4224, RIB_W = 3.0668, RIB_VB = 2760;
 let projOver = -1;
 /* su touch l'hover non esiste: lì le righe restano guidate dallo scroll */
+/* Deve dire la stessa cosa del `@media (hover: hover)` che toglie .projects dal
+   flusso: è quella regola a decidere chi posiziona la sezione, e le due non
+   possono discordare. Non renderlo riassegnabile per provare l'altro ramo — si
+   cambia il media query, o il CSS e il JS finiscono a governare la stessa
+   sezione con idee diverse. */
 const canHover = matchMedia('(hover: hover)').matches;
 
-/* `over` = quanto si è scrollato oltre la fine dell'intro, in pixel: `overCur`
-   quello smussato, `overTarget` quello vero (serve alla correzione delle righe).
-   Entrambi li ricava `sync()` dall'unico inseguitore — vedi il suo commento. */
-let overCur = 0, overTarget = 0;
+/* `over` = quanto si è scrollato oltre la fine dell'intro, in pixel, smussato
+   dall'inseguitore. Lo ricava `sync()` — vedi il suo commento.
+   Non ne serve più una seconda lettura grezza: la sezione non annulla più
+   niente, quindi non ha più bisogno di sapere dov'è la rotella. */
+let overCur = 0;
 
 function applyProjects(){
   const over = overCur;
-  if (over === 0 && overTarget === 0 && projOver === 0) return;   // fermi prima della sezione
-  projOver = over;
 
-  /* Le righe sono DOM nel flusso: il browser le ha già mosse di `overTarget`,
-     1:1 con la rotella e sul thread del compositore. Tutto il resto della
-     sezione — stellina, nastro, marchio — si muove invece con `overCur`, che è
-     filtrato. Due moti diversi nello stesso campo: le righe arrivavano come uno
-     scroll qualunque, e il nastro, restando indietro di quel tanto, sembrava
-     dondolare — le "microrotazioni" non erano rotazioni, era ritardo relativo
-     su una curva grande.
-     Qui la differenza viene annullata: rimettendo giù la sezione di
-     `overTarget - overCur` appare mossa esattamente di `overCur`, come tutto il
-     resto. Un solo segnale in campo, e le righe ereditano l'inerzia.
-     Solo con un puntatore, però: al dito il contenuto deve stare incollato, e
-     un inseguitore lo farebbe scivolare via sotto il polpastrello. Lì lo scroll
-     nativo ha già la sua inerzia, ed è quella giusta. */
-  if (canHover) projects.style.transform = `translateY(${(overTarget - over).toFixed(1)}px)`;
+  /* La sezione è fuori dal flusso (vedi il @media in cima) e la muove SOLO
+     questa riga: un unico segnale, lo stesso `overCur` di stellina, nastro e
+     marchio. Le righe ereditano quindi la stessa inerzia del resto della scena,
+     che è il motivo per cui l'autore le aveva agganciate all'inseguitore.
+     Prima ci si arrivava per sottrazione — il browser le scorreva e qui si
+     annullava quello scorrimento — e la sottrazione era la fonte del tremolio:
+     i due termini viaggiano su percorsi diversi del browser e possono sfasarsi
+     di un frame. Ora non c'è nessuna sottrazione da azzeccare.
+     Su touch la sezione è rimasta nel flusso: là scorre il compositore, il
+     contenuto resta incollato al dito, e questa riga non deve toccarla. */
+  if (canHover) projects.style.transform = `translateY(${(-over).toFixed(1)}px)`;
+
+  /* Il comando passa alla sezione quando lo dice l'INSEGUITORE, mai lo scroll
+     grezzo. La condizione conteneva anche una lettura non filtrata della
+     rotella, e bastava che QUELLA superasse il confine perché questa funzione
+     riscrivesse il nastro a RIB_END pieno, mentre apply() lo stava ancora
+     tracciando su un cur < 1: l'ultimo a scrivere vince, e la banda scattava in
+     avanti di tutto il ritardo dell'inseguitore. Più inerzia, più grosso lo
+     scatto — con .09 erano 151px e quasi non si vedeva, il difetto era già lì.
+     Qui invece i due tracciati combaciano: nell'istante in cui over lascia lo
+     zero, scrollCur vale esattamente max, quindi cur = 1 e q = 1, e le due
+     formule danno lo stesso dashoffset. */
+  if (over === 0 && projOver === 0) return;
+  projOver = over;
 
   const t = clamp(over / innerHeight);             // 809 -> 810
   /* f: il volo della stellina verso il marchio. Ha bisogno di molta più corsa
@@ -1377,8 +1426,38 @@ function eyes(now){
    `overCur > 0`, `cur` vale esattamente 1.
 
    Non rimettere un secondo inseguitore accanto a questo, per nessun motivo. */
-let scrollCur = 0, scrollTarget = 0;
+/* L'inseguitore è del SECONDO ordine: ha una velocità propria, quindi quando lo
+   scroll si ferma la scena continua per un tratto e frena da sé.
+   Prima era `cur += (target - cur) * .09`, un filtro del primo ordine: senza
+   velocità, l'unica corsa che gli restava a input fermo era il ritardo
+   accumulato, e lo consumava in decadimento esponenziale — cioè quasi tutto nei
+   primi fotogrammi. Da lì la sensazione che l'animazione si piantasse di colpo.
+   Abbassare quel .09 non era la strada: allungava la coda ma anche il ritardo
+   MENTRE si scorre, e la scena si staccava dal dito.
+   SPRING è l'unica manopola. Più basso = planata più lunga e scena più molle.
+   Sotto 36 la resa satura: la corsa dopo lo stop non cresce quasi più, il
+   ritardo mentre si scorre sì.
+   D = 2√K è lo smorzamento critico: la frenata più rapida SENZA rimbalzo. Un
+   rimbalzo qui non sarebbe morbidezza, sarebbe il racconto che va avanti e
+   torna indietro — sul 809 o sul volo della stellina si legge come un errore.
+   Per più coda si abbassa SPRING, mai D. */
+const SPRING = 36, SPRING_D = 2 * Math.sqrt(SPRING);
+let scrollCur = 0, scrollTarget = 0, scrollVel = 0;
+let loopLast = 0;        // timestamp del frame precedente, per il dt della molla
+/* Il dt va FILTRATO, non usato grezzo. Le righe progetti stanno a
+   (documentY - scrollCur) — il browser le muove di scrollTarget e applyProjects
+   corregge la differenza — quindi ogni irregolarità di scrollCur si legge come
+   tremolio sul testo. I timestamp di rAF ballano di qualche millisecondo, e
+   moltiplicati per la velocità diventano pixel: a 900px/s, ±3ms di ballo davano
+   1.6px di passo irregolare per frame, cioè micro scattini visibili scorrendo
+   su e giù fra i progetti. Filtrato scendono a .2px.
+   Il vecchio inseguitore del primo ordine non aveva il problema perché non
+   aveva dt: avanzava di una frazione fissa per frame. Il dt serve per il
+   frame-rate (60 vs 120Hz), non per seguire il ballo dei singoli frame, e un
+   filtro lento converge sul passo vero del display scartando il rumore. */
+let dtAvg = 1 / 60;
 let cur = 0;
+let lastCur = -1;        // ultimo cur passato ad apply(): a scena ferma si salta
 let autoplay = false;    // mobile: l'intro va a tempo, con lo scroll bloccato
 let autoCur  = 0;        // il valore di cur mentre dura l'autoplay
 
@@ -1390,8 +1469,7 @@ function sync(){
   const frac = clamp(scrollCur / max);
   /* mobile: l'utente prende il comando a intro finita e scorre da HANDOFF a 1 */
   cur = autoplay ? autoCur : (mq.matches ? HANDOFF + frac * (1 - HANDOFF) : frac);
-  overCur    = Math.max(0, scrollCur - max);
-  overTarget = Math.max(0, scrollTarget - max);
+  overCur = Math.max(0, scrollCur - max);
 }
 
 /* le misure del testo valgono solo a font caricato: prima di allora
@@ -1403,7 +1481,7 @@ document.fonts.ready.then(() => {
     starFrom = null; projOver = -1;    // entrambi sono in pixel di schermo
     /* l'inseguitore va agganciato, non lasciato rincorrere: dopo un resize la
        corsa residua sarebbe calcolata su un'altezza che non esiste più */
-    scrollCur = scrollTarget = scrollY;
+    scrollCur = scrollTarget = scrollY; scrollVel = 0;   // né corsa residua né slancio
     measure();
     if (!reduce) sync();     // senza ciclo `cur` resta quello che ha messo il ramo reduce
     apply(cur); applyProjects();
@@ -1463,10 +1541,35 @@ document.fonts.ready.then(() => {
       if (a >= 1){ autoplay = false; document.body.classList.remove('locked'); }
     }
 
-    scrollCur += (scrollTarget - scrollCur) * .09;   // inerzia: la scena insegue
-    if (Math.abs(scrollTarget - scrollCur) < .5) scrollCur = scrollTarget;
+    /* dt vero e non 1/60: il passo va a frame-rate, e con una costante fissa su
+       120Hz la planata durerebbe metà. Cap a 50ms per le schede in sfondo,
+       stessa ragione del dt di finSpin. Il `|| 1/60` è il primo frame, dove la
+       differenza è zero.
+       Poi il filtro (vedi dtAvg): quello che entra nell'integrazione è il passo
+       MEDIO del display, non quello del singolo frame. */
+    const dtRaw = Math.min(.05, (now - (loopLast || now)) / 1000) || 1 / 60;
+    loopLast = now;
+    dtAvg += (dtRaw - dtAvg) * .05;
+    const dt = dtAvg;
+    scrollVel += ((scrollTarget - scrollCur) * SPRING - scrollVel * SPRING_D) * dt;
+    scrollCur += scrollVel * dt;
+    /* fermata: gap piccolo E velocità bassa. Col solo gap la scena verrebbe
+       agganciata a metà planata, riportando lo scatto che si voleva togliere. */
+    if (Math.abs(scrollTarget - scrollCur) < .5 && Math.abs(scrollVel) < 8){
+      scrollCur = scrollTarget; scrollVel = 0;
+    }
     sync();                                          // cur e overCur, da qui
-    apply(cur);
+    /* Nei progetti e nel 813 `cur` resta inchiodato a 1: apply() rifarebbe a
+       ogni frame ~35 scritture di stile, tre setAttribute su SVG e un dust()
+       con blur(), tutte con gli stessi valori del frame prima. Lavoro sul main
+       thread che non disegna niente di nuovo — e il main thread è esattamente
+       ciò che deve restare libero perché lo scroll non perda frame.
+       La condizione è `cur < 1` e non solo il confronto con lastCur: sotto 1
+       l'intro ha ancora pezzi che NON dipendono da cur (il tratto del logo va a
+       tempo, e lo sguardo dentro l'iride lo muove eyes()), quindi lì si ridisegna
+       sempre. A cur = 1 quelle cose sono finite o fuori campo, e saltare è
+       sicuro. */
+    if (cur !== lastCur || cur < 1){ apply(cur); lastCur = cur; }
     /* dopo apply, non prima: la sezione riscrive il dashoffset del nastro
        oltre RIB_END, e chi scrive per ultimo vince */
     applyProjects();
