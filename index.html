@@ -316,7 +316,7 @@ body::after{
    due casi: reduced-motion (tutte accese) e i dispositivi senza puntatore, dove
    l'hover non esiste e l'accensione resta guidata dallo scroll.
    :is() e non tre regole ripetute — la specificità è quella di `.proj.on`. */
-:is(.proj.on,.proj:hover) .proj-star{fill-opacity:1;stroke-opacity:0}
+:is(.proj.on,.proj.open,.proj:hover) .proj-star{fill-opacity:1;stroke-opacity:0}
 
 /* Le righe spente non collassano: nel Figma il testo è trasparente ma occupa
    lo stesso spazio, e tutte le righe restano alte uguali. Quindi opacity e
@@ -327,7 +327,7 @@ body::after{
   font-size:clamp(30px,5.2vw,56px);line-height:1.1;letter-spacing:-1.12px;
   color:#B2998C;transition:color .5s cubic-bezier(.16,1,.3,1);
 }
-:is(.proj.on,.proj:hover) h2{color:#554135}
+:is(.proj.on,.proj.open,.proj:hover) h2{color:#554135}
 .proj-desc{
   font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
   font-size:18px;line-height:1.5;letter-spacing:-.36px;color:#484848;
@@ -339,13 +339,13 @@ body::after{
   border:1px solid transparent;                       /* il bordo compare con la riga */
   transition:border-color .5s cubic-bezier(.16,1,.3,1);
 }
-:is(.proj.on,.proj:hover) .proj-tags li{border-color:#BFCFFF}
+:is(.proj.on,.proj.open,.proj:hover) .proj-tags li{border-color:#BFCFFF}
 .proj-year{
   font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
   font-size:14px;letter-spacing:-.28px;color:#554135;
 }
 .proj-desc,.proj-tags,.proj-year{opacity:0;transition:opacity .5s cubic-bezier(.16,1,.3,1)}
-:is(.proj.on,.proj:hover) :is(.proj-desc,.proj-tags,.proj-year){opacity:1}
+:is(.proj.on,.proj.open,.proj:hover) :is(.proj-desc,.proj-tags,.proj-year){opacity:1}
 
 /* il marchio della sezione: qui c'è solo il titolo. La stellina non è un
    secondo disegno che compare, è QUELLA del 809 che vola fin qui girando su sé
@@ -399,6 +399,148 @@ body::after{
 .finale-claim i{
   font-family:var(--sans);font-variation-settings:"opsz" 14;
   font-weight:300;font-style:italic;color:var(--blue);
+}
+
+/* ---------- la scheda del progetto: la riga si apre verso il basso ----------
+   Richiesta dell'utente: nessuna finestra sopra la pagina. Il progetto cliccato
+   si espande in altezza dentro la lista — il titolo resta dov'e', il resto si
+   compone sotto — e scorrendo si trovano gli altri progetti, chiusi. Aprirne
+   uno chiude quello aperto.
+   Come: la scheda e' un blocco in flusso alto zero con overflow:hidden, e
+   l'altezza viene animata dal JS fra 0 e l'altezza del contenuto, misurata al
+   momento. Non `height:auto` in transizione (non interpola) e non un massimo
+   inventato (l'animazione partirebbe con una velocita' che non c'entra con il
+   contenuto vero). A fine apertura l'altezza torna `auto`, cosi' resize e
+   ricalcoli non la trovano inchiodata a un numero vecchio.
+   Il contenuto entra un attimo dopo, mentre l'altezza sta ancora crescendo: e'
+   quello che fa leggere l'apertura come una composizione e non come una tenda
+   che si alza.
+   Attenzione: aprendo, la sezione diventa piu' alta, e su desktop la sezione e'
+   fuori dal flusso — la corsa nel documento gliela da' .proj-space. Il JS la
+   allunga subito e richiama measure() a fine transizione: senza, la coda della
+   lista e l'atto 3 resterebbero irraggiungibili.
+   Impaginazione: griglia a 12 colonne rientrata di 68px, cioe' esattamente
+   sotto il titolo della riga (24 di padding + 20 di stellina + 24 di gap). Il
+   racconto sta in due colonne, i fatti in una scaletta a destra, il mockup a
+   tutta larghezza. Stilemi del sito: filetti #BFCFFF, micro-etichette in IBM
+   Plex Mono azzurre, DM Sans light per il testo, Space Grotesk per i numeri. */
+.proj-row[aria-controls]{cursor:pointer}
+.proj-row:focus-visible{outline:1px solid var(--blue);outline-offset:-1px}
+/* l'invito compare con la riga accesa, come descrizione e tag; aperta, diventa
+   l'invito opposto */
+.proj-row[aria-controls]::after{
+  content:"apri \2197";
+  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:-.12px;
+  color:var(--blue);flex:0 0 auto;
+  opacity:0;transition:opacity .5s cubic-bezier(.16,1,.3,1);
+}
+.proj.open .proj-row::after{content:"chiudi \00D7"}
+:is(.proj.on,.proj.open,.proj:hover) .proj-row::after{opacity:1}
+
+.proj-detail[hidden]{display:none}
+.proj-detail{
+  height:0;overflow:hidden;
+  transition:height .58s cubic-bezier(.16,1,.3,1);
+}
+.pd-in{
+  display:grid;grid-template-columns:repeat(12,1fr);
+  gap:clamp(28px,4.5vh,56px) 24px;align-items:start;
+  padding:4px 24px 56px 68px;
+  opacity:0;transform:translateY(10px);
+  transition:opacity .45s cubic-bezier(.16,1,.3,1) .12s,transform .45s cubic-bezier(.16,1,.3,1) .12s;
+}
+.proj.open .pd-in{opacity:1;transform:none}
+
+.pd-lead{
+  grid-column:1 / 7;
+  font-family:var(--sans);font-variation-settings:"opsz" 40;font-weight:300;
+  font-size:clamp(19px,1.7vw,26px);line-height:1.4;letter-spacing:-.5px;color:#484848;
+}
+/* i fatti: una scaletta di filetti, si leggono in un colpo d'occhio prima del
+   racconto lungo */
+.pd-facts{grid-column:8 / 13;display:flex;flex-direction:column}
+.pd-facts > div{
+  display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;
+  padding:12px 0;border-top:1px solid #BFCFFF;
+}
+.pd-facts > div:last-child{border-bottom:1px solid #BFCFFF}
+.pd-facts dt{
+  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--blue);padding-top:.15em;
+}
+.pd-facts dd{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:15px;line-height:1.5;letter-spacing:-.3px;color:#484848;
+}
+
+/* il mockup e' un PNG con trasparenza: galleggia sulla carta, senza riquadro
+   ne' bordo, e l'ombra ce l'ha gia' dentro */
+.pd-stage{grid-column:1 / 13;display:flex;flex-direction:column;gap:14px}
+/* max-height oltre a max-width: gli screenshot di pagine intere sono molto
+   piu' alti che larghi, e senza un tetto una sola immagine varrebbe due
+   schermate di scheda */
+.pd-stage img{display:block;width:auto;height:auto;max-width:min(100%,1080px);max-height:72vh;margin:0 auto}
+.pd-stage figcaption{
+  font-family:var(--mono);font-weight:500;font-size:12px;line-height:1.5;
+  color:#554135;text-align:center;max-width:60ch;margin:0 auto;
+}
+
+
+/* i due screenshot di contorno: affiancati, ritagliati dall'alto a un'altezza
+   comune. Ritagliare e non rimpicciolire e' voluto — di una pagina lunga
+   interessa la testa, e due immagini alte uguali tengono la riga in ordine. */
+.pd-shots{grid-column:1 / 13;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.pd-shot{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pd-shot img{
+  display:block;width:100%;height:clamp(280px,42vh,440px);
+  object-fit:cover;object-position:top;border:1px solid #BFCFFF;
+}
+.pd-shot figcaption{
+  font-family:var(--mono);font-weight:500;font-size:12px;line-height:1.5;color:#554135;
+}
+/* la metrica e la sua nota, affiancate: il numero e' un titolo, la nota lo
+   spiega senza rubargli la scena */
+.pd-metric{grid-column:1 / 6;align-self:center}
+.pd-metric b{
+  font-family:var(--grotesk);font-weight:700;
+  font-size:clamp(30px,3.6vw,54px);line-height:1;letter-spacing:-1.4px;color:var(--blue);
+}
+.pd-metric-note{
+  grid-column:7 / 13;align-self:center;
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:16px;line-height:1.55;letter-spacing:-.32px;color:#484848;
+}
+
+/* il racconto in due colonne: quattro blocchi corti si leggono meglio
+   affiancati che in una colonna sola lunga il doppio */
+.pd-story{
+  grid-column:1 / 13;
+  display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,4vh,44px) 48px;
+}
+.pd-story h4{
+  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--blue);margin-bottom:12px;
+}
+.pd-story p{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:17px;line-height:1.55;letter-spacing:-.32px;color:#484848;max-width:60ch;
+}
+.pd-story em{font-style:italic;color:#554135}
+
+/* la sfida esce dal ritmo: niente etichetta in cima, testo grande, filetto
+   azzurro a sinistra */
+.pd-quote{
+  grid-column:2 / 10;
+  border-left:1px solid var(--blue);padding-left:28px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.pd-quote p{
+  font-family:var(--grotesk);font-weight:500;
+  font-size:clamp(19px,1.9vw,27px);line-height:1.25;letter-spacing:-.6px;color:#554135;
+}
+.pd-quote cite{
+  font-family:var(--mono);font-style:normal;font-weight:500;font-size:12px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
 }
 
 /* ---------- mobile: frame 805 ---------- */
@@ -459,6 +601,15 @@ body::after{
   .proj-row{padding:24px;gap:12px}
   .proj-left{gap:12px}
   .proj-desc{font-size:16px}
+
+  /* la scheda in colonna sola: a 390px le 12 colonne non esistono, e il
+     rientro sotto il titolo si mangerebbe meta' riga */
+  .pd-in{grid-template-columns:1fr;gap:32px;padding:0 24px 40px}
+  :is(.pd-lead,.pd-facts,.pd-stage,.pd-metric,.pd-metric-note,.pd-story,.pd-quote){grid-column:1}
+  .pd-facts > div{grid-template-columns:1fr;gap:6px}
+  .pd-shots{grid-template-columns:1fr;gap:20px}
+  .pd-story{grid-template-columns:1fr}
+  .pd-quote{padding-left:20px}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -476,6 +627,9 @@ body::after{
   .finale{height:auto;padding:22vh 24px}
   .finale-claim{position:static;transform:none;width:auto}
   .finale-claim > span{opacity:1}
+  /* la scheda si apre e basta: nessuna altezza da animare, nessun ingresso */
+  .proj-detail{transition:none}
+  .pd-in{opacity:1;transform:none;transition:none}
 }
 </style>
 </head>
@@ -566,10 +720,207 @@ body::after{
 
 <!-- frame 810/811/812. Blocco nel flusso: le righe scorrono davvero e quella
      che passa per il centro dello schermo è quella accesa.
-     Descrizioni, tag e anno sono ancora i segnaposto del Figma, uguali per
-     tutte e quattro le righe: vanno riempiti coi contenuti veri. -->
+     Le tre righe Zucchetti portano i contenuti veri (doc/05) e stanno in
+     cima: il lavoro professionale prima, il progetto universitario dopo.
+     Di InvolveU e' vero solo l'anno: descrizione e tag sono ancora il
+     segnaposto del Figma. Ogni riga Zucchetti ha la sua scheda dentro il <li>,
+     sotto la riga: e' quella che il JS espande. -->
 <section class="projects" id="projects" aria-label="Progetti selezionati">
   <ol class="proj-list">
+    <li class="proj">
+      <div class="proj-row" role="button" tabindex="0" aria-expanded="false" aria-controls="pd-cfm">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>Carbon Footprint Mobility</h2>
+            <p class="proj-desc">Prodotto ESG costruito da zero. Ho portato la progettazione in un team che ne era privo e sviluppato in React la Simulazione. Un calcolo che prima richiedeva settimane in Excel oggi si chiude in ore.</p>
+            <ul class="proj-tags"><li>ESG</li><li>Costruito da zero</li><li>Figma</li><li>React</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2023</p>
+      </div>
+      <div class="proj-detail" id="pd-cfm" hidden>
+        <div class="pd-in">
+          <p class="pd-lead">L&rsquo;impronta di carbonio di chi si muove: flotta aziendale, trasferte, spostamenti casa-lavoro. Un inventario che le aziende compilavano a mano, in Excel, diventa un prodotto che lo calcola e lo lascia interrogare.</p>
+
+          <dl class="pd-facts">
+            <div><dt>Ruolo</dt><dd>Analisi di necessit&agrave; e requisiti, progettazione, prototipo. Punto di riferimento verso lo sviluppo.</dd></div>
+            <div><dt>Ambito</dt><dd>Software B2B per la sostenibilit&agrave;, verticale sulla mobilit&agrave;.</dd></div>
+            <div><dt>Strumenti</dt><dd>Figma per il progetto. React per la Simulazione, l&rsquo;unica funzione che ho anche sviluppato.</dd></div>
+            <div><dt>Stato</dt><dd>In produzione dal 2023, in miglioramento continuo.</dd></div>
+          </dl>
+
+          <figure class="pd-stage">
+            <img src="img/cfm-mockup.webp" width="1176" height="636" loading="lazy" decoding="async"
+                 alt="Il prodotto su portatile, tablet e telefono: dettaglio dell&rsquo;indagine, risultati per scope e simulazione.">
+            <figcaption>Dettaglio dell&rsquo;indagine, risultati per scope GHG e simulazione: lo stesso inventario, su ogni schermo.</figcaption>
+          </figure>
+
+          <p class="pd-metric"><b>settimane <span aria-hidden="true">&rarr;</span> ore</b></p>
+          <p class="pd-metric-note">Il tempo per chiudere un inventario delle emissioni che prima viveva su pi&ugrave; fogli Excel. Con la Simulazione, l&rsquo;impatto di una decisione &mdash; elettrificare la flotta, aumentare lo smart working &mdash; si vede prima di prenderla.</p>
+
+          <div class="pd-story">
+            <section>
+              <h4>Problema</h4>
+              <p>Le normative europee sulla rendicontazione delle emissioni si sono fatte via via pi&ugrave; stringenti per le medie e grandi aziende, mentre la trasparenza ambientale &egrave; diventata un fattore competitivo. Le aziende devono misurare le emissioni del proprio business &mdash; e chi lo faceva, lo faceva a mano, in Excel. Il team, specializzato in mobilit&agrave;, ha scelto di partire da un verticale preciso: le emissioni legate agli spostamenti.</p>
+            </section>
+            <section>
+              <h4>Ruolo</h4>
+              <p>Sono entrato in Zucchetti in stage, su questo progetto, in un team che un designer non l&rsquo;aveva mai avuto: si passava dall&rsquo;idea direttamente allo sviluppo. Ho introdotto una fase di progettazione e validazione <em>prima</em> del codice, in Figma. Analisi di necessit&agrave; e requisiti, progetto, prototipo, e il punto di riferimento verso il team di sviluppo. Alla fine dello stage sono stato assunto.</p>
+            </section>
+            <section>
+              <h4>Approccio</h4>
+              <p>&Egrave; un prodotto data-driven: la priorit&agrave; &egrave; rendere i dati leggibili a chi deve decidere. La dashboard dei risultati scende nel dettaglio di ci&ograve; che emette con viste personalizzate; la pagina di Controllo dati tiene sotto controllo stato e qualit&agrave; dei caricamenti. La Simulazione lascia modificare flotta, spostamenti casa-lavoro e viaggi, e vedere in tempo reale come variano le emissioni.</p>
+            </section>
+            <section>
+              <h4>Risultato</h4>
+              <p>Il prodotto &egrave; operativo: raccoglie i dati aziendali e restituisce un calcolo preciso delle emissioni, esportabile nel formato che serve. Un inventario che a mano richiedeva settimane su pi&ugrave; fogli Excel oggi si chiude in poche ore, e resta interrogabile invece di finire in un archivio.</p>
+            </section>
+          </div>
+
+          <blockquote class="pd-quote">
+            <p>Un software cos&igrave; specifico non ha riferimenti di UI gi&agrave; pronti: molti componenti non esistevano e li ho progettati da zero, ad hoc per lo scopo.</p>
+            <cite>La sfida</cite>
+          </blockquote>
+        </div>
+      </div>
+    </li>
+    <li class="proj">
+      <div class="proj-row" role="button" tabindex="0" aria-expanded="false" aria-controls="pd-esg">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>ESG Datastore</h2>
+            <p class="proj-desc">Hub unico per la rendicontazione di sostenibilità (CSRD/ESRS, VSME). Ho orchestrato analisi e progettazione: raccolta standardizzata di dati eterogenei, layout modulare per KPI molto diversi.</p>
+            <ul class="proj-tags"><li>ESG</li><li>Costruito da zero</li><li>Figma</li><li>Design AI-assistito</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2024</p>
+      </div>
+      <div class="proj-detail" id="pd-esg" hidden>
+        <div class="pd-in">
+          <p class="pd-lead">Il bilancio di sostenibilit&agrave; non si blocca sul calcolo: si blocca sulla raccolta. Gli stessi dati vivono sparsi fra HR, energia e mobilit&agrave;, in formati che non parlano tra loro. ESG Datastore li mette in un posto solo e rende ripetibile il passaggio pi&ugrave; fragile.</p>
+
+          <dl class="pd-facts">
+            <div><dt>Ruolo</dt><dd>Orchestrazione di analisi e progettazione: requisiti, struttura, interfaccia.</dd></div>
+            <div><dt>Ambito</dt><dd>Rendicontazione di sostenibilit&agrave; secondo CSRD/ESRS e VSME, per gruppi e filiali.</dd></div>
+            <div><dt>Strumenti</dt><dd>Figma, con parte della progettazione assistita dall&rsquo;AI.</dd></div>
+            <div><dt>Stato</dt><dd>Costruito da zero, in produzione.</dd></div>
+          </dl>
+
+          <figure class="pd-stage">
+              <img src="img/esg-datastore-home.webp" width="1600" height="1247" loading="lazy" decoding="async" alt="Dashboard di amministrazione: utenti e ruoli, connettori, pacchetti di KPI, sessioni di raccolta.">
+              <figcaption>Dashboard di amministrazione: utenti e ruoli, connettori, pacchetti di KPI, sessioni di raccolta.</figcaption>
+            </figure>
+
+          <div class="pd-shots">
+            <figure class="pd-shot">
+              <img src="img/esg-datastore-risultati.webp" width="1600" height="2171" loading="lazy" decoding="async" alt="Risultati dell&rsquo;analisi: KPI organizzati per datapoint ESRS, grafici e tabelle di sintesi.">
+              <figcaption>Risultati dell&rsquo;analisi: KPI organizzati per datapoint ESRS, grafici e tabelle di sintesi.</figcaption>
+            </figure>
+            <figure class="pd-shot">
+              <img src="img/esg-datastore-sessione.webp" width="1600" height="1448" loading="lazy" decoding="async" alt="Sessione di raccolta: framework, sorgenti dati e avanzamento per ogni azienda.">
+              <figcaption>Sessione di raccolta: framework, sorgenti dati e avanzamento per ogni azienda.</figcaption>
+            </figure>
+          </div>
+
+          <p class="pd-metric"><b>raccogliere, non calcolare</b></p>
+          <p class="pd-metric-note">Il nodo del prodotto non &egrave; la formula: &egrave; mettere insieme sorgenti diverse in un dato solo, con template di caricamento e KPI strutturati per datapoint ESRS &mdash; cos&igrave; che ci&ograve; che l&rsquo;utente vede corrisponda a ci&ograve; che la norma chiede.</p>
+
+          <div class="pd-story">
+            <section>
+              <h4>Problema</h4>
+              <p>Il quadro europeo sulla rendicontazione di sostenibilit&agrave; &mdash; la direttiva CSRD con i suoi standard ESRS, e lo standard volontario VSME per le PMI &mdash; obbliga un numero crescente di aziende a redigere un bilancio verificabile. Ma il problema pratico non &egrave; <em>calcolare</em>: &egrave; <em>raccogliere</em>. Gli stessi dati vivono sparsi in piattaforme diverse, in formati che non parlano tra loro.</p>
+            </section>
+            <section>
+              <h4>Ruolo</h4>
+              <p>Qui il ruolo di orchestratore dell&rsquo;analisi e della progettazione si &egrave; consolidato. Il prodotto ha richiesto una figura dedicata all&rsquo;analisi normativa &mdash; di cui non mi sono occupato io &mdash; mentre io tenevo insieme requisiti, struttura e interfaccia.</p>
+            </section>
+            <section>
+              <h4>Approccio</h4>
+              <p>&Egrave; tutto organizzazione di dati grezzi e KPI. Ho progettato per la chiarezza, non per l&rsquo;estetica: ogni schermata mette la gestione del dato al centro, senza fronzoli. I KPI sono strutturati per datapoint ESRS, cos&igrave; che ci&ograve; che l&rsquo;utente vede corrisponda a ci&ograve; che la norma chiede.</p>
+            </section>
+            <section>
+              <h4>Risultato</h4>
+              <p>Il prodotto &egrave; diventato l&rsquo;hub unico dei dati di sostenibilit&agrave; del business: raccoglie da sorgenti diverse e standardizza il caricamento con dei template. Il passaggio pi&ugrave; fragile &mdash; mettere insieme dati eterogenei &mdash; &egrave; diventato ripetibile e controllabile.</p>
+            </section>
+          </div>
+
+          <blockquote class="pd-quote">
+            <p>Due nodi. Un <em>layout modulare</em> capace di reggere KPI molto diversi senza reinventare la pagina ogni volta. E la <em>configurazione dell&rsquo;ambiente</em>: quattro tipi di utente con ruoli distinti, e aziende trattate come gruppi o come insiemi di filiali.</p>
+            <cite>La sfida</cite>
+          </blockquote>
+        </div>
+      </div>
+    </li>
+    <li class="proj">
+      <div class="proj-row" role="button" tabindex="0" aria-expanded="false" aria-controls="pd-zts">
+        <div class="proj-left">
+          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+          <div class="proj-text">
+            <h2>ZTravel Smart</h2>
+            <p class="proj-desc">Prodotto già in produzione, migliorato nel tempo: landing co-brand UniCredit/Mastercard e ZPAY, report generati con l&rsquo;AI, calcolo emissioni nelle note spese. Progettazione Figma dentro un prodotto senza design system.</p>
+            <ul class="proj-tags"><li>Prodotto esistente</li><li>Redesign</li><li>Figma</li><li>Prototipi AI</li></ul>
+          </div>
+        </div>
+        <p class="proj-year">2024</p>
+      </div>
+      <div class="proj-detail" id="pd-zts" hidden>
+        <div class="pd-in">
+          <p class="pd-lead">Un prodotto gi&agrave; avviato e in uso quotidiano, migliorato pezzo per pezzo senza stravolgerlo: funzioni nuove, redesign mirati, e il calcolo delle emissioni portato dentro le note spese &mdash; il punto in cui questo prodotto tocca il mondo ESG del resto del mio lavoro.</p>
+
+          <dl class="pd-facts">
+            <div><dt>Ruolo</dt><dd>Redesign di funzionalit&agrave; esistenti e progettazione di nuove, in coerenza con il resto dell&rsquo;app.</dd></div>
+            <div><dt>Ambito</dt><dd>Note spese e trasferte aziendali. Funzioni co-brand con UniCredit/Mastercard e ZPAY.</dd></div>
+            <div><dt>Strumenti</dt><dd>Figma, con prototipi assistiti dall&rsquo;AI.</dd></div>
+            <div><dt>Stato</dt><dd>Prodotto esistente, interventi continui in produzione.</dd></div>
+          </dl>
+
+          <figure class="pd-stage">
+              <img src="img/zts-report-ai.webp" width="1229" height="831" loading="lazy" decoding="async" alt="&laquo;&nbsp;ZTravel Smart AI&nbsp;&raquo;: generazione di report a partire da richieste in linguaggio naturale.">
+              <figcaption>&laquo;&nbsp;ZTravel Smart AI&nbsp;&raquo;: generazione di report a partire da richieste in linguaggio naturale.</figcaption>
+            </figure>
+
+          <div class="pd-shots">
+            <figure class="pd-shot">
+              <img src="img/zts-unicredit-mastercard.webp" width="1600" height="2256" loading="lazy" decoding="async" alt="Landing page co-brand UniCredit/Mastercard per le note spese digitali. Pagina pubblica.">
+              <figcaption>Landing page co-brand UniCredit/Mastercard per le note spese digitali. Pagina pubblica.</figcaption>
+            </figure>
+            <figure class="pd-shot">
+              <img src="img/zts-zpay.webp" width="1418" height="2098" loading="lazy" decoding="async" alt="Feature page ZPAY: note spese con OCR e riepilogo delle spese.">
+              <figcaption>Feature page ZPAY: note spese con OCR e riepilogo delle spese.</figcaption>
+            </figure>
+          </div>
+
+          <p class="pd-metric"><b>innestare, non riscrivere</b></p>
+          <p class="pd-metric-note">Su un prodotto vivo la soluzione giusta non &egrave; la pi&ugrave; ambiziosa sulla carta: &egrave; quella che il team pu&ograve; davvero integrare, e che chi lo usa ogni giorno riconosce ancora.</p>
+
+          <div class="pd-story">
+            <section>
+              <h4>Problema</h4>
+              <p>ZTravel Smart &egrave; un prodotto gi&agrave; avviato e in uso quotidiano. Qui il compito non era costruire, ma risolvere necessit&agrave; che emergevano nel tempo &mdash; funzionalit&agrave; nuove da aggiungere, esistenti da rifare &mdash; senza stravolgere ci&ograve; che gli utenti gi&agrave; conoscevano.</p>
+            </section>
+            <section>
+              <h4>Ruolo</h4>
+              <p>Redesign di alcune funzionalit&agrave; e progettazione di nuove, tenendo sempre la coerenza con il resto dell&rsquo;app. Vincolo doppio: migliorare senza rivoltare il prodotto, e disegnare cose che il team potesse integrare con facilit&agrave; nello sviluppo esistente.</p>
+            </section>
+            <section>
+              <h4>Approccio</h4>
+              <p>Innestare idee nuove su ci&ograve; che gi&agrave; funzionava, non riscrivere. Ogni intervento pensato per la semplicit&agrave; di sviluppo e integrazione: la soluzione migliore <em>che si poteva davvero mettere in produzione</em>, non quella pi&ugrave; ambiziosa sulla carta.</p>
+            </section>
+            <section>
+              <h4>Risultato</h4>
+              <p>Nel tempo ho consegnato interventi su tutto il prodotto: landing page co-brandizzate per le funzioni nate con UniCredit/Mastercard e ZPAY, nuove pagine e banner di comunicazione dentro l&rsquo;app, una pagina dedicata alla generazione di report con l&rsquo;AI, e l&rsquo;integrazione del calcolo delle emissioni nelle note spese.</p>
+            </section>
+          </div>
+
+          <blockquote class="pd-quote">
+            <p>Portare funzionalit&agrave; progettate in Figma dentro un prodotto sviluppato &laquo;&nbsp;alla vecchia maniera&nbsp;&raquo;, senza progettazione preliminare e senza design system. Far incontrare due modi di lavorare, non solo due schermate.</p>
+            <cite>La sfida</cite>
+          </blockquote>
+        </div>
+      </div>
+    </li>
     <li class="proj">
       <div class="proj-row">
         <div class="proj-left">
@@ -580,46 +931,7 @@ body::after{
             <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
           </div>
         </div>
-        <p class="proj-year">2023</p>
-      </div>
-    </li>
-    <li class="proj">
-      <div class="proj-row">
-        <div class="proj-left">
-          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
-          <div class="proj-text">
-            <h2>Carbon Footprint Mobility</h2>
-            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
-            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
-          </div>
-        </div>
-        <p class="proj-year">2023</p>
-      </div>
-    </li>
-    <li class="proj">
-      <div class="proj-row">
-        <div class="proj-left">
-          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
-          <div class="proj-text">
-            <h2>ESG Datastore</h2>
-            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
-            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
-          </div>
-        </div>
-        <p class="proj-year">2023</p>
-      </div>
-    </li>
-    <li class="proj">
-      <div class="proj-row">
-        <div class="proj-left">
-          <svg class="proj-star" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
-          <div class="proj-text">
-            <h2>ZTravel Smart</h2>
-            <p class="proj-desc">Piattaforma di gestione creativa per studi di design con dashboard interattiva e sistema di asset management.</p>
-            <ul class="proj-tags"><li>React</li><li>TypeScript</li><li>Framer Motion</li><li>Supabase</li></ul>
-          </div>
-        </div>
-        <p class="proj-year">2023</p>
+        <p class="proj-year">2022</p>
       </div>
     </li>
   </ol>
@@ -1377,6 +1689,92 @@ function applyProjects(){
     projRows.forEach((el, i) => el.classList.toggle('on', i === act));
   }
 }
+
+/* ---------- la scheda del progetto: la riga che si apre ----------
+   Il progetto si apre dentro la lista, verso il basso: il titolo resta dov'e' e
+   la scheda cresce sotto di lui. Non c'e' niente sopra la pagina, quindi non
+   c'e' niente da bloccare — si continua a scorrere, e sotto ci sono gli altri
+   progetti chiusi. Aprirne uno chiude quello aperto.
+   L'altezza va animata a numero: `height:auto` non interpola, e un massimo
+   inventato darebbe all'animazione una velocita' che non c'entra col contenuto.
+   Quindi 0 -> scrollHeight in apertura, scrollHeight -> 0 in chiusura, e a
+   transizione finita l'altezza torna `auto`: da li' in poi la scheda si
+   riadatta da sola a resize e ricalcoli, senza restare inchiodata a un numero
+   vecchio. Il reflow forzato fra i due valori (void offsetHeight) e' cio' che
+   rende la partenza reale: senza, il browser vede solo il valore finale e non
+   c'e' nessuna transizione da fare.
+   `hidden` tiene il mockup fuori dalla rete finche' la scheda non si apre. Il
+   timer che lo rimette sta SULL'ELEMENTO e non in una variabile sola: aprendo
+   un progetto mentre un altro si chiude, i due tempi corrono insieme e una
+   variabile sola perderebbe quello della scheda che si sta chiudendo.
+   Su desktop la sezione e' fuori dal flusso e la corsa nel documento gliela da'
+   .proj-space: allungarla subito serve a poter scorrere fino in fondo alla
+   scheda mentre si apre, e measure() a fine transizione rimette il numero
+   esatto (e con lui fin0, cioe' dove comincia l'atto 3). */
+/* deve valere la durata della transizione di .proj-detail nel CSS: e' il
+   momento in cui l'altezza a numero puo' tornare `auto` (aperta) o la scheda
+   puo' sparire dal DOM (chiusa). Un filo piu' lunga, per sicurezza. */
+const PD_MS = 620;
+let openLi = null;
+
+function detOf(li){ return li.querySelector('.proj-detail'); }
+
+function expand(li){
+  const det = detOf(li), row = li.querySelector('.proj-row');
+  det.hidden = false;
+  det.style.height = '0px';
+  void det.offsetHeight;                       // fissa lo stato di partenza
+  const h = det.firstElementChild.offsetHeight;   // il box del contenuto: la
+  det.style.height = h + 'px';                    // sua transform non lo gonfia
+  li.classList.add('open');
+  row.setAttribute('aria-expanded', 'true');
+  openLi = li;
+  /* la corsa serve subito: la scheda e' gia' alta mentre si apre */
+  if (canHover && !reduce) projSpace.style.height = (projects.offsetHeight + h) + 'px';
+  /* un timer, non transitionend: chiudendo subito dopo aver aperto, l'evento
+     della chiusura sarebbe arrivato all'ascoltatore dell'apertura, che avrebbe
+     rimesso `auto` su una scheda ormai chiusa — riaprendola di scatto. Il
+     controllo sulla classe dice sempre chi ha vinto. */
+  clearTimeout(det._t);
+  det._t = setTimeout(() => {
+    if (!li.classList.contains('open')) return;
+    det.style.height = 'auto';   // da qui in poi si riadatta da sola
+    measure();
+  }, reduce ? 0 : PD_MS);
+}
+
+function collapse(li){
+  const det = detOf(li), row = li.querySelector('.proj-row');
+  det.style.height = det.offsetHeight + 'px';   // da `auto` a un numero, o non parte
+  void det.offsetHeight;
+  det.style.height = '0px';
+  li.classList.remove('open');
+  row.setAttribute('aria-expanded', 'false');
+  if (openLi === li) openLi = null;
+  clearTimeout(det._t);
+  det._t = setTimeout(() => {
+    if (li.classList.contains('open')) return;     // riaperta nel frattempo
+    det.hidden = true;
+    measure();
+  }, reduce ? 0 : PD_MS);
+}
+
+projRows.forEach(li => {
+  const row = li.querySelector('.proj-row');
+  if (!detOf(li)) return;                       // riga senza scheda: non si apre
+  const toggle = () => {
+    const era = openLi === li;
+    if (openLi) collapse(openLi);
+    if (!era) expand(li);
+  };
+  row.addEventListener('click', toggle);
+  /* role="button" da solo non porta la tastiera con se': Invio e Spazio vanno
+     ricollegati a mano (e Spazio va fermato, o scrolla la pagina) */
+  row.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+  });
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && openLi) collapse(openLi); });
 
 /* ---------- gli occhi: sguardo che insegue il puntatore + blink all'hover ----------
    Due soggetti con lo stesso comportamento: il marchio nell'header e il logo

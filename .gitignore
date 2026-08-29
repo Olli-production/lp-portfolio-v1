@@ -13,3 +13,7 @@ THINKER.svg
 BUILDER.svg
 stellina-2.svg
 ribbon.svg
+
+# sorgenti delle immagini: nel sito vanno le webp in img/, convertite da qui
+doc/immagini/
+Gemini_Generated_Image_*.jpg
