@@ -389,6 +389,9 @@ body::after{
    blocco di testo e la stella hanno lo stesso centro */
 .finale-claim{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:63;
+  /* --fo: la frase se ne va quando entra la linea del tempo (lo scrive il JS).
+     Sul blocco e non sui suoi span, che sono gia' occupati da dust(). */
+  opacity:var(--fo,1);
   width:min(74vw,1048px);text-align:center;pointer-events:none;
   font-family:var(--grotesk);font-weight:500;
   font-size:clamp(28px,3.9vw,56px);line-height:1.1;letter-spacing:-1.12px;color:#212121;
@@ -543,6 +546,310 @@ body::after{
   letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
 }
 
+
+/* ---------- esperienze e riconoscimenti: la linea del tempo ----------
+   Frame Figma: asse orizzontale, anni giganti sullo sfondo, le vittorie in
+   schede bianche sopra la linea, i periodi di lavoro in barre sotto — Zucchetti
+   sopra, perché è il ruolo di oggi.
+
+   LO SCROLL DIVENTA ORIZZONTALE. La sezione si aggancia con position:sticky
+   (pin nativo, nessuna libreria) e la traccia viene traslata in X dallo STESSO
+   inseguitore che muove tutto il resto del sito (overCur). Non c'è un secondo
+   motore: l'inerzia è quella della scena.
+   Perché sticky e non fixed come .projects: durante il pin l'elemento non si
+   muove affatto, quindi non c'è nessuna corsa del compositore da annullare —
+   il caso che faceva tremolare le righe progetto qui non esiste.
+
+   GEOMETRIA. Tutto nasce da --yw, la larghezza di un anno: le posizioni sono
+   in ANNI DECIMALI dal 2019.0 (--x) e le durate in anni (--w), scritte inline
+   su ogni elemento. Cambiare --yw riscala la sezione intera senza toccare un
+   dato. L'altezza della sezione NON sta qui: la scrive measure(), che è
+   l'unico posto che sa quanto è larga la traccia in pixel.
+   --lead vale 62vw apposta: è la stessa frazione di TL_PLAY nel JS, cioè la
+   linea invisibile a cui le cose si accendono e le barre si disegnano. Così a
+   corsa zero l'origine del 2019 cade esattamente sul playhead: la stella ci si
+   posa sopra e da lì l'asse comincia a crescere. Si cambiano insieme, o la
+   stella atterra dove la linea non comincia. */
+/* Il fondo della sezione (richiesta dell'utente): non piu' la carta del resto
+   del sito, ma una carta piu' chiara. La sfumatura in cima e' l'unica ragione
+   per cui non e' un `background-color` secco: la sezione arriva scorrendo, e un
+   colore pieno farebbe attraversare lo schermo a una riga netta. L'ultima
+   fermata del gradiente vale fino in fondo, quindi sotto i primi 34vh e' tinta
+   piena come ci si aspetta. */
+.timeline{
+  position:relative;z-index:3;
+  /* --tlbg lo usano anche le tessere del tabellone, che devono essere opache
+     del colore del fondo: un solo posto da cambiare */
+  --tlbg:#FFFEF8;
+  background:linear-gradient(transparent 0, var(--tlbg) 34vh);
+}
+/* overflow:hidden non è cosmetico: la traccia è larga qualche migliaio di pixel
+   e senza darebbe una barra di scorrimento orizzontale a tutta la pagina */
+.tl-stage{position:sticky;top:0;height:100svh;overflow:hidden}
+.tl-track{
+  --lead:62vw;--yw:46vh;--tail:70vh;
+  position:absolute;left:0;top:0;z-index:2;height:100%;
+  width:calc(var(--lead) + 8 * var(--yw) + var(--tail));
+  will-change:transform;
+}
+
+/* il marchio della sezione, gemello di «progetti selezionati». Sta nello stage
+   e non nella traccia: resta fermo mentre gli anni scorrono, ed è ciò che dice
+   dove sei. Dietro alla traccia (z 1 < 2), come il marchio dei progetti sta
+   dietro le righe. */
+.tl-mark{position:absolute;left:6vw;top:9%;z-index:1;pointer-events:none}
+.tl-mark b{
+  display:block;font-family:var(--sans);font-variation-settings:"opsz" 14;
+  font-weight:500;font-size:4.6vh;letter-spacing:-.9px;color:var(--ink);white-space:nowrap;
+}
+/* «riconoscimenti» è testo vettorializzato nel Figma, come «selezionati» */
+.tl-mark img{display:block;width:26vh;height:auto;margin-top:.6vh}
+
+/* la colonna di ogni anno: il reticolo del frame */
+.tl-grid{
+  position:absolute;top:8%;height:84%;width:1px;background:#B2998C;opacity:.16;
+  left:calc(var(--lead) + var(--x) * var(--yw));
+}
+/* L'ANNO GIGANTE, COME UN TABELLONE MECCANICO DEI TRENI (richiesta dell'utente).
+   Uno solo alla volta, grande quanto lo schermo: sta nello stage e non sulla
+   traccia, quindi non scorre — a scorrere è tutto il resto, e qui l'anno CAMBIA.
+   Ogni cifra è un modulo a due metà. Ferme: la metà alta della cifra NUOVA e la
+   metà bassa della VECCHIA. In mezzo girano due foglie — la metà alta della
+   vecchia che cade in avanti, e appena è di taglio la metà bassa della nuova che
+   scende al suo posto. Sono le quattro superfici di .tl-dgt.
+   Tutte OPACHE del colore del fondo, come le tessere vere: è quello che fa
+   leggere la foglia come una linguetta e non come un'ombra, ed è anche ciò che
+   impedisce a due cifre semitrasparenti sovrapposte di sommarsi in un fantasma
+   più scuro durante il giro.
+   A TEMPO E NON A SCROLL: un tabellone, una volta partito, scatta per conto suo.
+   Legarlo alla rotella lo farebbe tornare indietro a metà giro, di gomma.
+   SVG con preserveAspectRatio="none" e non testo: stesso trucco delle righe
+   THINKER/BUILDER dell'intro, ed è l'unico modo di riempire lo schermo a
+   qualunque proporzione senza calcolare la scala a mano. Il viewBox è ritagliato
+   sulla fascia delle maiuscole (0.70em in Space Grotesk, come CAP nel JS),
+   quindi il riquadro dell'elemento È il riquadro della cifra; textLength blocca
+   la larghezza qualunque cosa dicano le metriche, così un fallback caricato
+   prima del font vero non cambia la compressione per un istante.
+   Il riquadro è alto 88% e parte da zero: preserveAspectRatio="none" stira le
+   cifre a riempirlo, quindi l'altezza del riquadro È quanto sono alte (richiesta
+   dell'utente: più stirate sull'asse y).
+   Quel che conta non è dove sta il riquadro ma dove cade la sua METÀ, cioè la
+   fessura del meccanismo: qui al 44%, dieci punti sopra l'asse. Centrando il
+   riquadro nello stage finirebbe al 50%, e le due righe orizzontali si
+   ritroverebbero a trenta pixel l'una dall'altra come un errore di stampa.
+   Cambiando l'altezza va rifatto anche `top`, per tenere la metà dov'è. */
+.tl-year{
+  position:absolute;left:-3%;top:0;width:106%;height:88%;
+  display:flex;opacity:0;pointer-events:none;user-select:none;
+  will-change:opacity;
+}
+.tl-dgt{position:relative;flex:1 1 0;perspective:1400px}
+.tl-dgt .d{position:absolute;inset:0;background:var(--tlbg);backface-visibility:hidden}
+.tl-dgt svg{display:block;width:100%;height:100%}
+.tl-dgt text{
+  font-family:var(--grotesk);font-weight:700;font-size:100px;
+  /* il colore dei filetti del sito, tenuto bassissimo: resta uno sfondo, ma si
+     legge. Una manopola sola: questo numero — .18 rendeva le date protagoniste,
+     il colore secco del frame di riferimento le faceva sparire, questa è la via
+     di mezzo (una decina di livelli su 255 sotto il fondo). */
+  fill:var(--line);fill-opacity:.11;
+}
+.s-top,.l-top{clip-path:inset(0 0 50% 0)}
+.s-bot,.l-bot{clip-path:inset(50% 0 0 0)}
+/* a riposo: la foglia alta è spenta (sotto c'è già la stessa cifra, e lasciarla
+   accesa raddoppierebbe il colore), la foglia bassa è di taglio */
+.l-top{opacity:0}
+.l-bot{transform:rotateX(90deg)}
+/* la caduta e l'arrivo. La seconda parte con il ritardo della prima: è una
+   tessera sola che passa il posto a un'altra, non due cose che si muovono
+   insieme. Il rimbalzo finale è la battuta d'arresto del meccanismo. */
+@keyframes tlFlipDown{from{transform:rotateX(0)}    to{transform:rotateX(-90deg)}}
+@keyframes tlFlipUp  {from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
+.tl-dgt.flip .l-top{opacity:1;animation:tlFlipDown .2s cubic-bezier(.5,0,.9,.45) forwards}
+.tl-dgt.flip .l-bot{animation:tlFlipUp .28s cubic-bezier(.2,.9,.35,1.1) .2s forwards}
+/* la fessura fra le due metà: sopra le tessere, o le coprirebbero */
+.tl-dgt::after{
+  content:"";position:absolute;left:0;right:0;top:50%;height:1px;z-index:1;
+  background:rgba(178,153,140,.13);
+}
+/* l'asse. Non è già disegnato: si traccia da sinistra fino al playhead mentre
+   la traccia scorre, come il nastro azzurro dell'atto 2. Parte dall'origine,
+   cioè dal punto in cui si posa la stella. */
+.tl-axis{
+  position:absolute;top:54%;left:var(--lead);height:1px;
+  width:calc(8 * var(--yw) + var(--tail));
+  background:#B2998C;opacity:.55;
+  transform:scaleX(var(--d,0));transform-origin:left center;
+}
+
+/* ---------- i riconoscimenti: scheda sopra la linea ----------
+   Tre pezzi in sequenza, non un fade unico: prima il punto che si accende
+   sull'asse con l'alone, poi il tratteggio che sale verso la scheda, poi la
+   scheda che si compone. La sequenza è tutta di ritardi CSS su .on — l'unica
+   cosa che fa il JS è dire quando l'evento ha passato il playhead. */
+.tl-ev{
+  position:absolute;top:0;height:100%;width:0;
+  left:calc(var(--lead) + var(--x) * var(--yw));
+  --cb:calc(18% + var(--lv,0) * 15%);       /* dove finisce la scheda, dall'alto */
+}
+.tl-dot{
+  position:absolute;left:0;top:54%;width:14px;height:14px;border-radius:50%;
+  background:var(--blue);translate:-50% -50%;scale:0;
+  box-shadow:0 0 0 0 rgba(23,79,254,0);
+  transition:scale .5s cubic-bezier(.16,1,.3,1),box-shadow .6s cubic-bezier(.16,1,.3,1);
+}
+.tl-ev.on .tl-dot{scale:1;box-shadow:0 0 0 9px rgba(23,79,254,.14)}
+/* cresce dal punto verso la scheda, quindi origine in basso */
+.tl-stem{
+  position:absolute;left:0;top:var(--cb);height:calc(54% - var(--cb));width:0;
+  border-left:1px dashed #BFCFFF;
+  transform:scaleY(0);transform-origin:bottom;
+  transition:transform .55s cubic-bezier(.16,1,.3,1) .1s;
+}
+.tl-ev.on .tl-stem{transform:scaleY(1)}
+/* Niente scatola bianca con l'ombra: in tutto il sito non c'è una sola ombra e
+   non c'è un solo riquadro pieno — ci sono filetti #BFCFFF e testo. Quindi
+   l'evento è testo appoggiato a un filetto, con lo stesso rapporto che le
+   etichette delle esperienze hanno con la loro barra: sopra il segno, allineate
+   a sinistra sul punto in cui la cosa è successa.
+   Ancorata a sinistra e non centrata sul punto: come le etichette delle barre,
+   e come tutto il resto della pagina. */
+.tl-card{
+  position:absolute;left:0;bottom:calc(100% - var(--cb));
+  width:max-content;max-width:36vh;padding-bottom:12px;
+  border-bottom:1px solid #BFCFFF;
+  opacity:0;transform:translateY(10px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1) .24s,transform .6s cubic-bezier(.16,1,.3,1) .24s;
+}
+.tl-ev.on .tl-card{opacity:1;transform:none}
+.tl-card em{
+  display:block;margin-bottom:6px;
+  font-family:var(--mono);font-style:normal;font-weight:500;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
+}
+.tl-card b{
+  display:block;font-family:var(--grotesk);font-weight:700;
+  font-size:19px;letter-spacing:-.38px;color:var(--ink);
+}
+.tl-card i{
+  display:block;margin-top:5px;font-style:normal;
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:13px;letter-spacing:-.26px;color:#554135;
+}
+
+/* ---------- le esperienze: barra sotto la linea (Zucchetti sopra) ----------
+   La barra si disegna fino al playhead: il periodo cresce mentre gli scorri
+   davanti, e la sua lunghezza È la sua durata. --top decide su che riga sta, ed
+   è l'unica cosa che cambia fra quelle sotto l'asse e quella sopra. */
+.tl-exp{
+  position:absolute;top:0;height:100%;
+  left:calc(var(--lead) + var(--x) * var(--yw));
+  width:calc(var(--w) * var(--yw));
+}
+/* il filetto che lega l'inizio del periodo all'asse: nel frame c'è per tutte.
+   min/max invece di due regole: l'unica differenza fra la barra sopra e quelle
+   sotto è da che parte dell'asse cade --top. */
+.tl-tick{
+  position:absolute;left:0;width:1px;background:#B2998C;opacity:.4;
+  top:min(54%,var(--top));height:calc(max(54%,var(--top)) - min(54%,var(--top)));
+}
+.tl-bar{
+  position:absolute;left:0;top:var(--top);width:100%;height:4px;border-radius:2px;
+  background:#B2998C;transform:scaleX(var(--d,0));transform-origin:left center;
+}
+/* il ruolo di oggi pesa di più: è l'unico che non ha una fine */
+.tl-exp.now .tl-bar{background:#554135}
+.tl-lab{
+  position:absolute;left:0;bottom:calc(100% - var(--top) + 14px);
+  opacity:0;transform:translateY(8px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
+}
+.tl-exp.on .tl-lab{opacity:1;transform:none}
+/* lo stage divide la riga con il ruolo che ne è nato: stessa altezza, barre
+   attaccate, e la sua etichetta passa SOTTO perché sopra c'è già quella di
+   Software Designer */
+.tl-exp.sub .tl-lab{top:calc(var(--top) + 14px);bottom:auto}
+.tl-lab em{
+  display:block;margin-bottom:5px;
+  font-family:var(--mono);font-style:normal;font-weight:500;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;color:#8C7B70;
+}
+.tl-lab b{
+  font-family:var(--grotesk);font-weight:700;font-size:19px;
+  letter-spacing:-.38px;color:var(--ink);white-space:nowrap;
+}
+/* il periodo a parole. Su desktop lo dice la posizione: qui serve a chi legge
+   con uno screen reader, e su mobile diventa visibile perché lì la traccia si
+   incolonna e la posizione non dice più niente. */
+.tl-when{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+/* ---------- tre piani, non uno ----------
+   Difetto (segnalato dall'utente): era tutto della stessa taglia e dello stesso
+   colore, quindi la sezione si leggeva come un elenco piatto. Le regole qui
+   sotto rifanno quelle di sopra e stanno in fondo apposta: vincono per ordine,
+   non alzando la specificità.
+   PRIMO PIANO — dove la storia va a finire e da dove è cominciata: il ruolo di
+   oggi e l'hackathon che l'ha innescato. Titolo grande, colore pieno, punto e
+   barra spessi, e soprattutto una LASTRA del colore del fondo sotto il testo:
+   niente ci passa dietro, nemmeno l'anno gigante, e questo è ciò che li stacca
+   davvero dal piano di sfondo — in un sito senza ombre è la profondità che si
+   può avere.
+   SECONDO PIANO — gli altri due hackathon e la laurea: stessa forma, taglia
+   normale, testo più chiaro.
+   TERZO PIANO — la fotografia: è il contesto da cui si viene, e nei documenti è
+   scritto di non darle più peso del ruolo attuale. Testo piccolo, filetto
+   sottile, colore smorzato. */
+
+/* terzo piano */
+.tl-lab em{color:#A08C80}
+.tl-lab b{font-size:16px;letter-spacing:-.32px;color:#8C7B70}
+.tl-bar{height:2px;background:#C9B8AE}
+
+/* lo stage: sta in mezzo, è il ponte fra i due. Le barre più spesse alzano il
+   `top` di quel che serve a tenere il CENTRO sulla riga: sono attaccate l'una
+   all'altra e con il bordo alto allineato il salto di spessore si vedrebbe
+   tutto da un lato. */
+.tl-exp.sub .tl-bar{height:4px;background:#B2998C;top:calc(var(--top) - 1px)}
+.tl-exp.sub .tl-lab em{color:#8C7B70}
+
+/* secondo piano: gli eventi normali */
+.tl-card b{font-size:20px;color:#554135}
+
+/* PRIMO PIANO */
+.tl-exp.now .tl-bar{height:6px;background:#554135;top:calc(var(--top) - 2px)}
+.tl-exp.now .tl-lab em{color:#554135}
+.tl-exp.now .tl-lab b{font-size:clamp(26px,2.4vw,34px);letter-spacing:-.68px;color:var(--ink)}
+.tl-ev.key .tl-card em{font-size:12px}
+.tl-ev.key .tl-card b{font-size:clamp(26px,2.4vw,34px);letter-spacing:-.68px;color:var(--ink)}
+.tl-ev.key .tl-dot{width:20px;height:20px}
+.tl-ev.key.on .tl-dot{box-shadow:0 0 0 14px rgba(23,79,254,.12)}
+/* la lastra. padding solo a destra e sotto: a sinistra il testo deve restare
+   incollato al punto della linea del tempo, che è il suo aggancio. */
+.tl-exp.now .tl-lab,.tl-ev.key .tl-card{background:var(--tlbg);padding-right:22px}
+.tl-ev.key .tl-card{border-bottom-width:2px}
+/* e vengono avanti entrando, non solo su: è il "pop" che li stacca dagli altri.
+   Le due regole di arrivo vanno ripetute qui, o quelle di sopra (stessa
+   specificità, ma scritte prima) perderebbero. */
+.tl-exp.now .tl-lab,.tl-ev.key .tl-card{transform-origin:left bottom}
+.tl-exp.now .tl-lab{transform:translateY(14px) scale(.96)}
+.tl-ev.key .tl-card{transform:translateY(18px) scale(.96)}
+.tl-exp.now.on .tl-lab,.tl-ev.key.on .tl-card{transform:none}
+
+/* il marcatore di oggi: la barra di Zucchetti finisce qui */
+.tl-now{
+  position:absolute;top:8%;height:84%;width:1px;
+  left:calc(var(--lead) + var(--x) * var(--yw));
+  /* il chiaro sta nel colore e non in `opacity`: la pillola e' figlia del
+     filetto, e un'opacita' qui se la porterebbe dietro slavata */
+  background:rgba(43,26,15,.28);
+}
+.tl-now b{
+  position:absolute;left:50%;top:-4px;translate:-50% -100%;
+  background:var(--ink);color:var(--cream);border-radius:999px;padding:5px 11px;
+  font-family:var(--mono);font-weight:500;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;
+}
+
 /* ---------- mobile: frame 805 ---------- */
 @media (max-width:640px){
   .scroller{height:500vh}      /* era 400: stesso rallentamento del desktop */
@@ -608,6 +915,36 @@ body::after{
   :is(.pd-lead,.pd-facts,.pd-stage,.pd-metric,.pd-metric-note,.pd-story,.pd-quote){grid-column:1}
   .pd-facts > div{grid-template-columns:1fr;gap:6px}
   .pd-shots{grid-template-columns:1fr;gap:20px}
+
+  /* ---------- la linea del tempo, incolonnata ----------
+     Al dito lo scroll orizzontale rubato è fastidioso, e a 390px una traccia da
+     otto anni non ci starebbe comunque. Stesso contenuto e stesso ordine del
+     DOM — che è cronologico apposta — su un filetto verticale. Niente pin,
+     niente traccia: qui il JS non tocca la sezione (vedi il ramo mq in
+     applyProjects), quindi lo stato finale deve stare tutto in queste regole. */
+  .tl-stage{position:static;height:auto;overflow:visible;padding:40px 0 80px}
+  .tl-track{position:static;width:auto;height:auto;transform:none;padding:0 24px}
+  .tl-grid,.tl-year,.tl-axis,.tl-now,.tl-stem,.tl-tick,.tl-bar{display:none}
+  .tl-mark{position:static;padding:0 24px 28px}
+  .tl-mark b{font-size:32px;letter-spacing:-.64px}
+  .tl-mark img{width:190px}
+  .tl-ev,.tl-exp{
+    position:relative;left:auto;top:auto;width:auto;height:auto;
+    padding:0 0 28px 20px;border-left:1px solid #BFCFFF;
+  }
+  .tl-dot{top:14px;scale:1}
+  .tl-card{
+    position:static;translate:none;transform:none;opacity:1;
+    width:auto;max-width:none;text-align:left;padding:16px 18px;
+  }
+  .tl-lab{position:static;opacity:1;transform:none}
+  .tl-lab b{white-space:normal}
+  /* qui la posizione non dice più il periodo: lo dice il testo */
+  .tl-when{
+    position:static;width:auto;height:auto;overflow:visible;clip-path:none;
+    margin-top:6px;font-family:var(--mono);font-weight:500;font-size:11px;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
+  }
   .pd-story{grid-template-columns:1fr}
   .pd-quote{padding-left:20px}
 }
@@ -628,6 +965,27 @@ body::after{
   .finale-claim{position:static;transform:none;width:auto}
   .finale-claim > span{opacity:1}
   /* la scheda si apre e basta: nessuna altezza da animare, nessun ingresso */
+
+  /* la linea del tempo senza nessun ciclo: la sezione torna nel flusso e la
+     traccia si scorre a mano, in orizzontale, come una tabella larga. Tutto ciò
+     che il JS avrebbe acceso (asse, barre, punti, schede) va consegnato già
+     acceso: qui nessuno scriverà mai --d né la classe .on.
+     L'altezza in pixel non gliela mette nessuno — measure() la salta in questo
+     ramo — quindi resta quella del contenuto. */
+  /* la sezione resta alta uno schermo e la traccia dentro di lei: le posizioni
+     sono tutte in percentuale dell'altezza dello stage, e con height:auto
+     andrebbero tutte a zero. Diventa solo una striscia che si scorre a mano.
+     position:relative e non static: la traccia e' assoluta, e senza un blocco
+     contenitore qui uscirebbe dallo stage e non ci sarebbe niente da scorrere. */
+  .tl-stage{position:relative;overflow-x:auto;overflow-y:hidden}
+  .tl-track{transform:none}
+  .tl-axis,.tl-bar{transform:scaleX(1)}
+  .tl-stem{transform:scaleY(1)}
+  .tl-dot{scale:1}
+  .tl-card,.tl-lab{opacity:1;transform:none}
+  /* impilati e senza nessuno che li accenda, gli otto anni si sommerebbero in
+     una macchia sola: qui lo sfondo non serve a niente e se ne va. */
+  .tl-year{display:none}
   .proj-detail{transition:none}
   .pd-in{opacity:1;transform:none;transition:none}
 }
@@ -950,6 +1308,115 @@ body::after{
   </p>
 </section>
 
+<!-- ---------- esperienze e riconoscimenti: la linea del tempo ----------
+     L'ordine del DOM è cronologico apposta: è anche l'ordine in cui la sezione
+     si legge su mobile, dove la traccia si incolonna, e quello che sente uno
+     screen reader. Le posizioni sono in ANNI DECIMALI dal 2019.0 (--x) e le
+     durate in anni (--w): la geometria la fa il CSS a partire da --yw, qui ci
+     sono solo le date. --lv è la riga della scheda (due livelli, per due
+     riconoscimenti troppo vicini in orizzontale), --top la riga della barra.
+     Smart&Hack: la scheda del frame Figma dice 2023, doc/05 dice 2022 (4ª
+     edizione) e vale quello. Il mese non è nei documenti: sta a fine 2022,
+     dov'è nel frame. -->
+<section class="timeline" id="timeline" aria-label="Esperienze e riconoscimenti">
+  <div class="tl-stage">
+    <!-- il tabellone dell'anno: sta nello stage e non nella traccia, quindi
+         resta fermo mentre tutto il resto scorre. Le cifre e le quattro
+         superfici di ogni modulo le costruisce il JS: sono sedici nodi
+         identici a meno del carattere, e il carattere lo scrive lui comunque. -->
+    <div class="tl-year" id="tlYear" aria-hidden="true"></div>
+
+    <div class="tl-mark"><b>esperienze e</b><img src="riconoscimenti.svg" alt="riconoscimenti"></div>
+    <div class="tl-track" id="tlTrack">
+
+      <i class="tl-grid" style="--x:0" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:1" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:2" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:3" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:4" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:5" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:6" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:7" aria-hidden="true"></i>
+      <i class="tl-grid" style="--x:8" aria-hidden="true"></i>
+
+      <i class="tl-axis" id="tlAxis" aria-hidden="true"></i>
+
+      <div class="tl-exp" style="--x:.75;--w:4;--top:85%">
+        <i class="tl-tick" aria-hidden="true"></i>
+        <i class="tl-bar" aria-hidden="true"></i>
+        <div class="tl-lab"><em>CUS Milano</em><b>Fotografia eventi e sportiva</b><p class="tl-when">ott 2019 &mdash; ott 2023</p></div>
+      </div>
+
+      <div class="tl-exp" style="--x:1.67;--w:3.08;--top:75.5%">
+        <i class="tl-tick" aria-hidden="true"></i>
+        <i class="tl-bar" aria-hidden="true"></i>
+        <div class="tl-lab"><em>Alpha Digital</em><b>Fotografia in studio e di moda</b><p class="tl-when">set 2020 &mdash; ott 2023</p></div>
+      </div>
+
+      <div class="tl-ev" style="--x:3.6;--lv:0">
+        <div class="tl-card">
+          <em>Vincitore hackathon 2022</em><b>Bug Squash</b>
+          <i>NOI Techpark summer edition</i>
+          <p class="tl-when">agosto 2022</p>
+        </div>
+        <i class="tl-stem" aria-hidden="true"></i>
+        <i class="tl-dot" aria-hidden="true"></i>
+      </div>
+
+      <div class="tl-exp" style="--x:3.67;--w:.83;--top:66%">
+        <i class="tl-tick" aria-hidden="true"></i>
+        <i class="tl-bar" aria-hidden="true"></i>
+        <div class="tl-lab"><em>Dilmos Milano</em><b>Fotografia d&rsquo;arte e di prodotto</b><p class="tl-when">set 2022 &mdash; lug 2023</p></div>
+      </div>
+
+      <div class="tl-ev key" style="--x:3.95;--lv:1">
+        <div class="tl-card">
+          <em>Vincitore hackathon 2022</em><b>Smart&amp;Hack</b>
+          <i>Milano &mdash; il premio &egrave; lo stage in Zucchetti</i>
+          <p class="tl-when">2022</p>
+        </div>
+        <i class="tl-stem" aria-hidden="true"></i>
+        <i class="tl-dot" aria-hidden="true"></i>
+      </div>
+
+      <div class="tl-exp sub" style="--x:4.17;--w:.58;--top:44%">
+        <i class="tl-tick" aria-hidden="true"></i>
+        <i class="tl-bar" aria-hidden="true"></i>
+        <div class="tl-lab"><em>stage in Zucchetti</em><p class="tl-when">mar 2023 &mdash; set 2023</p></div>
+      </div>
+
+      <div class="tl-exp now" style="--x:4.75;--w:2.91;--top:44%">
+        <i class="tl-tick" aria-hidden="true"></i>
+        <i class="tl-bar" aria-hidden="true"></i>
+        <div class="tl-lab"><em>Zucchetti</em><b>Software Designer</b><p class="tl-when">ott 2023 &mdash; oggi</p></div>
+      </div>
+
+      <div class="tl-ev" style="--x:5.6;--lv:0">
+        <div class="tl-card">
+          <em>Vincitore hackathon 2024</em><b>TracerTag</b>
+          <i>NOI Techpark summer edition</i>
+          <p class="tl-when">agosto 2024</p>
+        </div>
+        <i class="tl-stem" aria-hidden="true"></i>
+        <i class="tl-dot" aria-hidden="true"></i>
+      </div>
+
+      <div class="tl-ev" style="--x:6.25;--lv:1">
+        <div class="tl-card">
+          <em>Laurea &middot; aprile 2025</em><b>Informatica per la Comunicazione Digitale</b>
+          <i>Universit&agrave; degli Studi di Milano &middot; 94/110</i>
+          <p class="tl-when">aprile 2025</p>
+        </div>
+        <i class="tl-stem" aria-hidden="true"></i>
+        <i class="tl-dot" aria-hidden="true"></i>
+      </div>
+
+      <i class="tl-now" style="--x:7.66" aria-hidden="true"><b>oggi</b></i>
+    </div>
+  </div>
+</section>
+
+
 <!-- il marchio della sezione. La stellina qui dentro è ferma e serve solo a
      reduced-motion: negli altri casi il JS la nasconde e ci fa atterrare
      quella del 809, che attraversa il campo girando su sé stessa. Il titolo
@@ -1044,6 +1511,72 @@ const projMark = document.getElementById('projMark');
 const markStar = document.getElementById('markStar');
 const finale = document.getElementById('finale');
 const finParts = [...document.querySelectorAll('.finale-claim > span')];
+const finaleClaim = document.getElementById('finaleClaim');
+const timeline = document.getElementById('timeline');
+const tlTrack  = document.getElementById('tlTrack');
+const tlAxis   = document.getElementById('tlAxis');
+/* le righe del reticolo sono i confini d'anno: da loro vengono la larghezza di
+   una colonna e l'anno in cui si e' */
+const tlGrids  = [...document.querySelectorAll('.tl-grid')];
+
+/* ---------- il tabellone dell'anno ----------
+   Quattro moduli, ognuno con le quattro superfici del meccanismo. Costruito qui
+   invece che nel markup perche' sono sedici nodi uguali a meno del carattere.
+   Il viewBox e il textLength sono quelli di una cifra sola: 60 unita' su 240,
+   cioe' un quarto della larghezza, come quando l'anno era un testo solo. */
+const tlYearEl = document.getElementById('tlYear');
+const TL_Y0 = 2019;                       // il primo anno del reticolo
+const TL_FLIP = 500;                      // deve coprire le due animazioni del CSS
+const tlSurf = ['s-top', 's-bot', 'l-top', 'l-bot'].map(c =>
+  `<span class="d ${c}"><svg viewBox="0 15 60 70" preserveAspectRatio="none">` +
+  `<text x="30" y="85" text-anchor="middle" textLength="60" ` +
+  `lengthAdjust="spacingAndGlyphs"></text></svg></span>`).join('');
+tlYearEl.innerHTML = `<span class="tl-dgt">${tlSurf}</span>`.repeat(4);
+const tlDgts = [...tlYearEl.children].map(el => ({
+  el,
+  top: el.querySelector('.s-top text'), bot: el.querySelector('.s-bot text'),
+  lt:  el.querySelector('.l-top text'), lb:  el.querySelector('.l-bot text')
+}));
+let tlYi = -1;
+
+/* Scrive l'anno sul tabellone. Gira solo la cifra che cambia davvero: fra due
+   anni consecutivi sono una o due, e le altre non si muovono — come sul
+   tabellone vero, dove ogni modulo e' indipendente.
+   Il timer sta SULL'ELEMENTO e non in una variabile sola: scorrendo veloce due
+   giri possono accavallarsi, e una variabile sola perderebbe quello partito
+   prima (stessa ragione del timer delle schede progetto). Il carattere finale
+   lo rilegge da `now` al momento di scriverlo, cosi' un giro interrotto non
+   riporta a schermo un valore vecchio.
+   `animate` falso al primo colpo: il tabellone non deve girare per scrivere
+   l'anno da cui parte. */
+function tlSetYear(str, animate){
+  tlDgts.forEach((d, i) => {
+    const c = str[i];
+    if (d.now === c) return;
+    const from = d.now;
+    d.now = c;
+    d.top.textContent = c;                     // la meta' alta nuova, sotto la foglia
+    d.lb.textContent  = c;                     // la meta' bassa nuova, che arrivera'
+    if (!animate || from === undefined){
+      d.bot.textContent = c; d.lt.textContent = c;
+      return;
+    }
+    d.lt.textContent = from;                   // la foglia che cade porta la vecchia
+    /* il reflow forzato fa ripartire l'animazione anche se la classe c'era
+       gia': senza, un secondo giro sullo stesso modulo non partirebbe */
+    d.el.classList.remove('flip'); void d.el.offsetWidth; d.el.classList.add('flip');
+    clearTimeout(d.t);
+    d.t = setTimeout(() => {
+      d.bot.textContent = d.now; d.lt.textContent = d.now;
+      d.el.classList.remove('flip');
+    }, TL_FLIP);
+  });
+}
+const tlEvs    = [...document.querySelectorAll('.tl-ev')];
+/* la barra sta dentro la sua esperienza: presa una volta qui, non a ogni frame */
+const tlExps   = [...document.querySelectorAll('.tl-exp')].map(el =>
+  ({el, bar:el.querySelector('.tl-bar'), lab:el.querySelector('.tl-lab')}));
+
 /* le unità della comparsa "dalla polvere": una frase del claim, e i due pezzi
    del titolo della sezione ("progetti" + "selezionati" vettorializzato) */
 const claimSpans = [...claim.querySelectorAll('span')];
@@ -1115,6 +1648,33 @@ const FIN_W  = 837.478 / 900;
 const FIN_RY = Math.acos(345.435 / 837.478) * 180 / Math.PI;    // 65.64°
 const FIN_TURNS = 1;                      // giri interi del viaggio, sui tre assi
 const FIN_RUN = mq.matches ? 1 : 2.8;     // schermi di corsa: deve stare dentro .finale
+
+/* ---------- esperienze e riconoscimenti (la linea del tempo, dopo il 813) ----------
+   Lo scroll verticale diventa orizzontale. Il pin lo fa position:sticky nel CSS
+   (nativo, niente libreria); qui c'è solo la traslazione della traccia, e viene
+   dallo stesso `over` di stellina, nastro e righe progetto — un inseguitore
+   solo per tutta la pagina, quindi la stessa inerzia dappertutto.
+   TL_PLAY è il PLAYHEAD: la linea verticale invisibile a cui le cose si
+   accendono e le barre si disegnano. Vale quanto --lead nel CSS e i due si
+   cambiano insieme (vedi il commento della sezione nel CSS): è quello che fa
+   cadere l'origine del 2019 esattamente sul playhead a corsa zero.
+   TL_RATE è l'unica manopola del ritmo: pixel di scroll verticale per pixel di
+   traccia. A 1 sarebbe "un dito di rotella, un dito di linea del tempo"; a 2 un
+   anno dura quasi uno schermo di scroll, che è la velocità a cui l'utente ha
+   detto che le date si leggono.
+   L'altezza della sezione non è in vh da nessuna parte: la calcola measure()
+   dalla larghezza vera della traccia, così toccare --yw non chiede di ritarare
+   niente qui. */
+const TL_PLAY = .62;
+const TL_RATE = 2;
+const TL_OUT  = .6;     // schermi di pin fermo dopo che la traccia ha finito
+const TL_LAND = 1.2;    // schermi PRIMA del pin in cui la stella scende sull'asse
+const TL_AXIS = .54;    // altezza dell'asse: deve valere quanto il `top` di .tl-axis
+const TL_DOT  = 26;     // il lato della stella una volta posata, in px
+let tl0 = 0, tlRun = 1, tlTravel = 1, tlLeadPx = 0, tlAxisW = 1, tlYw = 1;
+let tlWas = false, tlFo = '';
+const tlEvX = [], tlExpX = [], tlExpW = [], tlLabW = [];
+
 const FIN_DPS = 24;                       // gradi al secondo del giro automatico
 let fin0 = Infinity;      // `over` a cui comincia l'atto 3, lo misura measure()
 let finSpin = 0, finLast = 0;
@@ -1273,6 +1833,28 @@ function measure(){
      tocca quello del viewport. Letto dal DOM, non tarato — aggiungendo righe
      ai progetti si sposta da sé. */
   fin0 = finale.offsetTop - (scroller.offsetHeight - innerHeight);
+  /* la corsa della linea del tempo. La traccia è larga quel che è larga, e la
+     sezione le dà esattamente i pixel di scroll che servono a farla passare
+     tutta, più TL_OUT di pin fermo alla fine — che è anche il margine in cui
+     l'inseguitore finisce di arrivare prima che lo sticky si sganci.
+     Su mobile e in reduced-motion la sezione è incolonnata e nel flusso: non
+     c'è nessuna corsa da darle, l'altezza resta quella del contenuto. */
+  tlTravel = Math.max(1, tlTrack.offsetWidth - innerWidth);
+  tlRun = tlTravel * TL_RATE;
+  if (!mq.matches && !reduce) timeline.style.height = Math.round(tlRun + innerHeight * (1 + TL_OUT)) + 'px';
+  tl0 = timeline.offsetTop - (scroller.offsetHeight - innerHeight);
+  /* le posizioni sulla traccia, lette una volta sola: offsetLeft non risente
+     della transform, quindi resta buono a ogni frame — basta sommargli la
+     traslazione, e non serve leggere il DOM mentre la scena si muove. */
+  tlLeadPx = tlAxis.offsetLeft;
+  tlAxisW  = tlAxis.offsetWidth || 1;
+  tlYw = (tlGrids[1].offsetLeft - tlGrids[0].offsetLeft) || 1;   // un anno, in px
+  tlEvs.forEach((el, i) => tlEvX[i] = el.offsetLeft);
+  tlExps.forEach((it, i) => {
+    tlExpX[i] = it.el.offsetLeft; tlExpW[i] = it.el.offsetWidth || 1;
+    tlLabW[i] = it.lab.offsetWidth;
+  });
+
   /* il contorno del marchio vive nel viewBox 541 riscalato al lato reale:
      stessa correzione di --sw, così resta 1.4px a schermo a ogni viewport */
   markStar.style.strokeWidth = (1.4 * 541 / (projMark.offsetWidth || 1)).toFixed(3);
@@ -1687,6 +2269,93 @@ function applyProjects(){
     let act = -1;
     projRows.forEach((el, i) => { if (el.getBoundingClientRect().top <= mid) act = i; });
     projRows.forEach((el, i) => el.classList.toggle('on', i === act));
+  }
+
+  /* ---------- la linea del tempo: la traccia scorre in orizzontale ----------
+     La frase del 813 lascia il campo prima che la sezione entri: è fixed, e
+     senza questo resterebbe stampata sopra la linea del tempo per tutta la sua
+     corsa. Sta PRIMA del guardiano qui sotto perché deve poter tornare a 1
+     anche risalendo, quando il resto del blocco non scrive più niente. */
+  const fo = (1 - seg(over, tl0 - innerHeight * 1.4, tl0 - innerHeight * .3)).toFixed(3);
+  if (fo !== tlFo){ finaleClaim.style.setProperty('--fo', fo); tlFo = fo; }
+
+  const tlp = (over - tl0) / tlRun;
+  /* fuori campo non c'è niente da riscrivere: per tutta la sezione progetti
+     questo blocco costerebbe una ventina di scritture di stile per frame, tutte
+     con gli stessi valori. Un frame OLTRE il confine si scrive comunque, così
+     ciò che resta è lo stato del confine e non uno a caso.
+     Su mobile la traccia è incolonnata e non la guida nessuno: lo stato lì è
+     tutto nel @media, e toccarla da qui la romperebbe. */
+  const tlLive = tlp > -.45 && !mq.matches;
+  if (!tlLive){ if (!tlWas) return; tlWas = false; } else tlWas = true;
+
+  const tp = clamp(tlp), tx = -tp * tlTravel;
+  const play = innerWidth * TL_PLAY;
+  tlTrack.style.transform = `translateX(${tx.toFixed(1)}px)`;
+
+  /* l'asse si traccia da sinistra fino al playhead: quel che si vede è la parte
+     già passata, come il nastro dell'atto 2 */
+  tlAxis.style.setProperty('--d', clamp((play - (tlLeadPx + tx)) / tlAxisW).toFixed(4));
+
+  /* L'ANNO. Quello scritto sul tabellone è quello della colonna sotto il
+     playhead: si cambia sul confine, non sfumando — è un tabellone, scatta.
+     Il tabellone nel suo insieme si accende nel primo tratto della corsa,
+     mentre la stella si è appena posata e l'asse comincia. */
+  tlYearEl.style.opacity = seg(tlp, 0, .06).toFixed(3);
+  const yi = clamp(Math.floor((play - tx - tlGrids[0].offsetLeft) / tlYw),
+                   0, tlGrids.length - 2);
+  if (yi !== tlYi){ tlSetYear(String(TL_Y0 + yi), tlYi >= 0 && !reduce); tlYi = yi; }
+
+  /* le barre crescono fino al playhead: la lunghezza che si vede è il tempo già
+     passato. Label e schede invece le accende la classe, e la sequenza (punto,
+     filetto, scheda) è fatta di ritardi CSS: qui si dice solo QUANDO. */
+  tlExps.forEach((it, i) => {
+    const x = tlExpX[i] + tx;
+    it.bar.style.setProperty('--d', clamp((play - x) / tlExpW[i]).toFixed(4));
+    it.el.classList.toggle('on', x < play);
+    /* il nome resta dentro la sua barra: quando l'inizio del periodo e' gia'
+       uscito dal bordo, scivola avanti invece di andarsene con lui. Senza,
+       l'ultimo fotogramma della sezione sarebbe la barra di Zucchetti — la piu'
+       lunga e la piu' importante — senza il nome accanto.
+       Sulla proprieta' `translate` e non su `transform`: quella e' occupata
+       dall'ingresso in CSS, e le due si compongono senza pestarsi. */
+    it.lab.style.translate =
+      clamp(24 - x, 0, Math.max(0, tlExpW[i] - tlLabW[i])).toFixed(1) + 'px';
+  });
+  tlEvs.forEach((el, i) => el.classList.toggle('on', tlEvX[i] + tx < play));
+
+  /* LA STELLA SI POSA SULL'ASSE (richiesta dell'utente): diventa il primo punto
+     del 2019. --lead vale quanto TL_PLAY, quindi a corsa zero l'origine cade
+     esattamente sul playhead ed è lì che atterra, dove l'asse comincia a
+     crescere. Da lì in poi la sua x È quella dell'origine: viaggia con la
+     traccia e se ne va dal bordo sinistro insieme a lei, senza bisogno di
+     nasconderla.
+     I due giri residui dell'atto 3 si sbrogliano moltiplicati per (1-e), così
+     arriva piatta come i punti che vengono dopo; e il pieno torna, perché nel
+     813 la stella era a contorno e qui deve leggersi come un punto.
+     Scritto dopo il blocco dell'atto 3, che ha appena riscritto la posa: come
+     sempre in questa funzione, l'ultimo a scrivere vince. */
+  const e = inOut(clamp((over - tl0 + innerHeight * TL_LAND) / (innerHeight * TL_LAND)));
+  if (e > 0){
+    const cx = innerWidth / 2, cy = innerHeight / 2, w0 = innerHeight * FIN_W;
+    /* la discesa finisce esattamente quando comincia il pin, e fino a quel
+       momento la sezione sta ancora salendo: il punto d'arrivo sale con lei e
+       la stella ci scende sopra. Fatta tutta DOPO il pin sarebbe stata solo un
+       rimpicciolimento sul posto — il centro dello schermo e l'origine della
+       traccia distano meno di duecento pixel. */
+    const top = Math.max(0, tl0 - over);
+    const x = cx + (tlLeadPx + tx - cx) * e;
+    const y = cy + (top + innerHeight * TL_AXIS - cy) * e;
+    const w = w0 + (TL_DOT - w0) * e, un = 1 - e;
+    star.style.transform =
+      `translate(${(x - starBox / 2).toFixed(1)}px, ${(y - starBox / 2).toFixed(1)}px)` +
+      ` rotate(${(MARK_END + FIN_TURNS * 360 + 360 * e).toFixed(1)}deg)` +
+      ` rotateY(${((FIN_TURNS * 360 + FIN_RY + finSpin % 360) * un).toFixed(1)}deg)` +
+      ` rotateX(${(FIN_TURNS * 360 * un).toFixed(1)}deg)` +
+      ` scale(${(w / starBox).toFixed(4)})`;
+    star.style.setProperty('--sw', (1.6 * 541 / w).toFixed(4));
+    star.style.setProperty('--sf', e.toFixed(3));
+    star.style.setProperty('--ss', un.toFixed(3));
   }
 }
 
