@@ -69,11 +69,17 @@ L'etichetta professionale è **Software Designer** ovunque.
 ott 2023 – Presente · A tempo pieno · Lodi (Lombardia), in sede
 Progettazione dell'esperienza digitale e della soluzione UI/UX; sviluppo
 front-end come supporto alla realizzazione del design.
+Preceduto dallo **stage** in Zucchetti (mar 2023 – set 2023), vinto come premio
+di Smart&Hack Milano (vedi `05`, sez. 2) e chiuso con l'assunzione.
+
+> **Da confermare:** i mesi dello stage. Sono quelli usati nella linea del tempo
+> del sito, ma non risultano da nessun documento: se le date vere sono altre,
+> vanno corrette qui e nella riga `.tl-exp.sub` di `index.html`.
 
 **Fotografia (freelance), 2019–2023**
 - Dilmos Milano — set 2022 – lug 2023 · Milano · fotografia d'arte e di prodotto
-- Alpha Digital — set 2020 – lug 2023 · Milano · fotografia in studio e di moda
-- CUS Milano — ott 2019 – lug 2023 · Milano · fotografia per eventi e sportiva
+- Alpha Digital — set 2020 – ott 2023 · Milano · fotografia in studio e di moda
+- CUS Milano — ott 2019 – ott 2023 · Milano · fotografia per eventi e sportiva
   (eventi e attività per CUS Milano e CUS La Statale)
 
 > **Come presentarla:** elenca i tre incarichi per esteso solo dove c'è spazio
