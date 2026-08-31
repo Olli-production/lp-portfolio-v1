@@ -17,6 +17,10 @@
   --grotesk:"Space Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
   --sans:"DM Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;  /* i tag dei progetti */
+  /* la carta piu' chiara della seconda meta' del sito: la usano la linea del
+     tempo, le tessere del tabellone e le sezioni che seguono la curva. Stava su
+     .timeline finche' a servirsene era una sezione sola. */
+  --tlbg:#FFFEF8;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 /* la carta anche sul body: la sezione progetti sta fuori da .sticky e senza
@@ -232,10 +236,17 @@ body::after{
    Non è un caso da risolvere allargando il viewBox: quello è anche la scala
    del disegno, e allargarlo rimpicciolirebbe tutto il nastro. */
 .ribbon svg{display:block;width:100%;height:100%;overflow:visible}
-/* la barra in alto compare nell'atto 2 (808): il vetro dietro l'header */
+/* la barra in alto compare nell'atto 2 (808). NIENTE PIU' VETRO (richiesta
+   dell'utente): erano un fondo bianco all'1% piu' backdrop-filter:blur(5px), e
+   il fondo esisteva solo per dare al blur qualcosa da sfocare — tolto uno,
+   l'altro non serviva piu'. Resta un rettangolo vuoto: l'header sta ora
+   direttamente sopra il contenuto che gli scorre sotto.
+   L'elemento e le tre scritture di opacita' del JS restano apposta. Se la
+   leggibilita' non regge, questo e' il posto dove rimettere un velo — un
+   `background` pieno chiaro, non sfocato — e costa una riga. */
 .topbar{
   position:fixed;left:0;top:0;width:100%;height:80px;z-index:4;opacity:0;
-  background:rgba(255,255,255,.01);backdrop-filter:blur(5px);pointer-events:none;
+  pointer-events:none;
 }
 /* il marchio nell'header: stesso disegno dell'intro, rimontato con <use>.
    Niente opacità propria: entra insieme al nome, con tutto il blocco .id */
@@ -332,14 +343,19 @@ body::after{
   font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
   font-size:18px;line-height:1.5;letter-spacing:-.36px;color:#484848;
 }
-.proj-tags{list-style:none;display:flex;flex-wrap:wrap;gap:8px}
-.proj-tags li{
+/* le pillole dei tag. Le usano i progetti E le competenze: una definizione
+   sola, o al primo ritocco le due sarebbero andate fuori registro. A cambiare
+   e' solo chi accende il bordo — li' la riga accesa, qui il movimento
+   arrivato sulla riga di lettura. */
+:is(.proj-tags,.sk-tags){list-style:none;display:flex;flex-wrap:wrap;gap:8px}
+:is(.proj-tags,.sk-tags) li{
   font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:-.12px;
   color:#554135;padding:6px 10px;border-radius:999px;
   border:1px solid transparent;                       /* il bordo compare con la riga */
   transition:border-color .5s cubic-bezier(.16,1,.3,1);
 }
-:is(.proj.on,.proj.open,.proj:hover) .proj-tags li{border-color:#BFCFFF}
+:is(.proj.on,.proj.open,.proj:hover) .proj-tags li,
+.mv.on .sk-tags li{border-color:#BFCFFF}
 .proj-year{
   font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
   font-size:14px;letter-spacing:-.28px;color:#554135;
@@ -578,15 +594,18 @@ body::after{
    piena come ci si aspetta. */
 .timeline{
   position:relative;z-index:3;
-  /* --tlbg lo usano anche le tessere del tabellone, che devono essere opache
-     del colore del fondo: un solo posto da cambiare */
-  --tlbg:#FFFEF8;
   background:linear-gradient(transparent 0, var(--tlbg) 34vh);
 }
 /* overflow:hidden non è cosmetico: la traccia è larga qualche migliaio di pixel
    e senza darebbe una barra di scorrimento orizzontale a tutta la pagina */
 .tl-stage{position:sticky;top:0;height:100svh;overflow:hidden}
 .tl-track{
+  /* --tail e' un VALORE DI PARTENZA, non la manopola: measure() lo riscrive in
+     pixel a ogni resize, perche' e' la coda a decidere dove la barra di oggi
+     finisce a corsa terminata e quel punto deve cadere sul playhead, dove
+     comincia la curva. Cambiarlo qui non sposta niente sul desktop — si cambia
+     nel conto in measure(). Serve ancora ai rami mobile e reduced-motion, dove
+     quel conto non gira. */
   --lead:62vw;--yw:46vh;--tail:70vh;
   position:absolute;left:0;top:0;z-index:2;height:100%;
   width:calc(var(--lead) + 8 * var(--yw) + var(--tail));
@@ -742,9 +761,10 @@ body::after{
    lo puo' permettere e' che NON e' pieno: il fondo e' semitrasparente, la
    sfocatura fa il resto, e il numero dietro continua a leggersi. Con un colore
    secco tornerebbe la lastra bianca che l'utente ha chiesto di togliere.
-   `backdrop-filter` e' gia' in uso nel sito (il vetro della topbar), quindi non
-   e' una tecnica nuova; qui la scheda sta dentro .tl-track, che ha una
-   transform, e la sfocatura pesca comunque il fondo dello stage.
+   Da quando il vetro della topbar e' stato tolto questo e' l'UNICO
+   backdrop-filter del sito; la scheda sta dentro .tl-track, che ha una
+   transform, e la sfocatura pesca comunque il fondo dello stage (verificato con
+   un A/B che accende e spegne il filtro).
    Ancorata a sinistra e non centrata sul punto: come le etichette delle barre,
    e come tutto il resto della pagina. Il filetto tratteggiato che sale dal
    punto arriva ora sul BORDO SINISTRO del pannello, non piu' sotto al testo.
@@ -962,24 +982,186 @@ body::after{
 .tl-ev.key .tl-card{transform:translateY(18px) scale(.96)}
 .tl-exp.now.on .tl-lab,.tl-ev.key.on .tl-card{transform:none}
 
-/* il marcatore di oggi: la barra di Zucchetti finisce qui. Come i filetti
-   delle esperienze non c'e' finche' non ci si arriva: era l'ultima riga
-   verticale a restare disegnata in anticipo. La classe la mette il JS, con lo
-   stesso confronto col playhead di tutto il resto. */
-.tl-now{
-  position:absolute;top:8%;height:84%;width:1px;
-  left:calc(var(--lead) + var(--x) * var(--yw));
-  opacity:0;transition:opacity .5s cubic-bezier(.16,1,.3,1);
-  /* il chiaro sta nel colore e non in `opacity`: la pillola e' figlia del
-     filetto, e un'opacita' qui se la porterebbe dietro slavata */
-  background:rgba(43,26,15,.28);
+/* IL GOMITO: LA BARRA DI OGGI GIRA DI 90 GRADI E SCENDE (richiesta
+   dell'utente). Al posto del marcatore «oggi» — un filetto verticale con una
+   pillola, che diceva a parole quel che adesso dice la linea — la barra di
+   «Software Designer» non finisce: curva e diventa la guida verticale delle
+   sezioni che seguono. E' il punto in cui lo scroll torna verticale.
+   STA NELLO STAGE, NON NELLA TRACCIA: la traccia trasla, e il gomito deve
+   restare fermo dove la barra ha smesso di correre.
+   Il tracciato lo scrive measure() in pixel: il punto di partenza e' una MISURA
+   (la fine vera della barra, letta dal DOM) e non un numero, e il raggio scala
+   con l'altezza. Si disegna con stroke-dashoffset — il modo in cui in questo
+   sito si disegna una linea, come il nastro dell'atto 2 e il contorno del logo.
+   Spessore e colore sono quelli della barra: dev'essere LA STESSA linea, non
+   una che le somiglia. La coda arriva esattamente al fondo dello stage, che e'
+   anche il bordo alto di .after: li' la guida riprende, e la giuntura non si
+   vede perche' i due pezzi hanno la stessa x e lo stesso tratto. */
+.tl-elbow{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visible}
+.tl-elbow path{
+  fill:none;stroke:#554135;stroke-width:4;
+  stroke-linecap:round;stroke-linejoin:round;
 }
-.tl-now.on{opacity:1}
-.tl-now b{
-  position:absolute;left:50%;top:-4px;translate:-50% -100%;
-  background:var(--ink);color:var(--cream);border-radius:999px;padding:5px 11px;
-  font-family:var(--mono);font-weight:500;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;
+
+/* ---------- dopo la curva: chi sono, cosa so fare, come guardo ----------
+   Tre movimenti appesi alla stessa guida verticale, che e' la barra di oggi
+   dopo il gomito. BLOCCO NEL FLUSSO: niente pin, niente corsa orizzontale,
+   niente transform sulla sezione — lo scroll e' tornato quello del browser, ed
+   e' esattamente il punto della richiesta.
+
+   --spine e' la x della guida, e la scrive measure() in pixel: e' il punto in
+   cui la curva atterra, quindi non puo' essere un numero deciso qui — deve
+   ESSERE quello. Il 30vw qui sotto e' solo il valore di partenza e quello dei
+   rami senza corsa; il numero vero e' AF_SPINE nel JS, che dice alla coda della
+   traccia dove far finire la barra.
+   PERCHE' IL 30 E NON IL 62 DEL PLAYHEAD: la prima versione metteva la guida
+   sul playhead, dove la barra gia' finiva, e non serviva allungare niente. Ma
+   alla guida resta a destra il 38% dello schermo, e li' c'e' solo una
+   micro-etichetta di tre parole: due terzi di pagina vuoti che si leggono come
+   un errore, non come aria. Cosi' invece la colonna stretta e' quella
+   dell'etichetta — allineata a destra, contro la guida, come .proj-mark-label e
+   .tl-mark fanno gia' — e la lettura ha i due terzi larghi. E' anche l'ordine
+   giusto: prima l'etichetta che dice dove sei, poi il testo.
+   Il prezzo e' che la barra deve correre piu' a lungo per arrivare al 30%,
+   quindi la coda si allunga e negli ultimi metri la scena resta con la sola
+   linea di oggi. Va bene cosi': e' il momento in cui il passato e' passato.
+
+   Il fondo e' pieno e non sfumato: la sfumatura serve a .timeline perche' ci si
+   arriva scorrendo sopra la carta scura, qui sopra c'e' gia' la stessa carta. */
+.after{
+  --spine:30vw;
+  position:relative;z-index:3;background:var(--tlbg);
+  /* il fondo della pagina e' occupato dalla barra fissa dei social: senza
+     questo l'ultima riga ci finisce sotto */
+  padding-bottom:calc(80px + 20vh);
+}
+/* LA GUIDA. Stesso spessore e stesso colore della barra e del gomito: e' la
+   stessa linea, e va letta come tale. margin-left:-2px la centra sulla x, come
+   il tratto del gomito e' centrato sul suo tracciato.
+   L'altezza NON e' 100%: la scrive measure(), che sa dove cade il centro della
+   stellina di chiusura. La linea deve MORIRE SULLA MAIL — se arrivasse in fondo
+   alla sezione proseguirebbe in un vuoto che non dice niente.
+   Si disegna scendendo con scaleY, e il JS la tiene sempre un filo piu' in
+   basso della riga di lettura: deve accompagnare, non inseguire. */
+.after-rail{
+  position:absolute;left:var(--spine);top:0;height:var(--railH,0px);width:4px;
+  margin-left:-2px;background:#554135;border-radius:2px;
+  transform:scaleY(var(--d,0));transform-origin:center top;
+}
+/* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
+   confine fra le due colonne della griglia E' la guida: non c'e' un secondo
+   numero da tenere allineato. */
+.mv{
+  position:relative;display:grid;grid-template-columns:var(--spine) 1fr;
+  align-items:start;padding-top:24vh;
+}
+.mv-body{padding:0 10vw 0 2.6vw}
+/* il filetto che aggancia il movimento alla guida: cresce dalla guida verso
+   l'etichetta quando il movimento arriva sulla riga di lettura. Stesso gesto e
+   stessa curva dei filetti delle esperienze (.tl-tick). */
+.mv::before{
+  content:"";position:absolute;left:var(--spine);top:calc(24vh + .62em);
+  width:2.6vw;height:1px;background:#B2998C;
+  transform:scaleX(0);transform-origin:left center;
+  transition:transform .55s cubic-bezier(.16,1,.3,1);
+}
+.mv.on::before{transform:scaleX(1)}
+/* l'etichetta e' appoggiata alla guida da sinistra, allineata a destra: e' lo
+   stesso gesto del marchio dei progetti e di quello della linea del tempo, che
+   si allineano al bordo del loro ancoraggio invece che a un margine.
+   E' un <h2> e non un <p>: dentro il movimento delle competenze ci sono <h3>, e
+   senza un livello sopra la pagina avrebbe un salto nella scaletta dei titoli.
+   Che sia piccola non c'entra — il peso lo decide la composizione, la gerarchia
+   del documento la decide il markup. */
+.mv-tag{
+  justify-self:end;text-align:right;padding-right:2.6vw;
+  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--blue);
+}
+/* l'ingresso: opacita' e otto pixel, la stessa coppia di .tl-card e .tl-lab.
+   Scalettato per figli — e' la sequenza di ritardi CSS su .on che la sezione
+   precedente usa per i suoi eventi, cosi' qui non c'e' NIENTE da scrivere a
+   ogni frame: il ciclo dice solo quando, il resto lo fa il CSS. */
+.mv-tag,.mv-body > *{
+  opacity:0;transform:translateY(8px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
+}
+.mv.on .mv-tag,.mv.on .mv-body > *{opacity:1;transform:none}
+.mv.on .mv-body > :nth-child(2){transition-delay:.08s}
+.mv.on .mv-body > :nth-child(3){transition-delay:.16s}
+.mv.on .mv-body > :nth-child(4){transition-delay:.24s}
+.mv.on .mv-body > :nth-child(5){transition-delay:.32s}
+
+/* la bio. Stessa scala del lead di un progetto (.pd-lead), un gradino piu'
+   grande: qui non e' un sottotitolo, e' il testo. */
+.mv-lead{
+  font-family:var(--sans);font-variation-settings:"opsz" 40;font-weight:300;
+  font-size:clamp(20px,2.05vw,33px);line-height:1.42;letter-spacing:-.5px;
+  color:#484848;max-width:40ch;
+}
+.mv-lead + .mv-lead{margin-top:1.1em}
+/* l'unica enfasi, e non e' decorativa: e' la tesi della pagina. Stesso corsivo
+   blu del finale (.finale-claim i). */
+.mv-lead i{font-style:italic;color:var(--blue)}
+
+/* LE COMPETENZE. La gerarchia E' l'argomento: il documento chiede di mettere in
+   evidenza la progettazione e di tenere i linguaggi di back-end come profondita'
+   tecnica, senza far prevalere lo sviluppo sul ruolo. Quindi l'ordine del
+   documento resta e a dire il peso e' la taglia: --k moltiplica la sola misura
+   del titolo, cosi' c'e' un numero per riga e nessuna riga sparisce.
+   Filetto sopra, e sotto solo all'ultima: e' la stessa costruzione di .pd-facts
+   e di .proj-list — un elenco di righe separate da un capello, non schede. */
+.sk{padding:20px 0;border-top:1px solid #BFCFFF}
+.sk:last-child{border-bottom:1px solid #BFCFFF}
+.sk h3{
+  font-family:var(--grotesk);font-weight:700;color:#554135;
+  font-size:calc(var(--k,1) * clamp(22px,2.6vw,44px));
+  line-height:1.05;letter-spacing:-.02em;margin-bottom:.5em;
+}
+/* LO SGUARDO. Il documento tiene questi due solo perche' spiegano come si
+   pensa: quindi l'hobby e' la micro-etichetta e a essere grande e' cio' che
+   insegna. Stessa scala della citazione di un progetto (.pd-quote p). */
+.lens{padding:20px 0;border-top:1px solid #BFCFFF}
+.lens:last-child{border-bottom:1px solid #BFCFFF}
+.lens em{
+  display:block;margin-bottom:10px;
+  font-family:var(--mono);font-style:normal;font-weight:500;font-size:12px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
+}
+.lens p{
+  font-family:var(--grotesk);font-weight:500;
+  font-size:clamp(19px,1.85vw,29px);line-height:1.28;letter-spacing:-.5px;
+  color:#554135;max-width:42ch;
+}
+
+/* LA CHIUSURA. La linea della carriera finisce sulla stellina del marchio, e
+   accanto c'e' la mail — l'unico recapito che il sito ha gia', nell'header.
+   La stellina e' centrata sulla guida: la colonna di sinistra e' larga --spine,
+   quindi basta appoggiarcela a destra e spostarla di meta' se stessa. `translate`
+   e non `transform`, cosi' non entra in offsetTop e measure() puo' leggere dove
+   cade il suo centro per dire alla guida dove fermarsi. */
+.after-end{
+  display:grid;grid-template-columns:var(--spine) 1fr;
+  align-items:center;padding-top:26vh;
+}
+.after-star{
+  display:block;width:clamp(28px,3.4vw,52px);height:auto;overflow:visible;
+  justify-self:end;translate:50% 0;fill:var(--blue);
+}
+.after-out{padding-left:2.6vw;padding-right:10vw;display:flex;flex-direction:column;gap:6px}
+/* stesso componente del «contattami» nell'header, stessa freccia che scivola */
+.after-mail{
+  color:var(--blue);text-decoration:none;
+  display:inline-flex;align-items:center;gap:.5rem;align-self:flex-start;
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:clamp(22px,2.2vw,34px);letter-spacing:-.6px;
+}
+.after-mail span{transition:transform .35s cubic-bezier(.16,1,.3,1)}
+.after-mail:hover span{transform:translateX(.35rem)}
+.after-mail:focus-visible{outline:1px solid var(--blue);outline-offset:4px}
+.after-addr{
+  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
+  color:#554135;
 }
 
 /* ---------- mobile: frame 805 ---------- */
@@ -994,7 +1176,7 @@ body::after{
   }
   /* nella sezione progetti quei 280px coprirebbero le righe che gli scorrono
      dietro — "contattami" finiva sopra le descrizioni. Qui l'header diventa la
-     stessa barra del desktop, col vetro acceso dal JS. */
+     stessa barra del desktop (che ora non ha piu' il vetro: vedi .topbar). */
   body.in-projects .id{
     flex-direction:row;align-items:center;justify-content:flex-start;
     height:80px;padding:0 24px;gap:12px;
@@ -1056,7 +1238,7 @@ body::after{
      applyProjects), quindi lo stato finale deve stare tutto in queste regole. */
   .tl-stage{position:static;height:auto;overflow:visible;padding:40px 0 80px}
   .tl-track{position:static;width:auto;height:auto;transform:none;padding:0 24px}
-  .tl-grid,.tl-year,.tl-axis,.tl-now,.tl-stem,.tl-tick,.tl-bar{display:none}
+  .tl-grid,.tl-year,.tl-axis,.tl-elbow,.tl-stem,.tl-tick,.tl-bar{display:none}
   /* incolonnata la sezione parte da sinistra come tutto il resto: qui il
      titolo torna allineato a quel bordo */
   .tl-mark{position:static;align-items:flex-start;padding:0 24px 28px}
@@ -1088,6 +1270,27 @@ body::after{
   }
   .pd-story{grid-template-columns:1fr}
   .pd-quote{padding-left:20px}
+
+  /* dopo la curva: qui la curva non c'e' (la linea del tempo e' incolonnata e
+     non c'e' nessuna barra che possa girare), quindi la guida e' solo un
+     filetto a sinistra e il contenuto gli sta a DESTRA — a 24px dal bordo non
+     c'e' una colonna di sinistra in cui mettere niente. L'etichetta torna
+     sopra il testo, che e' il suo posto quando le colonne diventano una. */
+  .after{--spine:24px;padding-bottom:calc(80px + 10vh)}
+  .mv{grid-template-columns:1fr;padding-top:14vh;gap:14px}
+  .mv-body{padding:0 24px 0 calc(24px + 20px)}
+  /* l'allineamento a destra del desktop qui non ha senso: la colonna
+     dell'etichetta non esiste piu', e appoggiata al bordo destro si leggerebbe
+     come una didascalia di qualcos'altro. Torna sopra il testo, a filo con lui. */
+  .mv-tag{justify-self:start;text-align:left;padding:0 24px 0 calc(24px + 20px)}
+  .mv::before{top:calc(14vh + .42em);width:20px}
+  .mv-lead{font-size:19px;max-width:none}
+  .sk h3{font-size:calc(var(--k,1) * 30px)}
+  .lens p{font-size:19px;max-width:none}
+  .after-end{grid-template-columns:1fr;padding-top:16vh;gap:18px}
+  .after-star{justify-self:start;translate:-50% 0;margin-left:24px}
+  .after-out{padding-left:calc(24px + 20px)}
+  .after-mail{font-size:22px}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -1132,6 +1335,17 @@ body::after{
   .tl-year{display:none}
   .proj-detail{transition:none}
   .pd-in{opacity:1;transform:none;transition:none}
+
+  /* dopo la curva. Il gomito qui non ha senso: senza corsa la traccia non e'
+     traslata, la barra di oggi sta a qualche migliaio di pixel a destra e una
+     curva disegnata sul playhead non toccherebbe niente. Resta la guida, che
+     e' l'unica cosa che serve davvero — e arriva gia' tracciata, con i
+     movimenti gia' agganciati: qui nessuno scrivera' mai --d ne' la classe. */
+  .tl-elbow{display:none}
+  .after-rail{transform:none}
+  .mv::before{transform:scaleX(1)}
+  .mv-tag,.mv-body > *{opacity:1;transform:none;transition:none}
+  .sk-tags li{border-color:#BFCFFF}
 }
 </style>
 </head>
@@ -1584,7 +1798,59 @@ body::after{
         <i class="tl-dot" aria-hidden="true"></i>
       </div>
 
-      <i class="tl-now" id="tlNow" style="--x:7.66" aria-hidden="true"><b>oggi</b></i>
+    </div>
+
+    <!-- dopo .tl-track: stesso z, e a parita' di z vince chi viene dopo, cosi'
+         la curva passa sopra la coda della barra invece che sotto -->
+    <svg class="tl-elbow" id="tlElbow" aria-hidden="true" preserveAspectRatio="none">
+      <path id="tlElbowPath"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ===================== dopo la curva ===================== -->
+<section class="after" id="after" aria-label="Chi sono">
+  <!-- la guida: e' la barra di oggi dopo il gomito. L'altezza gliela scrive
+       measure(), che sa dove sta la stellina di chiusura: la linea deve finire
+       LI', sulla mail, non un pixel piu' in giu'. -->
+  <i class="after-rail" id="afterRail" aria-hidden="true"></i>
+
+  <article class="mv" id="mv1">
+    <h2 class="mv-tag">01 &mdash; posizionamento</h2>
+    <div class="mv-body">
+      <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti. <i>Il mio lavoro parte dal design</i>: scompongo processi complessi in flussi chiari, disegno interfacce ad alta fedelt&agrave; e scelgo la soluzione tecnica pi&ugrave; adatta a farle diventare prodotti reali, performanti e coerenti.</p>
+      <p class="mv-lead">Ho maturato esperienza specifica nel software B2B per la sostenibilit&agrave; (ESG), dove la visualizzazione di dati complessi &egrave; fondamentale per le decisioni aziendali. Mi sono laureato in Informatica per la Comunicazione Digitale all&rsquo;Universit&agrave; degli Studi di Milano. La fotografia ha educato il mio occhio compositivo; la pallacanestro mi ha insegnato a lavorare in squadra sotto pressione.</p>
+    </div>
+  </article>
+
+  <article class="mv" id="mv2">
+    <h2 class="mv-tag">02 &mdash; competenze</h2>
+    <div class="mv-body">
+      <!-- l'ordine e' quello del documento. A dire il peso e' la TAGLIA (--k),
+           non un taglio: ci sono tutte e cinque le aree, per intero. -->
+      <div class="sk" style="--k:1"><h3>Design</h3><ul class="sk-tags"><li>Figma</li><li>Wireframe e Prototipazione UI/UX</li><li>User Research</li><li>Design System</li></ul></div>
+      <div class="sk" style="--k:.62"><h3>Web Tech</h3><ul class="sk-tags"><li>HTML</li><li>CSS</li><li>JS</li></ul></div>
+      <div class="sk" style="--k:.62"><h3>Sviluppo</h3><ul class="sk-tags"><li>React</li><li>Python</li><li>Go</li><li>Java</li><li>Kotlin</li><li>SQL</li></ul></div>
+      <div class="sk" style="--k:.62"><h3>AI / Tooling</h3><ul class="sk-tags"><li>Figma Maker &amp; Agent</li><li>Claude Code</li><li>Antigravity</li></ul></div>
+      <div class="sk" style="--k:.46"><h3>Project Management</h3><ul class="sk-tags"><li>YouTrack</li><li>Planner</li></ul></div>
+    </div>
+  </article>
+
+  <article class="mv" id="mv3">
+    <h2 class="mv-tag">03 &mdash; lo sguardo</h2>
+    <div class="mv-body">
+      <!-- l'hobby e' l'etichetta piccola, quel che insegna e' la riga grande:
+           il documento li tiene solo perche' spiegano come si pensa -->
+      <div class="lens"><em>Fotografia</em><p>Educa l&rsquo;occhio all&rsquo;equilibrio compositivo, alla luce, al dettaglio: la sensibilit&agrave; visiva del design &egrave; allenata, non innata.</p></div>
+      <div class="lens"><em>Pallacanestro</em><p>Lavoro di squadra sotto pressione, visione d&rsquo;insieme, rapidit&agrave; decisionale, comprensione del proprio ruolo: come si lavora in un team di prodotto.</p></div>
+    </div>
+  </article>
+
+  <div class="after-end">
+    <svg class="after-star" id="afterStar" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
+    <div class="after-out">
+      <a class="after-mail" href="mailto:olivieropetrucci@gmail.com">contattami <span>&#8594;</span></a>
+      <p class="after-addr">olivieropetrucci@gmail.com</p>
     </div>
   </div>
 </section>
@@ -1689,7 +1955,18 @@ const timeline = document.getElementById('timeline');
 const tlTrack  = document.getElementById('tlTrack');
 const tlAxis   = document.getElementById('tlAxis');
 const tlMark   = document.getElementById('tlMark');
-const tlNow    = document.getElementById('tlNow');
+const tlStage  = document.querySelector('.tl-stage');
+/* il gomito e i due nodi da cui ne ricavo la geometria: la barra di oggi (dove
+   finisce) e il suo filetto (a che quota sta). Nessun numero ripetuto. */
+const tlElbow  = document.getElementById('tlElbow');
+const tlElbowP = document.getElementById('tlElbowPath');
+const tlExpNow = document.querySelector('.tl-exp.now');
+const tlBarNow = tlExpNow.querySelector('.tl-bar');
+/* le sezioni dopo la curva */
+const after     = document.getElementById('after');
+const afterRail = document.getElementById('afterRail');
+const afterStar = document.getElementById('afterStar');
+const mvs       = [...document.querySelectorAll('.mv')].map(el => ({ el, top: 0 }));
 /* le righe del reticolo sono i confini d'anno: da loro vengono la larghezza di
    una colonna e l'anno in cui si e' */
 const tlGrids  = [...document.querySelectorAll('.tl-grid')];
@@ -1851,7 +2128,20 @@ const TL_OUT  = .6;     // schermi di pin fermo dopo che la traccia ha finito
 const TL_LAND = 1.2;    // schermi PRIMA del pin in cui la stella scende sull'asse
 const TL_AXIS = .54;    // altezza dell'asse: deve valere quanto il `top` di .tl-axis
 const TL_DOT  = 26;     // il lato della stella una volta posata, in px
-let tl0 = 0, tlRun = 1, tlTravel = 1, tlLeadPx = 0, tlAxisW = 1, tlYw = 1, tlNowX = 0;
+let tl0 = 0, tlRun = 1, tlTravel = 1, tlLeadPx = 0, tlAxisW = 1, tlYw = 1;
+let elbowLen = 1;              // lunghezza del tracciato della curva, per il dash
+let af0 = 0, afRailH = 1;      // dove comincia .after, e quanto e' alta la guida
+/* dove passa la riga di lettura, in frazioni di schermo. La guida si disegna
+   fin sotto AF_READ — deve accompagnare, non inseguire — e un movimento si
+   accende poco prima, quando il suo bordo alto ha passato AF_ON. */
+const AF_READ = .78;
+const AF_ON   = .84;
+/* dove cade la guida, in frazione di larghezza. NON e' una scelta di stile
+   isolata: e' lei a dire alla coda della traccia quanto allungarsi, perche' la
+   barra di oggi deve finire esattamente li' per potersi girare. Cambiandola si
+   sposta anche la lunghezza della linea del tempo, e con essa quanto si scorre
+   prima della curva. Il 30vw nel CSS di .after e' solo il valore di partenza. */
+const AF_SPINE = .30;
 let tlWas = false, tlFo = '';
 const tlEvX = [], tlExpX = [], tlExpW = [], tlLabW = [];
 
@@ -2019,6 +2309,25 @@ function measure(){
      l'inseguitore finisce di arrivare prima che lo sticky si sganci.
      Su mobile e in reduced-motion la sezione è incolonnata e nel flusso: non
      c'è nessuna corsa da darle, l'altezza resta quella del contenuto. */
+  /* --tail SI RICAVA, NON SI TARA (era 70vh scritti nel CSS). E' la coda a
+     decidere dove finisce la barra di oggi a corsa terminata, e quel punto deve
+     cadere su AF_SPINE: e' li' che la barra gira di 90 gradi e diventa la guida
+     delle sezioni che seguono, ed e' li' che la guida scende.
+     Due passate invece di una formula: si azzera la coda, si guarda dove
+     cadrebbe la fine della barra, si allunga di quanto manca. Cosi' qui non
+     compaiono ne' il 7.66 di oggi ne' gli 8 anni del reticolo — cambiando le
+     date o allungando la linea del tempo, il conto si rifa' da solo.
+     Il minimo e' una sicurezza per le finestre molto piu' alte che larghe (sotto
+     circa 0.6 di rapporto), dove la coda calcolata andrebbe sotto zero e il
+     gomito cadrebbe oltre il bordo destro. Sotto quel rapporto la curva sta un
+     po' a destra del playhead e la guida la segue lo stesso, perche' la sua x
+     gliela scrive la misura qui sotto e non il CSS. */
+  if (!mq.matches && !reduce){
+    tlTrack.style.setProperty('--tail', '0px');
+    const barEnd = tlExpNow.offsetLeft + tlExpNow.offsetWidth;
+    tlTrack.style.setProperty('--tail', Math.max(innerHeight * .15,
+      barEnd - tlTrack.offsetWidth + innerWidth * (1 - AF_SPINE)).toFixed(1) + 'px');
+  }
   tlTravel = Math.max(1, tlTrack.offsetWidth - innerWidth);
   tlRun = tlTravel * TL_RATE;
   if (!mq.matches && !reduce) timeline.style.height = Math.round(tlRun + innerHeight * (1 + TL_OUT)) + 'px';
@@ -2027,9 +2336,68 @@ function measure(){
      della transform, quindi resta buono a ogni frame — basta sommargli la
      traslazione, e non serve leggere il DOM mentre la scena si muove. */
   tlLeadPx = tlAxis.offsetLeft;
+  /* L'ASSE FINISCE DOVE LA LINEA GIRA, non in fondo alla coda. Con la coda
+     ricavata quella e' diventata lunga, e l'asse proseguiva oltre la curva fino
+     al bordo destro: una riga che attraversa la guida e va avanti in un tempo
+     che non c'e' ancora. Ora e' lungo quanto la barra di oggi — misurato da lei,
+     non da un 7.66 ripetuto qui.
+     Non e' solo estetica: --d vale (playhead - origine) / larghezza, quindi
+     accorciandolo l'asse arriva in fondo esattamente quando la barra tocca il
+     playhead. La coda resta, ma serve alla traccia, non all'asse. */
+  if (!mq.matches && !reduce)
+    tlAxis.style.width = Math.max(1, tlExpNow.offsetLeft + tlExpNow.offsetWidth - tlLeadPx).toFixed(1) + 'px';
   tlAxisW  = tlAxis.offsetWidth || 1;
-  tlNowX   = tlNow.offsetLeft;
   tlYw = (tlGrids[1].offsetLeft - tlGrids[0].offsetLeft) || 1;   // un anno, in px
+
+  /* IL TRACCIATO DELLA CURVA, in pixel dello stage.
+     Punto di partenza e quota li da' il DOM: dove finisce davvero la barra a
+     corsa terminata, e la mezzeria del suo filetto. Nessun 44% ripetuto qui —
+     spostando --top di .tl-exp.now la curva lo segue.
+     Il tratto comincia una sessantina di pixel PRIMA dell'arco e ci passa sopra:
+     stesso colore e stesso spessore, quindi non si vede, e non c'e' modo che
+     fra la barra e la curva resti un buco di mezzo pixel per un arrotondamento.
+     La coda scende fino al fondo dello stage, che e' anche il bordo alto di
+     .after: li' la guida riprende, alla stessa x, e la giuntura non si vede.
+     --spine gliela scrivo io invece di fidarmi che 62vw e TL_PLAY coincidano:
+     se il minimo qui sopra e' entrato in gioco, la guida deve stare dove la
+     curva e' atterrata davvero, non dove il CSS credeva. */
+  if (!mq.matches && !reduce){
+    const sh = tlStage.offsetHeight;
+    const cx = tlExpNow.offsetLeft + tlExpNow.offsetWidth - (tlTrack.offsetWidth - innerWidth);
+    const cy = tlBarNow.offsetTop + tlBarNow.offsetHeight / 2;
+    const r  = Math.min(56, sh * .05);
+    tlElbow.setAttribute('viewBox', '0 0 ' + tlStage.offsetWidth + ' ' + sh);
+    tlElbowP.setAttribute('d',
+      'M' + (cx - r - 60).toFixed(1) + ' ' + cy.toFixed(1) +
+      'H' + (cx - r).toFixed(1) +
+      'A' + r.toFixed(1) + ' ' + r.toFixed(1) + ' 0 0 1 ' +
+            cx.toFixed(1) + ' ' + (cy + r).toFixed(1) +
+      'V' + sh);
+    elbowLen = tlElbowP.getTotalLength() || 1;
+    tlElbowP.style.strokeDasharray = elbowLen.toFixed(1);
+    after.style.setProperty('--spine', cx.toFixed(1) + 'px');
+  } else {
+    /* incolonnato e in reduced-motion la curva non c'e', e la guida torna dove
+       la mette il CSS: 24px dal bordo su mobile. Va TOLTA la proprieta' inline,
+       o restando scritta vincerebbe sul @media dopo un ridimensionamento. */
+    after.style.removeProperty('--spine');
+  }
+
+  /* .after: dove comincia, e dove la guida deve fermarsi. Il centro della
+     stellina di chiusura e' l'unico punto che conta — la linea muore sulla
+     mail, e se arrivasse in fondo alla sezione proseguirebbe in un vuoto che
+     non dice niente. `translate` sulla stellina non entra in offsetTop, quindi
+     questa misura resta buona. */
+  af0 = after.offsetTop - (scroller.offsetHeight - innerHeight);
+  /* la stellina e' un <svg>, e offsetTop/offsetHeight NON esistono sugli
+     elementi SVG: sono roba di HTMLElement, li' tornano undefined e l'altezza
+     della guida diventava NaN (quindi 1px, quindi la guida non si disegnava).
+     Col rettangolo invece si misura, e relativo a quello della sezione perche'
+     getBoundingClientRect e' in coordinate di viewport. */
+  const aR = after.getBoundingClientRect(), sR = afterStar.getBoundingClientRect();
+  afRailH = (sR.top + sR.height / 2 - aR.top) || 1;
+  after.style.setProperty('--railH', afRailH.toFixed(1) + 'px');
+  mvs.forEach(m => m.top = af0 + m.el.offsetTop);
   tlEvs.forEach((el, i) => tlEvX[i] = el.offsetLeft);
   tlExps.forEach((it, i) => {
     tlExpX[i] = it.el.offsetLeft; tlExpW[i] = it.el.offsetWidth || 1;
@@ -2460,6 +2828,20 @@ function applyProjects(){
   const fo = (1 - seg(over, tl0 - innerHeight * 1.4, tl0 - innerHeight * .3)).toFixed(3);
   if (fo !== tlFo){ finaleClaim.style.setProperty('--fo', fo); tlFo = fo; }
 
+  /* ---------- la guida delle sezioni dopo la curva ----------
+     Sta PRIMA del guardiano qui sotto, e non e' un dettaglio: quel guardiano
+     esce dalla funzione quando la linea del tempo e' lontana e per tutto il
+     ramo incolonnato, dove pero' queste sezioni ci sono e la guida deve
+     disegnarsi lo stesso.
+     Il denominatore e' l'altezza vera della guida, misurata: aggiungendo o
+     togliendo contenuto ai movimenti non c'e' niente da ritarare. */
+  afterRail.style.setProperty('--d',
+    clamp((innerHeight * AF_READ - (af0 - over)) / afRailH).toFixed(4));
+  /* i movimenti: il ciclo dice solo QUANDO. Il come sono ritardi CSS su .on,
+     come per gli eventi della linea del tempo — cosi' tre sezioni lunghe non
+     costano una scrittura di stile per figlio a ogni frame. */
+  mvs.forEach(m => m.el.classList.toggle('on', m.top - over < innerHeight * AF_ON));
+
   const tlp = (over - tl0) / tlRun;
   /* fuori campo non c'è niente da riscrivere: per tutta la sezione progetti
      questo blocco costerebbe una ventina di scritture di stile per frame, tutte
@@ -2515,10 +2897,14 @@ function applyProjects(){
       clamp(24 - x, 0, Math.max(0, tlExpW[i] - tlLabW[i])).toFixed(1) + 'px';
   });
   tlEvs.forEach((el, i) => el.classList.toggle('on', tlEvX[i] + tx < play));
-  /* il marcatore di oggi: stesso confronto col playhead di tutto il resto, cosi'
-     l'ultima riga verticale della sezione smette di essere gia' li' ad
-     aspettare (segnalato dall'utente). */
-  tlNow.classList.toggle('on', tlNowX + tx < play);
+  /* LA CURVA SI DISEGNA NELL'ULTIMO TRATTO DEL PIN: i TL_OUT schermi in cui lo
+     sticky sta ancora fermo dopo che la traccia ha finito di correre. Non e' un
+     margine trovato per l'occasione — c'era gia', ed e' esattamente il tempo in
+     cui non succede piu' niente di orizzontale. Quando finisce, lo sticky si
+     sgancia e lo scroll riprende verticale con la guida gia' tracciata: e' quel
+     passaggio di consegne il senso della richiesta. */
+  tlElbowP.style.strokeDashoffset =
+    (elbowLen * (1 - out3(clamp((over - tl0 - tlRun) / (innerHeight * TL_OUT))))).toFixed(1);
 
   /* LA STELLA SI POSA SULL'ASSE (richiesta dell'utente): diventa il primo punto
      del 2019. --lead vale quanto TL_PLAY, quindi a corsa zero l'origine cade
