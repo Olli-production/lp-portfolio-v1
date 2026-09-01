@@ -1035,32 +1035,86 @@ body::after{
      questo l'ultima riga ci finisce sotto */
   padding-bottom:calc(80px + 20vh);
 }
-/* LA GUIDA. Stesso spessore e stesso colore della barra e del gomito: e' la
-   stessa linea, e va letta come tale. margin-left:-2px la centra sulla x, come
-   il tratto del gomito e' centrato sul suo tracciato.
-   L'altezza NON e' 100%: la scrive measure(), che sa dove cade il centro della
-   stellina di chiusura. La linea deve MORIRE SULLA MAIL — se arrivasse in fondo
-   alla sezione proseguirebbe in un vuoto che non dice niente.
-   Si disegna scendendo con scaleY, e il JS la tiene sempre un filo piu' in
-   basso della riga di lettura: deve accompagnare, non inseguire. */
+/* LA GUIDA, CHE E' ANCHE IL FONDO. Nasce spessa 4px come la barra e il gomito
+   — e' la stessa linea, e va letta come tale, e margin-left:-2px la centra
+   sulla x come il tratto del gomito e' centrato sul suo tracciato — e
+   scorrendo si APRE fino a coprire lo schermo: da li' in giu' e' lei la carta
+   su cui sta la coda del sito. La linea del tempo arriva a oggi, gira, e poi
+   oggi e' tutto lo schermo.
+   QUI MUORE L'INVARIANTE DI df7497f («la linea deve morire sulla mail»). Non
+   finisce piu' da nessuna parte, quindi l'altezza e' quella piena della
+   sezione e non piu' --railH ricavata dal centro della stellina. La stellina
+   resta il marchio in fondo alla pagina, e basta.
+   NIENTE scaleY: il gesto del disegnarsi scendendo e' SOSTITUITO
+   dall'apertura, non affiancato. Due gesti nello stesso mezzo secondo si
+   annullano a vicenda, e quello che dice qualcosa di nuovo e' l'apertura.
+   IL CUNEO NON E' DECORAZIONE. Un rettangolo che si allarga ha un bordo alto
+   ORIZZONTALE, e un bordo alto orizzontale si legge come «e' entrato un
+   pannello», non come «la linea ingrassa». Con la punta in alto la giuntura
+   col gomito resta una linea sola che si apre scendendo.
+   Le percentuali del clip-path stanno nello spazio LOCALE dell'elemento, prima
+   della transform: il cuneo si scala insieme a lui e resta un cuneo. --wedge
+   dice a che altezza raggiunge la larghezza piena, e lo ricava measure().
+   Niente border-radius: a scaleX 300 un raggio di 2px diventerebbe 600. */
 .after-rail{
-  position:absolute;left:var(--spine);top:0;height:var(--railH,0px);width:4px;
-  margin-left:-2px;background:#554135;border-radius:2px;
-  transform:scaleY(var(--d,0));transform-origin:center top;
+  position:absolute;left:var(--spine);top:0;height:100%;width:4px;
+  margin-left:-2px;background:#554135;
+  /* z-index:-1 NON E' UN DETTAGLIO, ed e' costato mezz'ora. Un elemento
+     ASSOLUTO dipinge sopra il contenuto NON posizionato: finche' la fascia era
+     larga 4px non se ne accorgeva nessuno, ma da fondo si mangiava la chiusura
+     intera. (La stellina si salvava per caso: ha un `translate`, e questo la
+     fa dipingere nel livello dei posizionati.)
+     Si mette qui e non `position:relative` sul contenuto, perche' altrimenti
+     andrebbe ripetuto su OGNI figlio non posizionato che verra' aggiunto —
+     le figure delle fotografie per prime.
+     Il -1 non la fa sparire dietro la carta di .after: .after ha z-index:3 e
+     position:relative, quindi e' la radice di un contesto di impilamento, e li'
+     dentro un figlio negativo sta SOPRA lo sfondo della radice e SOTTO il suo
+     contenuto. Che e' esattamente il mestiere di un fondo. */
+  z-index:-1;
+  transform:scaleX(var(--k,1));transform-origin:center top;
+  clip-path:polygon(50% 0, 100% var(--wedge,4%), 100% 100%, 0 100%, 0 var(--wedge,4%));
 }
+/* LA PALETTE DELLA CODA. Nessun valore nuovo: sono i colori che il file ha
+   gia', con i ruoli scambiati. --blue #174FFE su #554135 sono due colori
+   scuri — contrasto ~1.1:1, illeggibile — quindi nella SOLA coda l'azzurro
+   acceso lascia il posto a #BFCFFF, che e' gia' il colore dei filetti. Altrove
+   nel sito --blue resta quello che e'.
+   Il peso 300 di DM Sans si sfilaccia sul fondo scuro: i tratti sottili su
+   fondo scuro perdono. Qui va 400 — stesso carattere, stessa scala, solo il
+   peso. Senza, il testo sembra sbiadito e dai la colpa allo schermo. */
+.after .mv-tag,.after .lens em{color:#BFCFFF}
+.after .mv-lead{color:var(--tlbg);font-weight:400}
+.after .mv-lead i{color:#BFCFFF}
+.after .sk h3,.after .lens p,.after .after-addr{color:var(--tlbg)}
+.after .after-mail{color:#BFCFFF}
+.after .after-star{fill:#BFCFFF}
+.after .sk,.after .sk:last-child,
+.after .lens,.after .lens:last-child{border-color:#BFCFFF}
+.after .mv::before{background:#BFCFFF}
 /* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
    confine fra le due colonne della griglia E' la guida: non c'e' un secondo
    numero da tenere allineato. */
 .mv{
+  --pt:24vh;   /* UN numero solo: lo usano il padding, il filetto qui sotto e
+                  measure() per il cuneo. Scriverlo tre volte lo faceva gia'
+                  andare fuori registro alla prima modifica. */
   position:relative;display:grid;grid-template-columns:var(--spine) 1fr;
-  align-items:start;padding-top:24vh;
+  align-items:start;padding-top:var(--pt);
 }
+/* IL RESPIRO DOPO LA CURVA. Il primo movimento parte molto piu' in basso degli
+   altri, e non e' aria decorativa: e' lo spazio in cui la linea si apre e
+   diventa il fondo. Prima ce n'erano 24vh, e la diagonale del cuneo finiva
+   addosso al primo paragrafo. E' anche il momento giusto per una pausa: sopra
+   c'e' una linea del tempo lunga, e la coda deve arrivare calma.
+   measure() ricava --wedge DA QUESTO padding: si cambia qui e basta. */
+.after .mv:first-of-type{--pt:80vh}
 .mv-body{padding:0 10vw 0 2.6vw}
 /* il filetto che aggancia il movimento alla guida: cresce dalla guida verso
    l'etichetta quando il movimento arriva sulla riga di lettura. Stesso gesto e
    stessa curva dei filetti delle esperienze (.tl-tick). */
 .mv::before{
-  content:"";position:absolute;left:var(--spine);top:calc(24vh + .62em);
+  content:"";position:absolute;left:var(--spine);top:calc(var(--pt) + .62em);
   width:2.6vw;height:1px;background:#B2998C;
   transform:scaleX(0);transform-origin:left center;
   transition:transform .55s cubic-bezier(.16,1,.3,1);
@@ -1277,13 +1331,17 @@ body::after{
      c'e' una colonna di sinistra in cui mettere niente. L'etichetta torna
      sopra il testo, che e' il suo posto quando le colonne diventano una. */
   .after{--spine:24px;padding-bottom:calc(80px + 10vh)}
-  .mv{grid-template-columns:1fr;padding-top:14vh;gap:14px}
+  .mv{--pt:14vh;grid-template-columns:1fr;gap:14px}
+  /* incolonnato la curva non c'e' e il respiro serve meno: 80vh di marrone
+     vuoto su un telefono sono mezzo minuto di pollice. Ma il cuneo ha comunque
+     bisogno di spazio, e measure() lo ricava da qui. */
+  .after .mv:first-of-type{--pt:40vh}
   .mv-body{padding:0 24px 0 calc(24px + 20px)}
   /* l'allineamento a destra del desktop qui non ha senso: la colonna
      dell'etichetta non esiste piu', e appoggiata al bordo destro si leggerebbe
      come una didascalia di qualcos'altro. Torna sopra il testo, a filo con lui. */
   .mv-tag{justify-self:start;text-align:left;padding:0 24px 0 calc(24px + 20px)}
-  .mv::before{top:calc(14vh + .42em);width:20px}
+  .mv::before{top:calc(var(--pt) + .42em);width:20px}
   .mv-lead{font-size:19px;max-width:none}
   .sk h3{font-size:calc(var(--k,1) * 30px)}
   .lens p{font-size:19px;max-width:none}
@@ -1342,7 +1400,9 @@ body::after{
      e' l'unica cosa che serve davvero — e arriva gia' tracciata, con i
      movimenti gia' agganciati: qui nessuno scrivera' mai --d ne' la classe. */
   .tl-elbow{display:none}
-  .after-rail{transform:none}
+  /* la fascia e' gia' aperta: --k lo scrive measure(), che gira anche qui.
+     transform:none la richiuderebbe ai suoi 4px. */
+  .after-rail{transform:scaleX(var(--k,1))}
   .mv::before{transform:scaleX(1)}
   .mv-tag,.mv-body > *{opacity:1;transform:none;transition:none}
   .sk-tags li{border-color:#BFCFFF}
@@ -1965,7 +2025,6 @@ const tlBarNow = tlExpNow.querySelector('.tl-bar');
 /* le sezioni dopo la curva */
 const after     = document.getElementById('after');
 const afterRail = document.getElementById('afterRail');
-const afterStar = document.getElementById('afterStar');
 const mvs       = [...document.querySelectorAll('.mv')].map(el => ({ el, top: 0 }));
 /* le righe del reticolo sono i confini d'anno: da loro vengono la larghezza di
    una colonna e l'anno in cui si e' */
@@ -2130,12 +2189,17 @@ const TL_AXIS = .54;    // altezza dell'asse: deve valere quanto il `top` di .tl
 const TL_DOT  = 26;     // il lato della stella una volta posata, in px
 let tl0 = 0, tlRun = 1, tlTravel = 1, tlLeadPx = 0, tlAxisW = 1, tlYw = 1;
 let elbowLen = 1;              // lunghezza del tracciato della curva, per il dash
-let af0 = 0, afRailH = 1;      // dove comincia .after, e quanto e' alta la guida
-/* dove passa la riga di lettura, in frazioni di schermo. La guida si disegna
-   fin sotto AF_READ — deve accompagnare, non inseguire — e un movimento si
-   accende poco prima, quando il suo bordo alto ha passato AF_ON. */
+let af0 = 0, afterH = 1, afKMax = 1;  // dove comincia .after, quanto e' alta, quanto si apre
+/* dove passa la riga di lettura, in frazioni di schermo. L'apertura del fondo
+   comincia quando la sezione arriva li' — deve accompagnare, non inseguire — e
+   un movimento si accende poco prima, quando il suo bordo alto ha passato
+   AF_ON. */
 const AF_READ = .78;
 const AF_ON   = .84;
+/* in quanti schermi la fascia passa da linea a fondo. Uno: e' il vuoto fra
+   l'atterraggio della curva e il primo movimento, l'unico punto della coda in
+   cui non c'e' niente da leggere, ed e' per questo che il gesto sta li'. */
+const AF_OPEN = 1;
 /* dove cade la guida, in frazione di larghezza. NON e' una scelta di stile
    isolata: e' lei a dire alla coda della traccia quanto allungarsi, perche' la
    barra di oggi deve finire esattamente li' per potersi girare. Cambiandola si
@@ -2383,20 +2447,41 @@ function measure(){
     after.style.removeProperty('--spine');
   }
 
-  /* .after: dove comincia, e dove la guida deve fermarsi. Il centro della
-     stellina di chiusura e' l'unico punto che conta — la linea muore sulla
-     mail, e se arrivasse in fondo alla sezione proseguirebbe in un vuoto che
-     non dice niente. `translate` sulla stellina non entra in offsetTop, quindi
-     questa misura resta buona. */
+  /* .after: dove comincia, quanto e' alta, e quanto deve aprirsi la fascia.
+     NON si misura piu' il centro della stellina di chiusura: la linea non deve
+     piu' fermarsi li' (vedi il CSS di .after-rail), si apre e diventa il fondo.
+     Resta pero' valida la trappola che quella misura ci aveva insegnato, ed e'
+     il motivo per cui e' scritta qui: offsetTop e offsetHeight NON esistono
+     sugli elementi SVG — sono roba di HTMLElement, li' tornano undefined e il
+     conto diventa NaN senza sollevare niente. Sugli <svg> si misura con
+     getBoundingClientRect. */
   af0 = after.offsetTop - (scroller.offsetHeight - innerHeight);
-  /* la stellina e' un <svg>, e offsetTop/offsetHeight NON esistono sugli
-     elementi SVG: sono roba di HTMLElement, li' tornano undefined e l'altezza
-     della guida diventava NaN (quindi 1px, quindi la guida non si disegnava).
-     Col rettangolo invece si misura, e relativo a quello della sezione perche'
-     getBoundingClientRect e' in coordinate di viewport. */
-  const aR = after.getBoundingClientRect(), sR = afterStar.getBoundingClientRect();
-  afRailH = (sR.top + sR.height / 2 - aR.top) || 1;
-  after.style.setProperty('--railH', afRailH.toFixed(1) + 'px');
+  afterH = after.offsetHeight || 1;
+  /* L'APERTURA MASSIMA SI RICAVA, NON SI SCEGLIE. La fascia parte larga 4px e
+     cresce dal proprio centro, che sta a --spine: ogni lato guadagna 2*k px, e
+     deve bastare a coprire il lato PIU' LONTANO. Con la guida al 30% il lato
+     lungo e' sempre il destro, ma scriverlo con un max() lo tiene vero anche se
+     AF_SPINE cambia o se il ramo incolonnato porta la spina a 24px. */
+  const spinePx = parseFloat(getComputedStyle(after).getPropertyValue('--spine')) || 0;
+  afKMax = Math.max(spinePx, innerWidth - spinePx) / 2;
+  /* DOVE IL CUNEO RAGGIUNGE LA LARGHEZZA PIENA. Non e' innerHeight: la prima
+     versione lo ricavava da li' e la diagonale TAGLIAVA IL PRIMO PARAGRAFO a
+     meta' — mezza riga chiara sul marrone, mezza scura sulla carta. Il numero
+     giusto e' dove comincia il TESTO del primo movimento: il cuneo deve aver
+     finito di aprirsi prima che ci sia qualcosa da leggere, sempre, anche se
+     domani quel padding cambia.
+     E' anche il motivo per cui il primo movimento ha un padding-top suo: senza
+     quel respiro la diagonale sarebbe una frittata quasi orizzontale, cioe'
+     esattamente il bordo da pannello che il cuneo serviva a evitare.
+     In % perche' il clip-path lavora in coordinate locali, non in pixel. */
+  const mv0 = mvs[0] && mvs[0].el;
+  const wedgePx = mv0
+    ? mv0.offsetTop + parseFloat(getComputedStyle(mv0).paddingTop)
+    : innerHeight;
+  after.style.setProperty('--wedge', (100 * wedgePx / afterH).toFixed(2) + '%');
+  /* reduced-motion non ha un ciclo per frame: li' il fondo va consegnato gia'
+     aperto da qui, altrimenti quel ramo vede una linea sottile e basta. */
+  if (reduce) afterRail.style.setProperty('--k', afKMax.toFixed(2));
   mvs.forEach(m => m.top = af0 + m.el.offsetTop);
   tlEvs.forEach((el, i) => tlEvX[i] = el.offsetLeft);
   tlExps.forEach((it, i) => {
@@ -2828,15 +2913,19 @@ function applyProjects(){
   const fo = (1 - seg(over, tl0 - innerHeight * 1.4, tl0 - innerHeight * .3)).toFixed(3);
   if (fo !== tlFo){ finaleClaim.style.setProperty('--fo', fo); tlFo = fo; }
 
-  /* ---------- la guida delle sezioni dopo la curva ----------
+  /* ---------- il fondo delle sezioni dopo la curva ----------
      Sta PRIMA del guardiano qui sotto, e non e' un dettaglio: quel guardiano
      esce dalla funzione quando la linea del tempo e' lontana e per tutto il
-     ramo incolonnato, dove pero' queste sezioni ci sono e la guida deve
-     disegnarsi lo stesso.
-     Il denominatore e' l'altezza vera della guida, misurata: aggiungendo o
-     togliendo contenuto ai movimenti non c'e' niente da ritarare. */
-  afterRail.style.setProperty('--d',
-    clamp((innerHeight * AF_READ - (af0 - over)) / afRailH).toFixed(4));
+     ramo incolonnato, dove pero' queste sezioni ci sono e il fondo deve
+     aprirsi lo stesso.
+     L'apertura si consuma in AF_OPEN schermi a partire da quando la sezione
+     tocca la riga di lettura: e' il vuoto fra l'atterraggio della curva e il
+     primo movimento, l'unico punto della coda in cui non c'e' niente da
+     leggere. Il gesto non compete con nessun testo, ed e' per questo che sta li'.
+     out3 e non lineare: parte decisa e arriva morbida, come ogni altra
+     apertura del sito. */
+  const afOpen = out3(clamp((over - af0 + innerHeight * AF_READ) / (innerHeight * AF_OPEN)));
+  afterRail.style.setProperty('--k', (1 + (afKMax - 1) * afOpen).toFixed(2));
   /* i movimenti: il ciclo dice solo QUANDO. Il come sono ritardi CSS su .on,
      come per gli eventi della linea del tempo — cosi' tre sezioni lunghe non
      costano una scrittura di stile per figlio a ogni frame. */
