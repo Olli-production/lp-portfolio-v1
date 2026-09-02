@@ -78,13 +78,35 @@ for src, dst in MAP.items():
 Run: `python "%TEMP%\lp-portfolio-probe\conv-foto.py"`
 Expected: cinque righe con nome, dimensioni, peso. **Trascrivi le dimensioni nella tabella qui sotto** — le fasi 5 e 6 le leggono da qui, non le rimisurano.
 
-| file | larghezza × altezza | peso |
+| file | larghezza × altezza | peso | qualità |
+|---|---|---|---|
+| `ph-architettura-bn.webp` | **1280 × 1600** | 26 KB | 82 |
+| `ph-architettura-vetri.webp` | **1600 × 1280** | 48 KB | 82 |
+| `ph-lampione.webp` | **1280 × 1600** | 197 KB | 90 |
+| `ph-mensole.webp` | **1216 × 1600** | 43 KB | 82 |
+| `ph-basket.webp` | **1322 × 1190** | 76 KB | 82 |
+
+Il basket non arriva a 1600 perché il sorgente è 1322×1190 e `thumbnail` non
+ingrandisce mai: è giusto così, ingrandire un raster lo sgrana.
+
+**Livelli campionati** (servono ai due nodi cromatici della spec §6, e il fondo
+della coda è `#554135` = `(85,65,53)`):
+
+| foto | nero (5° percentile) | mediana |
 |---|---|---|
-| `ph-architettura-bn.webp` | _da riempire_ | |
-| `ph-architettura-vetri.webp` | _da riempire_ | |
-| `ph-lampione.webp` | _da riempire_ | |
-| `ph-mensole.webp` | _da riempire_ | |
-| `ph-basket.webp` | _da riempire_ | |
+| architettura B/N | `(34,34,34)` | `(38,38,38)` |
+| architettura vetri | `(0,2,3)` | `(102,107,104)` |
+| lampione | `(51,59,74)` | `(95,100,113)` |
+| mensole | `(28,24,25)` | `(230,185,188)` |
+| basket | `(2,3,5)` | `(30,41,15)` |
+
+Due cose che i numeri dicono e che la spec non aveva previsto, **da guardare
+alla fase 5**: il nero del bianco e nero è più scuro **e più freddo** del fondo,
+quindi quella foto rientra invece di staccare; e le mensole sono la foto **più
+chiara** delle quattro, non la più quieta — la scala di temperatura regge come
+tinta, ma in luminosità l'ultima è la più forte. Finire in crescendo è
+legittimo, ma la frase della spec «appartiene già alla stanza» è troppo generosa
+e va corretta o confermata a schermo.
 
 - [ ] **Step 3: Verifica che siano leggibili e non stravolte**
 
@@ -109,8 +131,12 @@ Expected: in `img/` restano solo le webp; niente `.lnk`, niente PNG. I sorgenti 
 
 - [ ] **Step 6: Commit**
 
+**`doc/immagini/` è in `.gitignore`** (riga 18: *«sorgenti delle immagini: nel
+sito vanno le webp in img/, convertite da qui»*). Non provare ad aggiungerlo: è
+la convenzione del repo, e vale già per gli screenshot di progetto.
+
 ```bash
-git add img/ph-*.webp doc/immagini/
+git add img/ph-*.webp
 git commit -m "Photographs: five of his own frames, converted for the page"
 ```
 
