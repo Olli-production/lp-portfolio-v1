@@ -1,6 +1,8 @@
 # La coda scura — le sezioni dopo l'allagamento
 
-Data: 2026-09-02. Stato: **da approvare**. Nessuna riga di `index.html` toccata.
+Data: 2026-09-02. Stato: **implementata** sul ramo `worktree-coda-sguardo`.
+I paragrafi marcati «corretto a schermo» sono quello che l'implementazione ha
+cambiato rispetto al disegno, con la ragione.
 
 Riguarda la sezione `.after` e la sua chiusura. **Sostituisce per intero** la
 versione precedente di questo file, che descriveva il gomito, il cuneo che si
@@ -180,10 +182,42 @@ dal resto del sito, e va scritto nel commento.*
 | `ph-mensole` | `top:74vh; right:12vw` |
 
 Due foto escono dal bordo: il campo non ha margini, ha un fuori. **Nessuna passa
-sotto il testo** — la colonna centrale (`max-width:30ch`, `sticky top:38vh`)
+sotto il testo** — la colonna centrale (`max-width:34vw`, `sticky top:38vh`)
 resta libera, così non serve né velo né sfocatura per leggere. È un vincolo di
 composizione, non un'ottimizzazione: un velo su una fotografia è un modo di
 ammettere che la si è messa nel posto sbagliato.
+
+### Corretto a schermo
+
+Quattro cose che questa spec aveva sbagliato o non previsto, trovate
+implementando e verificate con una sonda.
+
+**La colonna era `30ch` ed è una trappola.** `ch` si risolve nel font
+dell'elemento su cui è scritto — qui il genitore, 16px — non in quello del testo
+dentro, che è tre volte più grande. Dava 309px: nove caratteri per riga, alta più
+di uno schermo. È `34vw`, e non è un numero a occhio: **esce dal vincolo**. Il
+corridoio libero fra le foto va da 23vw (bordo destro del lampione: `left` 8 +
+larghezza 15) a 69.4vw (bordo sinistro delle mensole). Una colonna di 34vw
+centrata sta fra 33vw e 67vw. *Se sposti una foto, questo conto va rifatto.*
+
+**Le mensole sono a `right:8vw`, non 12.** A 12 il loro bordo cadeva a 48px dalla
+colonna di lettura. La sonda era verde — non intersecava — ma è la foto più
+chiara sul fondo più scuro della pagina, e stare dentro il vincolo non è la
+stessa cosa che essere giusti.
+
+**L'etichetta `01` sta dentro `.gaze-say`**, non fuori come negli altri due
+movimenti. Fuori era in flusso, e le foto sono assolute: un elemento posizionato
+dipinge sopra il contenuto in flusso, quindi la B/N in alto a sinistra se la
+mangiava. Dentro, etichetta e tesi attraversano il campo come una cosa sola.
+
+**`overflow-x:clip` sul campo.** Lo sbordo a destra dei vetri (`right:-5vw`)
+allargava il documento da 1920 a 2016: in lettura da sinistra a destra quel che
+esce a destra diventa larghezza scorribile, e la pagina prendeva una barra
+orizzontale che `main` non ha. **`clip` e non `hidden`**: `hidden` farebbe del
+campo un contenitore di scorrimento, e `position:sticky` si aggancia al
+contenitore di scorrimento più vicino — la tesi smetterebbe di restare appesa
+allo schermo. Misurato in tutti e due i sensi: documento di nuovo a 1920, e la
+tesi resta a 380px esatti mentre il campo viaggia da 200 a −300.
 
 ---
 
@@ -270,8 +304,22 @@ cose vere, **da guardare a schermo e non da decidere qui**:
 | architettura B/N | `(34,34,34)` | `(38,38,38)` | più scura **e più fredda** del fondo: quella foto *rientra* invece di staccare |
 | mensole | `(28,24,25)` | `(230,185,188)` | la **più chiara** delle quattro |
 
-Se la B/N sparisce nel fondo prende un filo di bordo `#BFCFFF` a bassa opacità,
-non una cornice.
+**Esito, guardato a schermo:** la B/N **non** sparisce. I numeri dicevano che il
+suo nero è più scuro e più freddo del fondo, ed è vero, ma la fotografia è
+portata dai *bianchi*, non dai neri: stacca da sola. **Il filo di bordo non
+serve e non è stato messo.** Le mensole erano davvero la più forte, e si è
+risolto spostandole, non attenuandole.
+
+**Un difetto trovato misurando i contrasti.** Le tag delle competenze nascono
+`#554135` — il colore della carta chiara — e su `--ink` fanno circa **1.4:1**: si
+vedeva il bordo della pillola e non la parola dentro. Il difetto **precede questa
+riscrittura** (le `.sk` erano già sul fondo scuro), ed è corretto qui perché
+questa è la sezione che le contiene. Vanno in `--tlbg`, non in `#BFCFFF`:
+l'accento resta la lingua di una cosa sola per volta — il titolo Design — e le
+tag sono contenuto, non enfasi.
+
+Contrasti **misurati sul rendering**, non ricalcolati a mano: i nove ruoli di
+testo della coda vanno da **10.8:1** a **16.53:1**, tutti oltre AA.
 
 ### Il testo
 
@@ -397,14 +445,30 @@ Un `alt=""` qui toglierebbe a chi non vede *tutta* la tesi della sezione.
 
 ## 12. Punti aperti
 
+Chiusi guardando:
+
+- ~~I due nodi cromatici del §8.~~ La B/N stacca da sola, niente bordo. Le
+  mensole si sono risolte spostandole a `right:8vw`.
+
+Ancora aperti, e servono all'utente:
+
 1. **I tre URL social.** LinkedIn, Instagram, Github sono `href="#"` da sempre.
    Li dà l'utente. Due link veri battono tre finti.
 2. **Il testo definitivo** delle due bozze §8 e dell'`alt` di ogni foto.
 3. **Le mensole**: dalla versione precedente di questa spec risultano un lavoro
    di **Alex Pinna**. Se è una sua fotografia di un'opera altrui, l'`alt` e
    l'eventuale didascalia lo devono dire.
-4. **I due nodi cromatici** del §8, da guardare sul rendering vero.
-5. **L'esponente della cubica** (§4), da tarare a giri con l'utente.
+4. **L'esponente della cubica** (§4), da tarare a giri. Resta **3** finché non
+   dice il contrario: è l'unico numero a occhio del pezzo, e si cambia in un
+   posto solo.
+5. **La barra fissa dei social passa sopra le foto** scorrendo: «LinkedIn» cade
+   sul lampione, «Github» sulle mensole. La barra è preesistente e prima della
+   coda non aveva mai immagini sotto di sé, quindi il caso è nuovo. **Non
+   corretto di iniziativa** — le vie sono un fondo dietro le etichette, oppure
+   tenere le foto fuori dalla fascia bassa, e sono due scelte di composizione.
+6. **`.tl-now` è un selettore orfano preesistente** (blocco reduced-motion): c'è
+   identico su `main` e punta a una classe che non esiste più. Segnalato, non
+   toccato.
 
 ---
 
