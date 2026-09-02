@@ -2378,6 +2378,12 @@ const TL_HOLD = .12;
    Quando comincia a ingrossare non c'e' gia' piu' niente da spegnere. */
 const TL_FADE = .8;
 let af0 = 0;                   // dove comincia .after
+let gazeH = 0;                 // altezza del campo: MISURATA, non scritta a mano
+/* l'ultimo --p scritto, come STRINGA. Si confronta con la stringa che sta per
+   essere scritta, non col numero: e' lo stesso patto di tlFo poco piu' avanti.
+   Confrontare i numeri obbligherebbe a formattare due volte per frame e non
+   salterebbe una scrittura in piu'. */
+let gazeP = '';
 /* il valore di `over` a cui header e footer passano alla palette scura: e' il
    momento in cui la carta scura arriva sotto di loro, e lo ricava measure(). */
 let darkFrom = Infinity;
@@ -2680,6 +2686,15 @@ function measure(){
   }
 
   mvs.forEach(m => m.top = af0 + m.el.offsetTop);
+  /* L'ATTRAVERSAMENTO DEL CAMPO SI RICAVA, non si scrive. L'altezza sta nel
+     foglio (140vh) e qui si LEGGE: cambiarla in CSS non deve obbligare a
+     toccare il JS, o i due numeri divergono alla prima modifica e nessuno se ne
+     accorge finche' la parallasse non finisce mezzo schermo prima del campo.
+     mvs[0] E' IL CAMPO perche' e' il primo .mv del documento. Se un giorno
+     l'ordine cambiasse, questa riga sceglierebbe l'elemento sbagliato IN
+     SILENZIO: le foto smetterebbero di salire e il colpevole sembrerebbe il
+     ciclo. */
+  gazeH = mvs[0].el.offsetHeight;
   tlEvs.forEach((el, i) => tlEvX[i] = el.offsetLeft);
   tlExps.forEach((it, i) => {
     tlExpX[i] = it.el.offsetLeft; tlExpW[i] = it.el.offsetWidth || 1;
@@ -3125,6 +3140,45 @@ function applyProjects(){
      con un booleano non scrive niente se lo stato non cambia, quindi a ogni
      frame costa un confronto. */
   mvs.forEach(m => m.el.classList.toggle('on', m.top - over < innerHeight * AF_ON));
+
+  /* IL CAMPO. UNA sola scrittura di stile per frame per tutta la sezione: il
+     CSS la distribuisce alle quattro foto con --s. Quattro scritture, una per
+     foto, direbbero la stessa identica cosa costando quattro volte tanto.
+
+     IL SEGNALE E' `over`, cioe' L'INSEGUITORE, e non lo scroll grezzo. Qui la
+     scelta e' vera e va capita prima di rifarla al contrario. .after NON sta
+     dentro .projects: i progetti col puntatore sono position:fixed e li muove
+     solo translateY(-over), la coda invece e' nel flusso e la scorre il
+     browser. Quindi in questa sezione ci sono DUE orologi possibili, e finora
+     non se n'era accorto nessuno perche' .on e' un interruttore — e un
+     interruttore in ritardo di mezzo frame non si vede. Per una parallasse si
+     vede.
+     Con `over` le foto ereditano la stessa inerzia della stellina, del nastro e
+     dei progetti: un unico segnale, che e' la disciplina di questo file. Il
+     prezzo e' che in uno scatto veloce restano indietro dalla loro cornice di
+     (ritardo x --s): pochi pixel con corse cosi' corte, e si legge come
+     morbidezza, non come ritardo.
+     L'altro orologio sarebbe `scrollY - max` al posto di `over`, UNA riga. Ma
+     allora il campo si muoverebbe con un tempo diverso dal resto del sito, e la
+     prima cosa da fare sarebbe riscrivere questo commento.
+
+     LA CUBICA. Con --p lineare la salita durerebbe tutto l'attraversamento e si
+     leggerebbe come un galleggiamento lento: la richiesta era che le foto
+     salissero VELOCEMENTE. La cubica carica la corsa all'inizio — la maggior
+     parte succede nel primo terzo — e lascia una deriva lenta per il resto,
+     cosi' il campo non si congela mentre si legge la tesi appesa.
+     L'ESPONENTE 3 E' L'UNICO NUMERO SCELTO A OCCHIO DI TUTTO IL PEZZO: tutto il
+     resto qui e' misurato. Si cambia qui e in nessun altro posto — piu' alto
+     piu' e' scattante, piu' basso piu' e' morbido.
+
+     Il ramo touch e quello reduced-motion non entrano MAI: la' --p resta al suo
+     default di 1 e il campo e' gia' finito. Vedi il commento di .gaze nel
+     foglio, che e' dove sta scritto perche' quel default e' 1 e non 0. */
+  if (!mq.matches && !reduce){
+    const gz = clamp((innerHeight - (mvs[0].top - over)) / (innerHeight + gazeH));
+    const gp = (1 - (1 - gz) ** 3).toFixed(3);
+    if (gp !== gazeP){ mvs[0].el.style.setProperty('--p', gp); gazeP = gp; }
+  }
   document.body.classList.toggle('dark', over >= darkFrom);
 
   const tlp = (over - tl0) / tlRun;
