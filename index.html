@@ -1171,7 +1171,13 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   opacity:0;transform:translateY(8px);
   transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
 }
-.mv.on .mv-tag,.mv.on .mv-body > *{opacity:1;transform:none}
+/* :not(.gaze) — IL CAMPO NON USA QUESTO INGRESSO. La' la comparsa la scrive
+   dust() a ogni frame, e questa regola sarebbe un secondo padrone sulla stessa
+   opacita': .mv.on .mv-tag pesa piu' di .gaze-say .mv-tag, quindi vincerebbe
+   lei e l'etichetta resterebbe accesa anche nel fotogramma 905, che deve essere
+   uno schermo vuoto. Escluderlo qui e' piu' onesto che rincorrere la
+   specificita' dall'altra parte. */
+.mv.on:not(.gaze) .mv-tag,.mv.on:not(.gaze) .mv-body > *{opacity:1;transform:none}
 .mv.on .mv-body > :nth-child(2){transition-delay:.08s}
 .mv.on .mv-body > :nth-child(3){transition-delay:.16s}
 .mv.on .mv-body > :nth-child(4){transition-delay:.24s}
@@ -1189,126 +1195,99 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    blu del finale (.finale-claim i). */
 .mv-lead i{font-style:italic;color:var(--blue)}
 /* ---------- IL CAMPO ----------
-   Quattro fotografie che entrano da sotto, tengono, ed escono verso l'alto
-   mentre il campo resta INCHIODATO allo schermo. E' il secondo movimento della
-   coda: le competenze hanno appena detto cosa sa fare, qui si dice come guarda.
+   I cinque fotogrammi (905-909) sono la specifica, e dicono questo:
 
-   DUE TEMPI, UN SOLO NUMERO. Il ciclo scrive --p, quanto e' avanzata la corsa
-   AGGANCIATA (0 quando il palco si attacca in cima allo schermo, 1 quando si
-   stacca). Tutto il resto lo ricava il foglio, qui sotto, con tre rampe:
+     905  schermo tutto marrone, vuoto
+     906  primo scroll: la frase compare e le foto ENTRANO DA SOTTO
+     907  punto statico: foto grandi al loro posto, frase su marrone pulito
+     908  secondo scroll: le foto ESCONO DALL'ALTO, la frase c'e' ancora
+     909  vuoto di nuovo
 
-     --in    0 -> 1   in  p 0 .. .30      entrano foto e testo
-     --txt   1 -> 0   in  p .62 .. .76    il testo se ne va
-     --out   0 -> 1   in  p .74 .. 1      le foto se ne vanno
+   Da qui tre vincoli che non vanno reinterpretati:
 
-   Le rampe si SOVRAPPONGONO di un soffio (.74 < .76): il testo comincia ad
-   andarsene un attimo prima che le foto partano, cosi' resta un istante in cui
-   le fotografie stanno da sole e a piena luce. E' il premio del secondo tempo —
-   toglilo e il gesto diventa "entra ed esce", che non e' la stessa cosa.
+   1. LE FOTO NON SI SCURISCONO MAI. Nei fotogrammi sono sempre a piena luce, e
+      la frase sta in una zona di marrone pulito. Quindi le foto stanno sui due
+      terzi laterali e il terzo centrale e' della frase: nessuna sovrapposizione,
+      nessun velo, niente brightness. Una versione precedente le faceva passare
+      dietro al testo scurendole — non e' questo.
+   2. LA FRASE ESCE DOPO LE FOTO. In 908 le fotografie se ne sono quasi andate e
+      la frase e' ancora intera; sparisce solo fra 908 e 909.
+   3. LO SCROLL SI BLOCCA. La sequenza parte da sola al primo scroll e non si
+      puo' scorrere oltre finche' non e' finita. E' l'unico punto del sito in cui
+      la rotella viene tolta all'utente, ed e' una richiesta esplicita: qui la
+      pagina si comporta come una diapositiva, non come un documento.
 
-   NON E' UN'ANIMAZIONE A TEMPO. Sembra automatica ma la comanda sempre lo
-   scroll: chi scorre piano la vede lenta, chi torna su la vede tornare
-   indietro, e nessuno si trova la rotella sequestrata. Su un sito che lega
-   tutto il resto allo scorrimento, una sequenza a tempo qui si sentirebbe
-   inceppata.
+   TUTTO PENDE DA --t, che il ciclo scrive e vale 0, 1 o 2 (e i valori in mezzo
+   mentre si muove):
 
-   --p E' 1 DI DEFAULT, NON 0. Ci sono tre rami che questa property non la
-   scrivono mai — reduced-motion (li' non c'e' ciclo rAF), touch (li' il
-   contenuto sta incollato al dito e non si scrivono transform per frame) e il
-   frame prima che il ciclo parta. Con lo zero vedrebbero un campo VUOTO perche'
-   non e' ancora entrato; con 1 lo vedrebbero vuoto perche' e' gia' uscito. Per
-   questo quei due rami spengono le rampe e si prendono lo stato pieno: le
-   regole stanno nel @media e nel blocco reduced-motion, non qui.
+     --t 0  vuoto        (905)
+     --t 1  pieno        (907)
+     --t 2  uscito       (909)
+
+   La frase la disegna dust(), la STESSA funzione del claim e dei titoli delle
+   sezioni precedenti — blur piu' opacita', scalettata riga per riga. Non e' una
+   dissolvenza scritta apposta per la coda: era gia' qui, ed era la richiesta.
 
    UN NUMERO SOLO PER FOTO. --s dice quanto e' grande, e da li' escono anche la
    corsa di entrata e quella di uscita: piu' e' grande piu' e' vicina, piu' e'
-   vicina piu' si muove. NON aggiungere una seconda property per la profondita':
-   sarebbe una seconda tabella da tenere allineata alla prima. */
+   vicina piu' si muove.
+   LE CORSE SONO GENEROSE (200vh e 180vh) e non e' spreco: a --t 0 e a --t 2 lo
+   schermo deve essere COMPLETAMENTE vuoto, e la foto piu' piccola e' anche
+   quella che si muove meno. Il caso peggiore e' il bianco e nero, che parte da
+   top -14vh: con 200vh di corsa il suo bordo alto finisce a 110vh, sotto la
+   piega. Meno di cosi' e in 905 si vedrebbe spuntare un angolo. */
 .gaze{
-  --p:1;
-  /* le tre rampe. clamp() su numeri puri: e' il modo di scrivere una spezzata
-     senza portare la logica nel JS, dove non c'entra — il ciclo dice QUANDO, il
-     foglio dice COME, ed e' il patto di tutto questo file. */
-  --in:clamp(0, calc(var(--p) / .30), 1);
-  --txt:calc(var(--in) * (1 - clamp(0, calc((var(--p) - .62) / .14), 1)));
-  --out:clamp(0, calc((var(--p) - .74) / .26), 1);
-
-  display:block;position:relative;
-  /* DUE SCHERMATE E MEZZA. Il palco dentro e' alto uno schermo, quindi la corsa
-     agganciata e' 250 - 100 = 150vh: e' quella su cui --p va da 0 a 1. Cambiare
-     questo numero non obbliga a toccare il JS, che l'altezza la RILEGGE.
-     Il padding-top che .mv da' a tutti i movimenti qui va a zero: il palco si
-     aggancia al bordo alto dello schermo, e 40vh di aria in cima sarebbero solo
-     40vh in cui il campo e' gia' arrivato e non e' ancora agganciato. */
-  height:250vh;padding-top:0;
+  --t:1;   /* DEFAULT: il punto statico. I rami che non scrivono --t — touch e
+              reduced-motion — devono vedere il 907, non il 905 ne' il 909:
+              tutti e due sono uno schermo vuoto, e uno schermo vuoto sembra un
+              errore di caricamento. */
+  display:block;position:relative;height:100vh;padding-top:0;
 }
 /* il filetto che aggancia il movimento alla guida qui non ha senso: non ci sono
    colonne, e crescerebbe dal nulla verso il nulla. */
 .gaze::before{content:none}
 
-/* IL PALCO. Alto quanto lo schermo e appiccicato in cima: e' lui che sta fermo
-   mentre .gaze scorre, ed e' cio' che fa sembrare la sequenza automatica.
-   overflow:clip e non hidden — hidden ne farebbe un contenitore di scorrimento,
-   e allora sarebbe questo a dover scorrere perche' i figli lo sforano. clip
-   taglia e basta. Serve in tutte e due le direzioni adesso: le foto sbordano
-   sopra, sotto e a destra. */
+/* IL PALCO. Uno schermo, appiccicato in cima. Con lo scroll bloccato lo sticky
+   ha poco da fare, ma serve nei due momenti in cui il blocco non c'e' ancora o
+   non c'e' piu' — l'arrivo e l'uscita — e su mobile, dove il blocco non esiste.
+   overflow:clip e non hidden: hidden ne farebbe un contenitore di scorrimento. */
 .gaze-stage{
   position:sticky;top:0;height:100vh;overflow:clip;
 }
-/* l'etichetta perde l'allineamento a destra: qui non c'e' la colonna stretta
-   contro cui appoggiarla, e text-align:right la manderebbe contro il bordo
-   destro della colonna della tesi, dove si leggerebbe come una didascalia. */
 .gaze .mv-tag{justify-self:auto;text-align:left;padding:0;margin-bottom:1.4em}
 
-/* LE FOTO. Molto piu' grandi di prima (46vw la maggiore contro 30) e libere di
-   passare DIETRO al testo: il vincolo "nessuna foto sotto la frase" e' caduto
-   con questa versione, ed e' quel vincolo che le teneva piccole.
-   Al suo posto c'e' lo scurimento: finche' la frase e' in campo le foto vanno a
-   poco piu' di meta' luce, e quando se ne va tornano piene. Non e' un velo
-   grigio steso sopra — e' la luce delle fotografie che cala e risale, e cala
-   per la stessa ragione per cui in una stanza si abbassano le luci quando
-   qualcuno parla.
-   L'entrata e' molto piu' lunga di prima (55vh contro 26 sulla maggiore) e
-   succede in un terzo della corsa invece che in tutta: e' la richiesta di
-   renderla piu' marcata e piu' veloce, ed e' tutta in questi due numeri. */
 .gaze-ph{
-  position:absolute;width:calc(var(--s) * 46vw);
+  position:absolute;width:calc(var(--s) * 35vw);
   transform:translateY(calc(
-      (1 - var(--in)) * var(--s) * 55vh
-    - var(--out) * var(--s) * 45vh));
-  filter:brightness(calc(1 - .45 * var(--txt)));
+      clamp(0, calc(1 - var(--t)), 1) * var(--s) * 200vh
+    - clamp(0, calc(var(--t) - 1), 1) * var(--s) * 180vh));
 }
 /* height:auto con width e height dichiarati sull'<img>: il rapporto lo tiene il
    browser dalle dimensioni vere, e lo spazio e' riservato PRIMA che il file
-   arrivi. Non e' ottimizzazione — measure() ha gia' preso le sue altezze in
-   pixel quando le immagini finiscono di caricare, e un'immagine che si
-   materializza dopo sposta il documento sotto misure gia' fatte. Il sintomo non
-   sembra affatto colpa delle foto: sembra che si sia rotta una sezione prima. */
+   arrivi. measure() ha gia' preso le sue altezze in pixel quando le immagini
+   finiscono di caricare, e un'immagine che si materializza dopo sposta il
+   documento sotto misure gia' fatte: il sintomo non sembra colpa delle foto,
+   sembra che si sia rotta una sezione prima. */
 .gaze-ph img{display:block;width:100%;height:auto}
 
-/* LA TESI. Sta SOPRA le foto e al centro dello schermo, dentro il palco: non
-   serve piu' sticky, e' il palco stesso a essere fermo.
+/* LA FRASE. Nel terzo centrale, dove nei fotogrammi il marrone resta pulito.
    La larghezza e' in vw e non in ch: `ch` si risolve nel font dell'elemento su
    cui e' scritto — qui il genitore, 16px — non in quello del testo dentro, che
-   e' tre volte piu' grande. 30ch davano nove caratteri per riga.
-   L'USCITA la fa il GENITORE e l'ENTRATA i figli, e non e' un capriccio: se si
-   provasse a fare tutte e due sull'opacita' dei figli, l'ultimo a scrivere
-   vincerebbe e la scaletta d'ingresso sparirebbe. */
+   e' tre volte piu' grande. 30ch davano nove caratteri per riga. */
 .gaze-say{
   position:absolute;z-index:2;
-  left:50%;top:50%;
-  width:min(34vw, 640px);
-  opacity:var(--txt);
-  translate:-50% calc(-50% + (1 - var(--txt)) * -4vh);
+  left:50%;top:50%;translate:-50% -50%;
+  width:min(30vw, 560px);
 }
-/* L'INGRESSO DEL TESTO. E' la stessa scaletta di .mv.on che usano gli altri
-   movimenti, ma il via lo da' .go e non .on: .on scatta quando il movimento
-   entra nello schermo, e qui il movimento entra molto prima di agganciarsi. Col
-   via sbagliato il testo si sarebbe animato mentre le foto erano ancora ferme
-   sotto la piega, cioe' i due gesti del primo tempo si sarebbero scollati. */
-.gaze .mv-body > *{opacity:0;transform:translateY(10px)}
-.gaze.go .mv-body > *{opacity:1;transform:none}
-.gaze.go .mv-body > :nth-child(2){transition-delay:.10s}
+/* IL PARAGRAFO E' SEMPRE ACCESO. E' un .mv-body > *, quindi la regola generale
+   dei movimenti lo tiene a opacita' 0 finche' non arriva .on — e un genitore
+   trasparente rende invisibili anche i figli, dust() o non dust(). Le unita'
+   della polvere sono l'etichetta e gli SPAN dentro, non lui. */
+.gaze .mv-lead{opacity:1;transform:none;transition:none}
+/* stato PRIMA del primo frame: da qui in poi opacita' e sfocatura le scrive
+   dust(), come per .claim span. Niente transizioni CSS: sarebbero un secondo
+   padrone sulla stessa proprieta', e l'ultimo a scrivere vincerebbe. */
+.gaze .mv-tag,.gaze .mv-lead span{opacity:0;transition:none}
 
 /* IL BASKET. Una foto sola, FERMA. E' il contrasto a fare l'argomento: la
    fotografia e' come guarda il mondo, la pallacanestro e' come sta dentro una
@@ -1516,21 +1495,23 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
      tipo di elemento, quindi qui conta le sole foto. Se un giorno la tesi
      diventasse un <figure>, l'alternanza si sposterebbe di uno in silenzio. */
   .gaze{height:auto;padding-bottom:8vh}
-  /* LE TRE RAMPE SI SPENGONO. Qui --p non lo scrive nessuno, e ne' 0 ne' 1
-     darebbero il campo pieno: con 0 non e' ancora entrato, con 1 e' gia'
-     uscito. Fissarle a mano e' l'unico modo di dire "lo stato buono" senza
-     inventare un quarto valore di --p che non significhi niente. */
-  .gaze{--in:1;--txt:1;--out:0}
+  /* NIENTE DIAPOSITIVA SUL DITO. Il blocco dello scroll e' la cosa piu' ostile
+     che si possa fare a un telefono: la si toglie del tutto e la sezione torna
+     una colonna che si legge scorrendo.
+     --t resta al suo default di 1 — il fotogramma 907, il punto statico — e le
+     foto stanno dove le mette il foglio. Ne' 0 ne' 2 andrebbero bene: sono tutti
+     e due uno schermo vuoto, che qui sembrerebbe un errore di caricamento. */
+  .gaze{--t:1}
   .gaze-stage{position:static;height:auto;overflow:visible}
-  .gaze-ph{
-    position:static;width:74vw;margin:18px 0 0;
-    transform:none;filter:none;   /* niente scurimento: qui il testo non ci sta sopra */
-  }
+  .gaze-ph{position:static;width:74vw;margin:18px 0 0;transform:none}
   .gaze-ph:nth-of-type(even){margin-left:26vw}
   .gaze-say{
-    position:static;width:auto;translate:none;opacity:1;
+    position:static;width:auto;translate:none;
     margin:0 0 8px;z-index:auto;
   }
+  /* dust() qui non gira mai, quindi lo stato "prima del primo frame" resterebbe
+     per sempre: la frase sarebbe invisibile. Si riaccende a mano. */
+  .gaze-say .mv-tag,.gaze-say .mv-lead span{opacity:1;filter:none}
   /* incolonnato la tesi torna PRIMA delle foto, che e' il suo ordine di DOM
      naturale... solo che nel markup sta dopo, per poterci dipingere sopra su
      desktop. Order lo rimette al suo posto senza toccare il markup, e senza
@@ -1601,14 +1582,15 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   .mv::before{transform:scaleX(1)}
   .mv-tag,.mv-body > *{opacity:1;transform:none;transition:none}
   .sk-tags li{border-color:#BFCFFF}
-  /* IL CAMPO, senza ciclo. Le rampe si fissano allo stato pieno: --p qui non lo
-     scrive nessuno, e ne' 0 ne' 1 darebbero il campo popolato — con 0 non e'
-     ancora entrato, con 1 e' gia' uscito.
-     Il palco resta sticky e le foto restano dove il foglio le mette: quel che
-     sparisce e' il MOVIMENTO, non la composizione. Chi ha chiesto meno
-     animazione vuole vedere la stessa pagina ferma, non una pagina diversa. */
-  .gaze{--in:1;--txt:1;--out:0}
-  .gaze .mv-body > *{opacity:1;transform:none}
+  /* IL CAMPO, senza ciclo e senza diapositiva. Qui non c'e' rAF, quindi non c'e'
+     ne' il blocco dello scroll ne' dust(): --t resta al default di 1, cioe' il
+     fotogramma 907 — il punto statico, con le foto al loro posto e la frase su.
+     Ne' 0 ne' 2 andrebbero bene: sono tutti e due uno schermo vuoto.
+     Sparisce il MOVIMENTO, non la composizione: chi chiede meno animazione
+     vuole vedere la stessa pagina ferma, non una pagina diversa. E soprattutto
+     non vuole trovarsi lo scroll sequestrato da una sequenza che non parte. */
+  .gaze{--t:1}
+  .gaze-say .mv-tag,.gaze-say .mv-lead span{opacity:1;filter:none}
 }
 </style>
 </head>
@@ -2091,44 +2073,44 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   </article>
 
   <article class="mv gaze" id="mv2">
-    <!-- IL PALCO. .gaze e' alto due schermate e mezzo e non contiene niente di
-         suo: tutto quel che si vede sta qui dentro, in uno sticky alto quanto lo
-         schermo. Il campo si aggancia, entra, tiene, esce, e solo allora la
-         pagina riprende a scorrere. E' lo sticky nativo a farlo — nessuna
-         rotella sequestrata: chi scorre piano lo vede lento. -->
+    <!-- IL PALCO. .gaze e' alto uno schermo e non contiene niente di suo: tutto
+         sta qui dentro, appiccicato in cima. Quando il palco tocca il bordo alto
+         dello schermo lo scroll si BLOCCA e la sequenza parte da sola; si
+         sblocca solo quando e' finita. -->
     <div class="gaze-stage">
-      <!-- un numero solo per foto (--s): da li' escono LARGHEZZA, corsa di
+      <!-- un numero solo per foto (--s): da li' escono larghezza, corsa di
            entrata e corsa di uscita. La posizione sta in linea perche' e'
-           composizione, non regola: quattro casi unici, e quattro selettori in
-           fondo al foglio direbbero la stessa cosa molto piu' lontano da dove la
-           si legge. Adesso le foto SI SOVRAPPONGONO al testo, ed e' voluto: si
-           scuriscono finche' la frase c'e' e tornano piene quando se ne va. -->
-      <figure class="gaze-ph" style="--s:.72;top:-12vh;left:-8vw">
+           composizione, non regola.
+           Le foto stanno sui due terzi laterali e sbordano da sinistra, da
+           destra e dall'alto: il terzo centrale resta al testo, come nei
+           fotogrammi. NESSUNA passa dietro la frase, quindi niente scurimento —
+           nei fotogrammi le fotografie sono sempre a piena luce. -->
+      <figure class="gaze-ph" style="--s:.62;top:-14vh;left:-5vw">
         <img src="img/ph-architettura-bn.webp" width="1280" height="1600" loading="lazy"
              alt="Facciata in cemento in bianco e nero: pilastri e solette tagliati dalla luce diretta, senza mezzi toni.">
       </figure>
-      <figure class="gaze-ph" style="--s:1;top:30vh;right:-10vw">
-        <img src="img/ph-architettura-vetri.webp" width="1600" height="1280" loading="lazy"
-             alt="Due facciate che si toccano ad angolo: una griglia di vetri turchesi e una parete bianca a finestre strette.">
-      </figure>
-      <figure class="gaze-ph" style="--s:.5;top:4vh;right:20vw">
-        <img src="img/ph-lampione.webp" width="1280" height="1600" loading="lazy"
-             alt="Un lampione a sei bracci acceso contro un cielo al tramonto, fra nuvole rosa e blu.">
-      </figure>
-      <figure class="gaze-ph" style="--s:.62;top:40vh;left:2vw">
+      <figure class="gaze-ph" style="--s:.54;top:34vh;left:13vw">
         <img src="img/ph-mensole.webp" width="1216" height="1600" loading="lazy"
              alt="Due mensole triangolari nere a parete sopra un divano rosa; sul bordo di una cammina una figurina.">
       </figure>
-      <!-- la tesi sta SOPRA le foto (z-index), e l'etichetta e' dentro il suo
-           blocco: cosi' entrano ed escono come una cosa sola. Nell'ordine del
-           documento viene dopo le foto perche' deve dipingerci sopra senza un
-           z-index inventato, ma per uno screen reader l'ordine giusto e'
-           l'opposto — ci pensa l'aria: le figure sono decorative solo
-           nell'impaginazione, non nel contenuto, quindi restano leggibili e la
-           frase le precede logicamente grazie al titolo che porta con se'. -->
+      <figure class="gaze-ph" style="--s:.72;top:16vh;right:6vw">
+        <img src="img/ph-lampione.webp" width="1280" height="1600" loading="lazy"
+             alt="Un lampione a sei bracci acceso contro un cielo al tramonto, fra nuvole rosa e blu.">
+      </figure>
+      <figure class="gaze-ph" style="--s:.80;top:-10vh;right:-6vw">
+        <img src="img/ph-architettura-vetri.webp" width="1600" height="1280" loading="lazy"
+             alt="Due facciate che si toccano ad angolo: una griglia di vetri turchesi e una parete bianca a finestre strette.">
+      </figure>
+      <!-- LA FRASE, una unita' di polvere per riga. Sono <span> inline e non
+           blocchi: a scatola ognuna diventerebbe indivisibile e la riga andrebbe
+           a capo dove capita. Per questo la comparsa e' blur + opacita' e non
+           una traslazione — sugli inline le transform non si applicano. E' la
+           stessa dust() del claim e dei titoli delle sezioni precedenti, non una
+           dissolvenza nuova: lo spazio fra i tag e' testo vero, quindi gli a
+           capo cadono come se i tag non ci fossero. -->
       <div class="mv-body gaze-say">
         <h2 class="mv-tag">02 &mdash; come guardo</h2>
-        <p class="mv-lead">Prima del software, la fotografia era il mestiere. Ha educato l&rsquo;occhio all&rsquo;equilibrio, alla luce, al dettaglio: <i>la sensibilit&agrave; visiva del design &egrave; allenata, non innata</i>.</p>
+        <p class="mv-lead"><span>Prima del software, la fotografia era il mestiere.</span> <span>Ha educato l&rsquo;occhio all&rsquo;equilibrio, alla luce, al dettaglio:</span> <span><i>la sensibilit&agrave; visiva del design &egrave; allenata, non innata</i>.</span></p>
       </div>
     </div>
   </article>
@@ -2357,6 +2339,75 @@ function dust(els, prog, stagger = .28){
   });
 }
 
+/* ---------- il campo: disegno, blocco, gesti ----------
+   Sta qui e non piu' in basso perche' gzPaint() ha bisogno di dust(), che e'
+   appena sopra: la frase del campo compare con la STESSA funzione del claim e
+   dei titoli delle sezioni precedenti. */
+function gzPaint(){
+  gazeM.el.style.setProperty('--t', gzT.toFixed(4));
+  /* LA FRASE ESCE DOPO LE FOTO, ed e' il fotogramma 908 a dirlo: li' le
+     fotografie se ne sono quasi andate e la frase e' ancora INTERA. Sparisce
+     solo fra 908 e 909.
+     Quindi entra su --t 0..1 e se ne va sull'ultimo quinto, 1.8..2. Sembra una
+     finestra stretta e non lo e': l'ammorbidimento e' out3, quindi in --t si
+     arriva a 1.8 nel primo quarto del tempo e il restante tre quarti se lo
+     prende tutto la frase. Il tempo dell'orologio e quello di --t non sono la
+     stessa cosa, e qui e' il primo a decidere cosa si vede. */
+  const vis = gzT <= 1 ? gzT : 1 - clamp((gzT - 1.8) / .2);
+  dust(gzDust, vis, .18);
+}
+
+/* dove la pagina deve stare ferma perche' il palco tocchi il bordo alto. Si
+   ricava dalle stesse misure del ciclo: nessun numero scritto a mano. */
+const gzAnchor = () =>
+  Math.max(1, scroller.offsetHeight - innerHeight) + gazeM.top;
+
+function gzEngage(){
+  gzY = gzAnchor();
+  scrollTo(0, Math.round(gzY));
+  scrollCur = scrollTarget = scrollY; scrollVel = 0;
+  gzLock = true;
+  /* SI DIPINGE SUBITO, e non e' un dettaglio: --t in linea non esiste finche'
+     gzPaint() non lo scrive, e senza di lui vale il default del foglio, che e'
+     1 — il punto statico. Chi arriva al campo vedrebbe il fotogramma 907 gia'
+     fatto invece del 905 vuoto, e il primo scroll non avrebbe niente da far
+     entrare. */
+  gzPaint();
+}
+/* SI ESCE SPOSTANDOSI DI UN PIXEL oltre l'ancora, non restandoci sopra: fermi
+   sull'ancora il ciclo del frame dopo ri-aggancerebbe, e la sezione diventerebbe
+   una trappola da cui non si esce piu'. */
+function gzRelease(dir){
+  gzLock = false; gzOut = dir;
+  scrollTo(0, Math.round(gzY + dir * 2));
+  scrollCur = scrollTarget = scrollY; scrollVel = 0;
+}
+
+function gzGesture(dir){
+  if (gzBusy()) return;                 // "prima dello scroll successivo deve essere terminata"
+  const next = gzStep + dir;
+  if (next < 0 || next > 2){ gzRelease(dir); return; }
+  gzFrom = gzT; gzStep = next; gzT0 = performance.now();
+}
+
+/* passive:false perche' serve preventDefault: e' il solo modo di togliere lo
+   scroll senza toccare overflow del documento, che farebbe saltare la posizione
+   e con lei tutte le misure gia' prese. */
+addEventListener('wheel', e => {
+  if (!gzLock) return;
+  e.preventDefault();
+  if (Math.abs(e.deltaY) > 2) gzGesture(Math.sign(e.deltaY));
+}, { passive: false });
+
+addEventListener('keydown', e => {
+  if (!gzLock) return;
+  const giu = ['ArrowDown', 'PageDown', ' ', 'Spacebar'].includes(e.key);
+  const su  = ['ArrowUp', 'PageUp'].includes(e.key);
+  if (!giu && !su) return;
+  e.preventDefault();
+  gzGesture(giu ? 1 : -1);
+});
+
 /* ---------- atto 2 (frame 808/809) ----------
    Lo scroller vale 1395vh: i primi 775vh sono l'atto 1 (intro -> 806, costanti
    invariate), gli ultimi 620vh l'atto 2. Su mobile l'atto 2 non c'è ancora,
@@ -2493,12 +2544,41 @@ let af0 = 0;                   // dove comincia .after
    cambiare nel markup senza toccare una riga di qui. */
 const gazeM = mvs.find(m => m.el.classList.contains('gaze'));
 let gazeH = 0;                 // altezza del campo: MISURATA, non scritta a mano
-let gazeGo = null;             // ultimo stato di .go, per non ritoccare la classe
-/* l'ultimo --p scritto, come STRINGA. Si confronta con la stringa che sta per
-   essere scritta, non col numero: e' lo stesso patto di tlFo poco piu' avanti.
-   Confrontare i numeri obbligherebbe a formattare due volte per frame e non
-   salterebbe una scrittura in piu'. */
-let gazeP = '';
+
+/* ---------- il campo: una diapositiva a tre stati ----------
+   E' l'UNICO punto del sito in cui lo scroll viene tolto all'utente, ed e' una
+   richiesta esplicita: qui la pagina si comporta come una diapositiva. Quando il
+   palco tocca il bordo alto dello schermo la rotella viene intercettata, e ogni
+   gesto fa avanzare (o tornare) di UNO stato:
+
+     0  vuoto   (fotogramma 905)
+     1  pieno   (907)
+     2  uscito  (909)
+
+   Fra uno stato e l'altro c'e' un'animazione a tempo di GZ_DUR: finche' corre,
+   i gesti si ignorano — "prima di poter eseguire lo scroll successivo deve
+   essere terminata". Lo scroll si riprende solo uscendo dai due estremi: in giu'
+   dallo stato 2, in su dallo stato 0.
+
+   PERCHE' A TEMPO E NON LEGATO ALLO SCROLL. Ovunque altro in questo sito il
+   movimento e' una funzione della posizione, e va avanti e indietro senza stato.
+   Qui no, e la differenza e' voluta: una sequenza che si puo' interrompere a
+   meta' non e' una diapositiva. Il prezzo e' che questo pezzo ha uno STATO, con
+   tutto quello che comporta — va rimesso a posto al resize e non sopravvive a un
+   ricaricamento. */
+const GZ_DUR  = 900;           // durata di un passaggio, in millisecondi
+const gzSay   = document.querySelector('.gaze-say');
+/* le unita' della comparsa dalla polvere: l'etichetta e le tre righe della
+   frase. Stessa dust() del claim e dei titoli — non una dissolvenza nuova. */
+const gzDust  = [gzSay.querySelector('.mv-tag'),
+                 ...gzSay.querySelectorAll('.mv-lead span')];
+let gzStep = 0;                // lo stato in cui stiamo andando: 0, 1 o 2
+let gzT    = 0;                // il valore mostrato, continuo fra 0 e 2
+let gzFrom = 0, gzT0 = 0;      // partenza e istante del passaggio in corso
+let gzLock = false;            // la rotella e' nostra?
+let gzY    = 0;                // dove la pagina resta ferma mentre e' bloccata
+let gzOut  = 0;                // da che parte siamo usciti: -1 su, +1 giu', 0 dentro
+const gzBusy = () => gzT !== gzStep;
 /* il valore di `over` a cui header e footer passano alla palette scura: e' il
    momento in cui la carta scura arriva sotto di loro, e lo ricava measure(). */
 let darkFrom = Infinity;
@@ -3252,50 +3332,47 @@ function applyProjects(){
      frame costa un confronto. */
   mvs.forEach(m => m.el.classList.toggle('on', m.top - over < innerHeight * AF_ON));
 
-  /* IL CAMPO. UNA sola scrittura di stile per frame per tutta la sezione: il
-     CSS la distribuisce alle quattro foto con --s. Quattro scritture, una per
-     foto, direbbero la stessa identica cosa costando quattro volte tanto.
+  /* ---------- il campo, a diapositiva ----------
+     Qui il ciclo fa tre cose sole, e nessuna e' un disegno: il disegno lo fa
+     gzPaint(), e sotto di lui il foglio.
 
-     IL SEGNALE E' `over`, cioe' L'INSEGUITORE, e non lo scroll grezzo. Qui la
-     scelta e' vera e va capita prima di rifarla al contrario. .after NON sta
-     dentro .projects: i progetti col puntatore sono position:fixed e li muove
-     solo translateY(-over), la coda invece e' nel flusso e la scorre il
-     browser. Quindi in questa sezione ci sono DUE orologi possibili, e finora
-     non se n'era accorto nessuno perche' .on e' un interruttore — e un
-     interruttore in ritardo di mezzo frame non si vede. Per una parallasse si
-     vede.
-     Con `over` le foto ereditano la stessa inerzia della stellina, del nastro e
-     dei progetti: un unico segnale, che e' la disciplina di questo file. Il
-     prezzo e' che in uno scatto veloce restano indietro dalla loro cornice di
-     (ritardo x --s): pochi pixel con corse cosi' corte, e si legge come
-     morbidezza, non come ritardo.
-     L'altro orologio sarebbe `scrollY - max` al posto di `over`, UNA riga. Ma
-     allora il campo si muoverebbe con un tempo diverso dal resto del sito, e la
-     prima cosa da fare sarebbe riscrivere questo commento.
-
-     --p MISURA LA CORSA AGGANCIATA, non l'attraversamento. Vale 0 nell'istante
-     in cui il bordo alto del campo tocca il bordo alto dello schermo — che e'
-     quando il palco sticky si attacca — e 1 quando il campo ha finito di
-     scorrergli sotto, cioe' dopo (altezza del campo - uno schermo). Prima
-     dell'aggancio e dopo lo sgancio non c'e' niente da raccontare, e infatti
-     clamp lo tiene fermo agli estremi.
-     NIENTE CURVA QUI. La spezzata a tre tempi sta nel foglio, sulle rampe --in,
-     --txt e --out: quello e' il COME, e il come non e' mestiere del ciclo. Qui
-     c'e' solo il QUANDO, che e' un rapporto fra due misure e niente altro.
-
-     .go E' IL VIA DEL TESTO, e non e' un doppione di .on. .on scatta quando il
-     movimento entra nello schermo; il campo ci entra molto prima di agganciarsi,
-     e col via di .on il testo si sarebbe animato mentre le foto erano ancora
-     ferme sotto la piega. classList.toggle con un booleano non scrive niente se
-     lo stato non cambia, quindi a ogni frame costa un confronto.
-
-     Il ramo touch e quello reduced-motion non entrano MAI: la' --p resta al suo
-     default e sono le regole del foglio a dare lo stato pieno. */
+     1. AGGANCIA quando il palco arriva al bordo alto dello schermo. `top` e' la
+        posizione del campo nello stesso metro del resto del ciclo (over), quindi
+        non c'e' una seconda misura da tenere allineata.
+        gzOut ricorda da che parte siamo usciti l'ultima volta: senza, appena
+        rilasciato il campo si riaggancerebbe al frame dopo e la sezione
+        diventerebbe una trappola.
+     2. AVANZA il passaggio in corso, a tempo. E' l'unico movimento del sito che
+        non e' una funzione della posizione, ed e' voluto: una sequenza che si
+        puo' fermare a meta' non e' una diapositiva.
+     3. TIENE FERMA la pagina mentre e' bloccata. preventDefault sulla rotella
+        copre il caso normale; questa riga copre tutto il resto — barra di
+        scorrimento trascinata, scroll da tastiera che ci sfugge, inerzia del
+        trackpad che arriva dopo il rilascio. */
   if (!mq.matches && !reduce){
-    const gp = clamp(-(gazeM.top - over) / Math.max(1, gazeH - innerHeight)).toFixed(3);
-    if (gp !== gazeP){ gazeM.el.style.setProperty('--p', gp); gazeP = gp; }
-    const go = parseFloat(gp) > 0;
-    if (go !== gazeGo){ gazeM.el.classList.toggle('go', go); gazeGo = go; }
+    const top = gazeM.top - over;
+    if (!gzLock){
+      const dentro = top <= 0 && top > -gazeH;
+      /* si riaggancia solo dopo essere tornati dalla parte da cui si e' usciti:
+         usciti in giu' (gzOut 1) bisogna prima risalire sopra il campo. */
+      const puo = gzOut === 0 || (gzOut > 0 ? top > 0 : top < -gazeH);
+      if (puo) gzOut = 0;
+      if (dentro && gzOut === 0) gzEngage();
+    }
+    if (gzBusy()){
+      /* performance.now() e non `now`: quello e' il timestamp del rAF e vive
+         nel ciclo, non qui dentro. Scriverlo qui sollevava un ReferenceError a
+         ogni frame — e siccome succedeva DENTRO applyProjects(), moriva in
+         silenzio tutto quello che veniva dopo, header scuro compreso. */
+      const k = clamp((performance.now() - gzT0) / GZ_DUR);
+      gzT = gzFrom + (gzStep - gzFrom) * out3(k);
+      if (k >= 1) gzT = gzStep;
+      gzPaint();
+    }
+    if (gzLock && Math.abs(scrollY - gzY) > .5){
+      scrollTo(0, Math.round(gzY));
+      scrollCur = scrollTarget = scrollY; scrollVel = 0;
+    }
   }
   document.body.classList.toggle('dark', over >= darkFrom);
 
