@@ -1,423 +1,461 @@
-# La coda scura — riprogetto delle sezioni dopo la curva
+# La coda scura — le sezioni dopo l'allagamento
 
 Data: 2026-09-02. Stato: **da approvare**. Nessuna riga di `index.html` toccata.
 
-Riguarda tutto quello che sta dopo la curva a 90°: la sezione `.after` (i tre
-movimenti) e la chiusura. Sostituisce il disegno consegnato in `df7497f`.
+Riguarda la sezione `.after` e la sua chiusura. **Sostituisce per intero** la
+versione precedente di questo file, che descriveva il gomito, il cuneo che si
+apriva dentro `.after` e un fondo `#554135`: tre cose che non esistono più.
 
 ---
 
-## 1. Perché si rifà
+## 1. Dove siamo davvero
 
-I quattro difetti dichiarati dall'utente, tutti e quattro:
+Quel che è già in `main` e **non si tocca**:
 
-- i tre movimenti hanno la stessa griglia, lo stesso ingresso, lo stesso ritmo:
-  si legge come un documento impaginato bene, non come tre momenti
-- non succede niente — la guida scende dritta, il contenuto compare e basta
-- la chiusura è piatta: stellina e mail, e sotto tre link social morti
-- il contenuto è debole: bio lunga, competenze da CV, hobby che sembrano
-  riempitivo
+- **L'allagamento** (`2836c9d`). La barra di «Software Designer» non gira più:
+  resta orizzontale, si allunga oltre i due bordi, tiene, poi ingrossa da filo a
+  pillola a schermo intero. Costanti `TL_OUT`, `TL_FLOOD`, `TL_SPREAD`,
+  `TL_FADE`, `TL_HOLD`. **Approvata dall'utente.** Non va rimessa in
+  discussione né «migliorata» di iniziativa.
+- `.after-rail` **è stato cancellato**, non nascosto. Il fondo scuro della coda
+  è `.after` stessa, `background:var(--ink)`, scura da subito: quando lo sticky
+  della linea del tempo si sgancia, la forma cresciuta a schermo pieno esce
+  dall'alto e questa carta entra dal basso, stessa tinta, giuntura invisibile.
+- `--spine` è **rimasta solo una misura di impaginazione**: `30vw` da CSS,
+  `24px` da `@media`. Nessun JS la scrive più.
+- Le cinque fotografie sono convertite in `img/ph-*.webp` (`27e6145`) e **non
+  sono ancora usate in pagina**.
 
-E una cosa che il sito **non dice** e che sta in `doc/bio.md`, versione lunga:
+Quel che resta da fare è il contenuto della coda: oggi sono tre movimenti con la
+stessa griglia, lo stesso ingresso e lo stesso ritmo. Si legge come un documento
+impaginato bene, non come un racconto.
+
+---
+
+## 2. La tesi: come guardo
+
+**Scelta dell'utente.** La coda arriva dopo i progetti e dopo la linea del
+tempo. Quelle due sezioni hanno già detto *cosa ha fatto*. La coda non lo ripete:
+dice **come guarda**.
+
+Il che ribalta il peso di quello che c'è oggi. `doc/bio.md` lo dice già, e il
+sito finora non l'ha ascoltato:
+
+> Si citano solo quando agganciati a una competenza professionale: un hobby che
+> spiega *come si pensa* è segnale, uno fine a sé stesso è rumore.
+
+Fotografia e pallacanestro smettono di essere due righe in fondo all'ultimo
+movimento e diventano **i due movimenti**. Le competenze non spariscono: scendono
+di volume, non di significato.
+
+E la frase che il sito non ha mai detto, dalla bio lunga:
 
 > Prima del software, la fotografia è stata la mia professione.
 
-È il tratto che lo distingue da qualsiasi altro software designer. Oggi il sito
-lo degrada a hobby, ultima riga dell'ultimo movimento.
-
-**Calibrazione decisa dall'utente:** la fotografia è un **dettaglio forte, non
-il titolo**. Il sito non deve sembrare il portfolio di un fotografo.
+**Calibrazione che resta valida dalla versione precedente:** la fotografia è un
+dettaglio forte, non il titolo. Il sito non deve sembrare il portfolio di un
+fotografo.
 
 ---
 
-## 2. L'idea che regge tutto: la linea si apre
+## 3. La struttura
 
-Idea dell'utente. La barra marrone che scende dopo la curva, scorrendo, si
-allarga fino a diventare **il fondo scuro delle sezioni successive**.
+Restano **tre `.mv`**, con la stessa classe `.on`, lo stesso `mvs.forEach` nel
+ciclo, la stessa costruzione `[...document.querySelectorAll('.mv')]`
+(`index.html:2036`). Cambia solo cosa contengono.
 
-**Cosa sostituisce.** L'invariante argomentata in `df7497f` era *«la linea deve
-morire sulla mail»*: la carriera arriva a oggi e si ferma sul recapito. Muore
-qui. Al suo posto: **la linea non finisce, si apre e diventa la stanza in cui
-stai.** La timeline arriva a oggi, gira, e poi oggi è tutto lo schermo.
-
-Va cancellata la logica che la implementa, non aggirata, e il commento va
-riscritto: altrimenti fra un mese quel codice mente.
-
-**Dove si apre** (scelta dell'utente): **subito dopo la curva**. Tutta la coda
-è su fondo scuro, una palette sola, nessun confine chiaro/scuro sotto un blocco
-di testo.
-
-**Dove si vede crescere**: nel vuoto fra l'atterraggio della curva e il primo
-movimento — quello schermo scarso in cui non c'è ancora niente da leggere. Il
-gesto non compete con nessun testo.
-
-**Come si apre** (scelta dell'utente): **dai due lati**, come una linea che
-ingrassa. Sta al 30% della larghezza, quindi il bordo sinistro raggiunge il
-margine molto prima del destro. È la fisica onesta di una linea che si ispessisce.
-
-**A cuneo, non a rettangolo.** Un rettangolo che si allarga ha un bordo alto
-orizzontale, e un bordo alto orizzontale si legge come *«è entrato un
-pannello»*, non come *«la linea ingrassa»*. Si apre a cuneo: sottile in alto
-dove la linea arriva, pieno in basso. `clip-path`, costo nullo.
-
-**Il colore del fondo è `#554135`** — il colore esatto della guida, già nel
-file. Il fondo *è* la linea, quindi ha il colore della linea. Nessun colore
-nuovo, e il marrone caldo ha continuità con la carta; il nero non l'avrebbe.
-
-**Implementazione.** `.after-rail` è già un elemento assoluto con una
-`transform`. Diventa `scaleX(k) scaleY(d)` invece della sola `scaleY`: colore
-pieno, solo compositor, nessun elemento aggiunto, nessun ridisegno. `k` lo
-scrive lo stesso ciclo che oggi scrive `--d`.
-
-**La sua altezza cambia mestiere.** Oggi è `--railH`, ricavata dal centro della
-stellina di chiusura, perché la linea doveva morire lì. Diventa **l'altezza
-piena di `.after`**: il fondo deve arrivare in fondo alla sezione. Quel che
-muore è la *derivazione dalla stellina*, non l'altezza. `.after` conserva il suo
-`background:var(--tlbg)`, che è la carta ancora visibile mentre il cuneo si apre.
-
----
-
-## 3. La palette scura
-
-Vincolo che ci si dà: **nessun valore nuovo.** La palette scura è fatta di
-colori già nel file, con i ruoli scambiati.
-
-| ruolo | oggi | nella coda |
+| | oggi | qui |
 |---|---|---|
-| fondo | `--tlbg` `#FFFEF8` | `#554135` (il colore della guida) |
-| testo | `#484848` | `--tlbg` `#FFFEF8` |
-| accento, micro-etichette, corsivi, stellina | `--blue` `#174FFE` | `#BFCFFF` |
-| filetti | `#BFCFFF` / `#B2998C` | `#BFCFFF` |
+| `mv1` | posizionamento, due paragrafi | **il campo** — quattro foto in parallasse, tesi ferma al centro |
+| `mv2` | competenze, cinque `.sk` | **il basket** — una foto sola, ferma |
+| `mv3` | lo sguardo, due `.lens` | **cosa so fare** — posizionamento + competenze |
+| `.after-end` | stellina + mail | invariata |
 
-**Perché l'azzurro cambia.** `#174FFE` su `#554135` sono due colori scuri:
-contrasto intorno a 1.1:1, illeggibile. `#BFCFFF` è già nel file (è il colore
-dei filetti), stessa famiglia di tinta, ~8:1 sul marrone.
-
-*Contrasti calcolati, non misurati a schermo. Vanno verificati sul rendering
-vero prima di dire che tornano.*
-
-**Peso tipografico.** `.mv-lead` è DM Sans **300**. Su fondo scuro un peso 300
-chiaro si sfilaccia. Nella coda va a **400**: stesso carattere, stessa scala,
-solo il peso.
+Nessuna struttura nuova nel JS. `.lens` sparisce del tutto: i due sguardi non
+sono più due paragrafi affiancati, sono le due sezioni.
 
 ---
 
-## 4. Sezione 1 — chi sono
+## 4. `mv1` — il campo
 
-**La colonna di sinistra prende il numero, grande.** Oggi `01 — posizionamento`
-sono 12px di mono azzurro dentro un terzo di schermo vuoto — il commento del CSS
-attuale confessa già il problema. Diventa un `01` in Space Grotesk alto quanto
-un paragrafo, allineato a destra contro la spina, in `#BFCFFF` tenuto basso
-(~20% di opacità: architettura, non contenuto). Sotto, piccola, la parola
-`posizionamento` in mono dov'è adesso.
-
-I tre numeri che scendono danno alla coda una spina dorsale visiva.
-*Alternativa scartabile a vista: a filo vuoto (`-webkit-text-stroke`), più
-freddo.*
-
-**Il testo dimezza.** Oggi ci sono i due paragrafi della bio "Media" (~100
-parole). Su fondo scuro 100 parole sono fatica. Passa alla bio **"Breve"** di
-`doc/bio.md` (~50 parole).
-
-**Una riga a sé, unico acceso della schermata**, in `#BFCFFF` corsivo:
-
-> *Prima del software, la fotografia è stata la mia professione.*
-
-Apre il credito che la sezione delle foto incassa. Senza, gli scatti dopo sono
-un vezzo.
-
-**La riga sulla pallacanestro non entra qui.** Era stata spostata in questa
-sezione quando le foto non c'erano; con la foto del basket in chiusura la riga
-sparisce del tutto (vedi §7).
-
-**Non si tocca** l'ingresso: opacità + 8px, scalettato per figli. Il gesto
-grosso è stato speso venti centimetri più su, col fondo che si apre.
-
----
-
-## 5. Sezione 2 — cosa so fare
-
-**Il difetto è nel contenuto.** Cinque righe con dentro elenchi separati da
-filetti *è* un CV: impaginato bene, ma è una tabella, e una tabella non dice
-**perché** sai quelle cose.
-
-**Diventa un paragrafo solo**, in cui gli strumenti sono grandi e le parole di
-raccordo piccole: si legge come una frase, si scansiona come una lista. Bozza —
-il testo definitivo lo corregge l'utente:
-
-> Disegno in **Figma** — wireframe, prototipi, design system — e verifico con la
-> **user research**. Quando serve costruisco: **React**, **HTML**, **CSS**,
-> **JS**. Sotto ci sono **Python**, **Go**, **Java**, **Kotlin**, **SQL**: non è
-> il mio mestiere, *ma è quello che mi permette di sapere cosa sto chiedendo*. E
-> lavoro con **Claude Code**, **Figma Maker**, **Antigravity**.
-
-Quel corsivo è la tesi che `doc/bio.md` §4 chiede e che oggi è affidata a una
-gerarchia di corpi che il lettore deve indovinare: i linguaggi back-end sono
-profondità tecnica al servizio del ruolo, non un vanto. Detto, funziona;
-soltanto disegnato, no.
-
-**Come si vede.** Nomi degli strumenti in `--tlbg` pieno e pesante, raccordi
-nello stesso colore spento (~45%). Un colore, due pesi. I filetti `#BFCFFF` fra
-le righe **spariscono**: non ci sono più righe da separare.
-
-**Il movimento si sposta, non si aggiunge.** Oggi ci sono `transition-delay`
-scalettati sui cinque figli di `.mv-body`; con un paragrafo solo non hanno più
-su cosa applicarsi. Gli stessi ritardi vanno sui `<b>` degli strumenti, che si
-accendono in sequenza dentro la frase. Nessun JS nuovo.
-
-**Il prezzo, dichiarato:** un recruiter di fretta scansiona una tabella meglio
-di una frase. Mitigazione: i nomi degli strumenti sono la cosa più grande della
-riga. È un compromesso vero. Se pesa, la versione a righe torna e cambia solo la
-palette.
-
----
-
-## 6. Sezione 3 — le foto
-
-Selezione decisa dall'utente: **quattro scatti**, mensole comprese.
-
-**La sezione esce dalla griglia.** Fin qui tutto sta nel `--spine 1fr`. Qui no:
-una fotografia non vuole una colonna, vuole la pagina — ed è il momento in cui
-la coda smette di essere un documento. Il `03` e l'etichetta restano nella
-griglia, in cima; da lì in giù le foto vanno per conto loro.
-
-**Una frase sola in cima**, grande — la tesi: l'occhio non è innato, è allenato.
-Testo definitivo da correggere con l'utente. Poi **niente più prosa**.
-
-### L'ordine: le foto si scaldano scendendo
-
-Le quattro non sono un corpo di lavoro solo — architettura, architettura, cielo,
-interni sono quattro generi. **A tenerle insieme non è il soggetto, è la
-temperatura:**
-
-| # | file | mondo | temperatura |
-|---|---|---|---|
-| 1 | `_DSC0248-Modifica.jpg` | architettura, bianco e nero | freddo assoluto |
-| 2 | `_DSC0304.jpg` | spigolo, vetri turchesi | colore freddo |
-| 3 | `_DSC7957.jpg` | lampione, cielo rosa e blu | il caldo entra |
-| 4 | `mensoleAlexPinna_#1.4.png` | still life, rosa e beige | caldo pieno |
-
-L'ultima **appartiene già alla stanza**: il suo rosa-beige sta sul `#554135` del
-fondo senza litigare. La sequenza ha una direzione, e la direzione non è il
-genere. Giustifica anche il bianco e nero: non è "una in B/N fra le altre", è
-**l'inizio della scala**.
-
-### Le didascalie sono i dati di scatto
-
-Non «Fotografia — educa l'occhio all'equilibrio compositivo». Sotto ogni
-immagine, in mono `#BFCFFF` piccolo. I dati di scatto sono la lingua di chi il
-mestiere l'ha fatto: dicono *«questo era il mio lavoro»* senza dichiararlo, e
-sono l'unica cosa nella coda che un altro software designer non può copiare.
-
-Letti dall'EXIF dei file, non inventati:
+Un blocco alto **`140vh`** che apre la coda. Dentro: quattro foto in posizione
+assoluta e un blocco di testo `sticky` che si inchioda a metà schermo mentre le
+foto gli passano intorno. Lo sticky è nativo — nessuna riga di JS per tenerlo
+fermo.
 
 ```
-architettura · 26mm · f/10 · 1/125 · ISO 100 · 2019      (D5300, 17 apr 2019)
-architettura · 62mm · f/10 · 1/125 · ISO 100 · 2019      (D5300, 17 apr 2019)
-               32mm · f/2.8 · 1/800 · ISO 125 · 2020      (D7200, 31 ott 2020)
-still life · Alex Pinna
+   ┌────────────────────────────────────────────────┐
+   │ ▓▓▓▓▓                                          │
+   │ ▓ b/n▓                        ┌──────────────┐ │
+   │ ▓▓▓▓▓                         │    vetri    ▓▓│ │
+   │                               └──────────────▓▓│
+   │              Prima del software                │
+   │              la fotografia era                 │ ← sticky
+   │              il mestiere.                      │
+   │      ┌─────┐                                   │
+   │      │lamp.│  Ha educato l'occhio:             │
+   │      └─────┘  equilibrio, luce, dettaglio.     │
+   │                                 ┌─────────┐    │
+   │                                 │ mensole │    │
+   │                                 └─────────┘    │
+   └────────────────────────────────────────────────┘
 ```
 
-**Due file non hanno EXIF** (`mensoleAlexPinna`, PNG esportato, e la foto del
-basket). Regola: **la didascalia è quello che il file sa davvero.** Dove i
-numeri ci sono, ci sono; dove non ci sono, resta il soggetto — non si inventa un
-numero verosimile. Formato identico, lunghezza no: una riga corta in fondo alla
-sequenza chiude invece di ripetere.
+### Un numero solo per foto
 
-Le due di architettura sono **lo stesso giorno con le stesse impostazioni**:
-le loro didascalie differiscono solo per la focale. È vero, e va lasciato vero.
+Ogni foto ha **`--s`**, unitario, quanto è grande sullo schermo. Da `--s` si
+ricavano **due** cose:
 
-### In pagina
+```
+width:      calc(var(--s) * 30vw)
+translateY: calc((1 - var(--p)) * var(--s) * 26vh)
+```
 
-Alternate, nessuna griglia: 1 verticale a destra → 2 orizzontale quasi piena →
-3 verticale a sinistra → 4 verticale a destra. Ognuna **~70vh, non una
-schermata piena a testa**: quattro foto pesano circa tre schermate su una coda
-che deve restare calma. Nessun pin, nessuna corsa orizzontale.
+Più è grande più è vicina, più è vicina più si muove: è la parallasse, e non è
+una seconda tabella da tenere allineata alla prima. **La profondità non si tara,
+si legge dalla taglia.**
 
-### Da verificare a schermo, non deciso qui
+| foto | `--s` | larghezza | corsa | dimensioni reali |
+|---|---|---|---|---|
+| `ph-architettura-vetri` | `1` | 30vw | 26vh | 1600×1280 |
+| `ph-architettura-bn` | `.72` | 21.6vw | 18.7vh | 1280×1600 |
+| `ph-mensole` | `.62` | 18.6vw | 16.1vh | 1216×1600 |
+| `ph-lampione` | `.5` | 15vw | 13vh | 1280×1600 |
 
-Due nodi cromatici reali, e la manopola in caso di fallimento è il colore del
-fondo:
+### Il movimento
 
-1. il nero quasi puro del `_DSC0248` sul marrone caldo può diventare **un buco
-   freddo**
-2. il turchese del `_DSC0304` è quasi complementare del marrone e **può
-   litigarci**
+Il ciclo scrive **una sola** custom property sul campo: `--p`, quanto il campo ha
+attraversato lo schermo, da 0 a 1. Una scrittura di stile per frame per tutta la
+sezione, non quattro.
 
-Possono anche essere esattamente lo stacco che serve. Si guarda, non si decide
-a priori.
+```
+grezzo:  (innerHeight - (fieldTop - over)) / (innerHeight + fieldH)
+--p:     1 - (1 - grezzo)³
+```
+
+`fieldTop` è già misurato: è `m.top` di `mv1`, che `measure()` calcola per tutti
+i movimenti. `fieldH` è `offsetHeight` dello stesso elemento, misurato lì
+accanto. **L'attraversamento si ricava dalle misure vere**: se cambi `140vh` in
+CSS non devi toccare il JS.
+
+**Perché la cubica.** L'utente ha chiesto che le foto salgano *velocemente*. Con
+`--p` lineare la salita durerebbe tutto l'attraversamento e si leggerebbe come
+un lento galleggiamento. La cubica carica il movimento all'inizio — la maggior
+parte della corsa succede nel primo terzo — e lascia una deriva lenta per il
+resto, così il campo non si congela mentre leggi il testo appeso.
+
+**L'esponente 3 è l'unico numero scelto a occhio di tutto il pezzo**, e va
+commentato come tale. Da tarare con l'utente a giri, come è stato fatto con
+l'allagamento.
+
+### Il segnale è `over`, non `scrollY`
+
+Trappola trovata leggendo, **non documentata prima**. `.after` **non** sta dentro
+`.projects`: i progetti su desktop sono `position:fixed` e li muove solo
+`translateY(-over)` (`index.html:2817`), la coda invece è nel flusso e la scorre
+il browser. Quindi nella coda ci sono due orologi possibili: lo scroll nativo
+(`scrollTarget`) e l'inseguitore a molla (`scrollCur`, da cui `over`).
+
+Finora non se n'era accorto nessuno perché `.on` è un interruttore, e un
+interruttore in ritardo di mezzo frame non si vede. Per una parallasse si vede.
+
+**Si usa `over`**, cioè l'inseguitore. Ragione: è la disciplina dichiarata del
+file — *un unico segnale* — e la conseguenza è che le foto ereditano la stessa
+inerzia della stellina, del nastro e dei progetti invece di combatterla. Il
+prezzo è che durante uno scatto veloce le foto restano indietro rispetto alla
+loro cornice di `lag × --s`; con corse così corte sono pochi pixel, e leggono
+come morbidezza.
+
+*Se un giorno quel ritardo desse fastidio, l'alternativa è `scrollY - max` al
+posto di `over` — una riga. Ma allora il campo si muove con un orologio diverso
+dal resto del sito, e va scritto nel commento.*
+
+### Il ritaglio e la composizione
+
+| foto | posizione |
+|---|---|
+| `ph-architettura-bn` | `top:6vh; left:-4vw` — **esce dal bordo sinistro** |
+| `ph-architettura-vetri` | `top:14vh; right:-5vw` — **esce dal bordo destro** |
+| `ph-lampione` | `top:62vh; left:8vw` |
+| `ph-mensole` | `top:74vh; right:12vw` |
+
+Due foto escono dal bordo: il campo non ha margini, ha un fuori. **Nessuna passa
+sotto il testo** — la colonna centrale (`max-width:30ch`, `sticky top:38vh`)
+resta libera, così non serve né velo né sfocatura per leggere. È un vincolo di
+composizione, non un'ottimizzazione: un velo su una fotografia è un modo di
+ammettere che la si è messa nel posto sbagliato.
+
+---
+
+## 5. `mv2` — il basket
+
+Una foto sola, **ferma**. Dopo un campo che si muove, una foto che non si muove.
+
+È il contrasto a fare l'argomento: la fotografia è come guarda il mondo, la
+pallacanestro è come sta dentro una squadra — una cosa si osserva, l'altra si
+abita. Se anche questa galleggiasse, le due sezioni direbbero la stessa cosa con
+due contenuti diversi.
+
+Tiene la griglia `.mv` che c'è già (`var(--spine) 1fr`): etichetta nella colonna
+stretta, corpo nella larga. Nel corpo: la foto a piena larghezza della colonna,
+il testo sotto. Entrata con `.on`, stessa scaletta di tutto il resto. **Nessuna
+riga di JS.**
+
+`ph-basket.webp` è 1322×1190 — l'unica quasi quadrata, e l'unica delle cinque in
+cui compare l'utente.
+
+---
+
+## 6. `mv3` — cosa so fare
+
+Il paragrafo di posizionamento (Zucchetti, ESG, la laurea) **apre** il blocco.
+Non sparisce: trova il posto giusto. È una nota tecnica, non l'apertura del
+racconto — ed è esattamente il ruolo che gli spetta una volta che la tesi della
+coda è lo sguardo.
+
+Sotto, le cinque aree, una riga ciascuna. Markup `.sk` e `.sk-tags` invariati:
+funzionano e sono già lì.
+
+### Muore `--k`
+
+Oggi `--k` moltiplica `font-size` di `.sk h3` per dire il peso con la taglia
+(`index.html:1191`, `1364`, e i cinque `style` inline alle righe 1899-1903).
+
+Con la coda ormai portata dalle immagini, cinque titoli di taglie diverse
+**competono col campo** invece di aiutarlo: sono cinque gesti tipografici forti
+subito dopo cinque gesti fotografici forti.
+
+Il peso lo dicono **l'ordine e un accento**: Design primo e in `#BFCFFF`, le
+altre quattro in `--tlbg`. Stessa informazione, un terzo dello spazio, una
+variabile in meno da mantenere in tre posti.
+
+L'ordine resta quello del documento, e ci sono **tutte e cinque** le aree, per
+intero: il taglio non è mai stato il modo di dire il peso.
 
 ---
 
 ## 7. La chiusura
 
-**Il ritratto è la foto del basket.** L'utente non ha dato un ritratto; la foto
-del basket è **l'unica immagine in cui c'è lui**. Va nella colonna che ha
-portato `01`, `02`, `03`: la sequenza dei numeri finisce e **nello stesso slot
-compare una faccia**. Non serve annunciarlo, si vede. Lui che tira, concentrato,
-accanto a «scrivimi» — più forte di una posa.
+`.after-end` — stellina e «contattami» — **resta com'è**. Funziona, è già sulla
+palette scura, e nella nuova struttura arriva dopo un blocco tecnico quieto:
+esattamente il posto in cui una firma sta bene.
 
-Verticale, allineata a destra contro la spina, come i numeri. **Senza didascalia
-di dati**: non avendo EXIF non si afferma niente che non si possa reggere.
-
-*Provenienza, dichiarata dall'utente: scatto reale, passato da ChatGPT solo per
-ritagliare/pulire. Il soggetto e la scena sono veri. Se il file sorgente
-originale salta fuori, si usa quello.*
-
-**La riga di testo sulla pallacanestro sparisce.** C'è l'immagine; il testo
-sarebbe la didascalia di una cosa che si vede.
-
-**La mail diventa la cosa più grande della pagina.** Oggi è
-`clamp(22px, 2.2vw, 34px)` — più piccola dei titoli delle competenze, ed è
-l'ultima cosa che il sito dice. Sale di due o tre gradini. Testo **`scrivimi`**
-invece di «contattami», che è già nell'header e lì fa il suo mestiere. Sotto,
-l'indirizzo in mono `#BFCFFF`.
-
-**I social smettono di essere una barra e diventano la chiusura.** `.social` è
-`position:fixed`, `#212121`, in fondo: sul marrone **sparirebbe comunque**,
-scuro su scuro. Quindi invece di ricolorarla:
-
-- quando arriva la chiusura la barra fissa **svanisce** — stessa opacità che il
-  ciclo già scrive su `#ui-social` durante l'intro, un termine in più nella
-  formula che c'è, nessun macchinario nuovo
-- **i tre link ricompaiono dentro la chiusura**, grandi, sotto la mail
-
-L'interfaccia passa la mano al contenuto, e i link smettono di essere una
-striscia sotto la fine: sono la seconda riga della fine.
-
-**La stellina chiude.** L'ordine verticale della chiusura è: la foto nella
-colonna con accanto mail, indirizzo e i tre social; **poi**, sotto tutto,
-la stellina — piccola, centrata sulla spina, in `#BFCFFF`. Non è più accanto
-alla mail come oggi: è il punto in fondo alla pagina, il marchio del sito che
-chiude il documento.
+**Ma i tre link social sono `href="#"`** (`index.html:1508-1509`). LinkedIn,
+Instagram e Github non portano da nessuna parte, e sono in una barra fissa che
+sta sopra tutta la coda. Servono gli URL. **Due link veri battono tre finti**
+(punto aperto §12).
 
 ---
 
-## 8. I tre rami
+## 8. La palette e il testo
 
-Invariante del progetto: desktop con puntatore, touch/mobile (`mq`, `canHover`),
-`prefers-reduced-motion`. Ogni cosa nuova va pensata per tutti e tre o si rompe
-in silenzio.
+**Nessun colore nuovo.** La palette scura della coda è già in pagina
+(`index.html:1103-1111`) e resta:
 
-- **Desktop.** Come sopra. `k` (l'apertura) e `d` (la discesa) li scrive il
-  ciclo che c'è già.
-- **Mobile** (`max-width:640px`). `--spine` è `24px`: la fascia si apre dalla
-  stessa x, molto più a sinistra, e riempie lo schermo prima. Il numero grande e
-  la foto della chiusura non stanno in 24px: nel ramo incolonnato il numero
-  torna piccolo sopra il testo e la foto va a piena larghezza. Le quattro foto
-  restano in colonna.
-- **`prefers-reduced-motion`.** Lì **non c'è ciclo rAF**: tutto ciò che dipende
-  da una scrittura per frame va consegnato già fatto dal CSS. Quindi **il fondo
-  è scuro dall'inizio della coda**, senza apertura. È un ramo che vede una
-  pagina diversa, ed è accettabile — ma va scritto nel commento, non scoperto.
+| ruolo | valore |
+|---|---|
+| fondo | `--ink` `#2B1A0F` |
+| testo | `--tlbg` `#FFFEF8` |
+| accento, micro-etichette, filetti | `#BFCFFF` |
 
-**Trappola nota:** il guardiano `tlLive` esce dalla funzione per **tutto** il
-ramo incolonnato, non solo quando la timeline è lontana. Qualunque cosa debba
-girare anche su mobile va scritta **prima** di quel guardiano — è dove sta già
-la guida di `.after`.
+`--blue` `#174FFE` su `--ink` fa ~1.05:1: illeggibile, ed è il motivo per cui
+nella sola coda l'azzurro acceso lascia il posto a `#BFCFFF`. Altrove resta.
+`.mv-lead` resta a peso **400**: il 300 di DM Sans si sfilaccia sul fondo scuro.
+
+**Le foto arrivano intere, senza filtri.** Ma dai livelli campionati ci sono due
+cose vere, **da guardare a schermo e non da decidere qui**:
+
+| foto | nero (5° perc.) | mediana | conseguenza |
+|---|---|---|---|
+| architettura B/N | `(34,34,34)` | `(38,38,38)` | più scura **e più fredda** del fondo: quella foto *rientra* invece di staccare |
+| mensole | `(28,24,25)` | `(230,185,188)` | la **più chiara** delle quattro |
+
+Se la B/N sparisce nel fondo prende un filo di bordo `#BFCFFF` a bassa opacità,
+non una cornice.
+
+### Il testo
+
+Bozze. **Le corregge l'utente**, come per le altre sezioni.
+
+Campo:
+
+> Prima del software, la fotografia era il mestiere. Ha educato l'occhio
+> all'equilibrio, alla luce, al dettaglio: la sensibilità visiva del design è
+> allenata, non innata.
+
+Basket:
+
+> Da sempre gioco a pallacanestro. Visione d'insieme, decisioni rapide sotto
+> pressione, e capire il proprio ruolo dentro una squadra — che è poi come si
+> lavora su un prodotto.
+
+Posizionamento (`mv3`): il primo paragrafo della bio Media di `doc/bio.md`,
+invariato.
+
+**Da sistemare passando di lì:** la bio Media in `doc/bio.md` ripete due volte,
+identico, il paragrafo «Ho maturato esperienza specifica nel software B2B…». È
+un errore del documento, non del sito.
 
 ---
 
-## 9. Cosa muore, cosa si ricava, cosa si accoppia
+## 9. I tre rami
+
+Invariante del progetto: desktop con puntatore, touch/mobile (`mq`, `canHover`,
+`@media (max-width:640px)`), `prefers-reduced-motion`. Ogni cosa nuova va pensata
+per tutti e tre o si rompe in silenzio.
+
+**Desktop con puntatore.** Campo intero, parallasse dal ciclo, testo `sticky`.
+
+**Touch.** **Niente transform per frame.** Sul dito il contenuto deve restare
+incollato, e scrivere trasformazioni a ogni frame è esattamente il tremolio che
+il file ha già combattuto sui progetti (`index.html:2806-2817`, e il `@media`
+a `314-316`) — lì la soluzione
+è stata togliere la sezione dal flusso *solo* con `hover:hover`. Qui la
+soluzione è più semplice: il campo si incolonna. Foto alternate a sinistra e a
+destra, più piccole, che entrano con l'ingresso scalettato di `.on`, e il testo
+prima di loro, non sticky. `--p` non viene scritto.
+
+**`prefers-reduced-motion`.** Lì **non c'è ciclo rAF**: tutto ciò che dipende da
+una scrittura per frame va consegnato già fatto dal CSS. Le foto stanno al loro
+posto finale, `--p:1` di default, nessuna entrata. È lo stesso patto già scritto
+a `index.html:1419-1423`.
+
+**`--p:1` è il valore di partenza in CSS, non `0`.** Così ogni ramo che non
+scrive `--p` — reduced-motion, touch, e il frame prima che il ciclo parta — vede
+il campo finito invece che il campo vuoto. Un default sbagliato qui si manifesta
+come «le foto non ci sono», che è il sintomo più costoso da inseguire.
+
+**Trappola nota, ancora valida:** il guardiano `tlLive` esce dalla funzione per
+**tutto** il ramo incolonnato, non solo quando la timeline è lontana. Qualunque
+cosa debba girare anche su mobile va scritta **prima** di quel guardiano — è dove
+sta già la riga di `.after` (`index.html:3003`).
+
+---
+
+## 10. Cosa muore, cosa si ricava, cosa si accoppia
 
 **Muore:**
 
-- l'invariante *«la linea muore sulla mail»* e la misura `--railH` presa sul
-  centro della stellina (`measure()`): la linea non finisce più da nessuna parte
-- i filetti `#BFCFFF` fra le righe delle competenze (`.sk`) e dello sguardo
-  (`.lens`): non ci sono più righe
-- `--blue` come accento **nella sola coda**; resta ovunque altrove
-- il paragrafo lungo della bio "Media", i due blocchi `.lens`, la riga sulla
-  pallacanestro
+- `.lens` — CSS (`1197-1209`), markup (`1912-1913`) e la regola mobile (`1365`)
+- `--k` — CSS (`1191`, `1364`) e i cinque `style` inline (`1899-1903`)
+- i due paragrafi `.mv-lead` di `mv1`: uno si sposta in `mv3`, l'altro è la bozza
+  nuova del campo
+- il filetto `.mv::before` **sul solo `mv1`**: un filetto che cresce dalla guida
+  verso l'etichetta non ha senso su un campo che non ha colonne
+- il paragrafo duplicato nella bio Media di `doc/bio.md`
 
-**Si ricava, non si tara** — la disciplina del file, che ha già evitato quattro
-derive. Se stai per scrivere lo stesso numero due volte, fermati:
+**Si ricava, non si tara.** Se stai per scrivere lo stesso numero due volte,
+fermati:
 
-- `--spine` resta scritto in pixel da `measure()` a partire da dove atterra la
-  curva, e `AF_SPINE` (.30) resta lui a dire alla coda della traccia quanto
-  allungarsi
-- l'apertura `k` si ricava dalla larghezza del viewport e da `--spine`, non è un
-  numero scritto a mano: deve bastare a coprire il lato **più lontano**
-- l'altezza delle foto si riserva con `aspect-ratio` dalle dimensioni reali dei
-  file, non a occhio
+- `--p` dall'attraversamento vero: `m.top` e `offsetHeight` di `mv1`, misurati in
+  `measure()`. Cambiare `140vh` in CSS non tocca il JS
+- larghezza **e** corsa di ogni foto dal solo `--s`
+- l'altezza riservata di ogni immagine da `aspect-ratio` con le dimensioni reali
+  della tabella §4, non a occhio
 
 **Accoppiati, si cambiano insieme:**
 
 | se tocchi | devi toccare anche |
 |---|---|
-| `AF_SPINE` (JS) | `--spine:30vw` in `.after`, e sappi che cambia la **lunghezza della timeline** |
-| lo spessore della guida | `.after-rail` **e** `.tl-elbow path`, o la giuntura si vede |
-| il colore del fondo `#554135` | il colore della guida e del gomito: sono lo stesso colore per costruzione |
-| `.after` fondo scuro | `.social` (`#212121` su scuro sparisce) e il `padding-bottom` che le fa spazio |
+| l'altezza del campo (`140vh`) | niente: `measure()` la rilegge |
+| `--s` di una foto | niente: larghezza e corsa escono da lì |
+| le posizioni delle foto | il vincolo «la colonna centrale resta libera» |
+| il numero di `.mv` nel markup | niente: `mvs` è una query |
+| `#BFCFFF` | tutta la palette della coda, che è costruita su quel solo accento |
 
 ---
 
-## 10. Gli asset
+## 11. Gli asset
 
-Sorgenti copiate in `doc/immagini/` (erano collegamenti Windows in `img/`,
-risolti):
+Cinque webp già in `img/`, convertite e committate in `27e6145`:
 
-| file | dimensioni | destinazione |
+| file | dimensioni | peso |
 |---|---|---|
-| `_DSC0248-Modifica.jpg` | 2450×3062 | `img/ph-architettura-bn.webp` |
-| `_DSC0304.jpg` | 3086×2469 | `img/ph-architettura-vetri.webp` |
-| `_DSC7957.jpg` | 3159×3949 | `img/ph-lampione.webp` |
-| `mensoleAlexPinna_#1.4.png` | 2752×3621 | `img/ph-mensole.webp` |
-| `basket-chatgpt.png` | 1322×1190 | `img/ph-basket.webp` |
+| `ph-architettura-bn.webp` | 1280×1600 | 26 KB |
+| `ph-architettura-vetri.webp` | 1600×1280 | 48 KB |
+| `ph-lampione.webp` | 1280×1600 | 197 KB |
+| `ph-mensole.webp` | 1216×1600 | 43 KB |
+| `ph-basket.webp` | 1322×1190 | 76 KB |
 
-**Il `#` nel nome va tolto**: in un URL apre un frammento. È il motivo per cui i
-nomi di destinazione sono tutti nuovi.
+Circa 390 KB in tutto, di cui metà il solo lampione (è a qualità 90 perché il
+cielo è una sfumatura larga e a 82 bandava).
 
-Conversione: webp, lato lungo ~1600px, qualità ~82 — la stessa scala delle webp
-di progetto già in `img/`.
+**Tutte `loading="lazy"`**: sono sotto la piega per definizione.
 
-**Trappola da disinnescare.** Tutta la geometria di questo sito è **misurata**:
-`measure()` legge altezze in pixel e ci costruisce sopra scroll, pin e corsa
-della timeline. Immagini che arrivano dopo il `load` **cambiano l'altezza del
-documento a misure già prese**, e il sintomo non sembra affatto colpa delle
-foto. Quindi ogni immagine nasce con `aspect-ratio` e dimensioni dichiarate: lo
-spazio è riservato prima che il file arrivi. Non è ottimizzazione, è la
-condizione perché la coda non rompa le sezioni prima.
+**Tutte con `width` e `height` dichiarati.** Non è ottimizzazione, è la
+condizione perché la coda non rompa le sezioni prima: tutta la geometria di
+questo sito è **misurata**, `measure()` legge altezze in pixel e ci costruisce
+sopra scroll, pin e corsa della timeline. Un'immagine che arriva dopo il `load`
+cambia l'altezza del documento a misure già prese, e il sintomo non sembra
+affatto colpa delle foto.
 
-**Da ripulire:** i cinque file in `img/` non tracciati (quattro `.lnk` e il PNG
-originale del basket) vanno tolti a conversione fatta.
-
----
-
-## 11. Punti aperti
-
-1. **I tre URL social** — LinkedIn, Instagram, Github sono `href="#"` da sempre.
-   In una chiusura costruita attorno a loro, tre link morti sono peggio che non
-   averli. L'utente li darà. **Due link veri battono tre finti.**
-2. **Dati e anno delle mensole** — se l'utente ricorda macchina e anno, la riga
-   si completa. Altrimenti resta `still life · Alex Pinna`.
-3. **I due nodi cromatici** del §6, da guardare a schermo.
-4. **Il testo definitivo** della bio breve, del paragrafo competenze e della
-   frase delle foto: bozze qui, li corregge l'utente.
+**`alt` veri, non decorativi.** Le foto sono l'argomento della sezione. L'alt
+descrive il fotogramma — cosa si vede — non «fotografia di Oliviero Petrucci».
+Un `alt=""` qui toglierebbe a chi non vede *tutta* la tesi della sezione.
 
 ---
 
-## 12. Come si verifica
+## 12. Punti aperti
 
-Non c'è test runner e **non va aggiunto**. Gli script stanno in
+1. **I tre URL social.** LinkedIn, Instagram, Github sono `href="#"` da sempre.
+   Li dà l'utente. Due link veri battono tre finti.
+2. **Il testo definitivo** delle due bozze §8 e dell'`alt` di ogni foto.
+3. **Le mensole**: dalla versione precedente di questa spec risultano un lavoro
+   di **Alex Pinna**. Se è una sua fotografia di un'opera altrui, l'`alt` e
+   l'eventuale didascalia lo devono dire.
+4. **I due nodi cromatici** del §8, da guardare sul rendering vero.
+5. **L'esponente della cubica** (§4), da tarare a giri con l'utente.
+
+---
+
+## 13. Come si verifica
+
+Non c'è test runner e **non va aggiunto**. Le sonde stanno in
 `C:\Users\Oliviero\AppData\Local\Temp\lp-portfolio-probe\`, fuori dal repo.
 
-1. **Sintassi** — estrai lo script inline fra l'ultimo `<script>` e `</script>`,
-   `node --check`, dopo ogni gruppo di modifiche.
-2. **Struttura** — `html.parser` per l'annidamento, confronto classi CSS ↔
-   classi nel markup nelle due direzioni, id duplicati.
-3. **Geometria** — `probe.py` con un `p-*.js` in `--dump-dom`. Il modo giusto è
-   **chiamare il codice di produzione**: `scrollTo(0,y); scrollCur =
-   scrollTarget = scrollY; sync(); applyProjects();` e poi leggere.
-   Da aggiornare: `p-final.js` (che oggi verifica `--spine`, la guida che si
-   disegna e i movimenti che si accendono) e `p-end.js`.
-4. **Contrasto** — i rapporti del §3 vanno **misurati** sul rendering, non
-   ricalcolati a mano.
-5. **Aspetto** — in headless lo screenshot parte dall'origine della pagina: lo
-   scroll della finestra non si vede. Per fotografare una sezione bisogna
-   nascondere gli altri figli di `body` e portarla in cima con un margine
-   negativo (`shot-af.py` lo fa già).
-6. **Altezza del documento** — prima e dopo, per confermare che le immagini con
-   `aspect-ratio` non spostano niente a `load` avvenuto.
-7. **Giudizio percettivo** — solo l'utente, ricaricando. **Dichiarare sempre
-   cosa è stato misurato e cosa no.**
+**Gli script CDP della sessione precedente sono spariti col job.** Vanno
+riscritti: non c'è né Playwright né Puppeteer installato (`npm i` fallisce in
+questo ambiente), ma c'è il binario di Chromium in
+`~/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe`, e Node 25
+ha `WebSocket` e `fetch` globali — bastano ~50 righe senza dipendenze.
+`--headless=new --remote-debugging-port=<porta>`, target da `/json/list`, poi
+`Page.navigate`, `Runtime.evaluate`, `Page.captureScreenshot`.
+
+1. **Sintassi** — estrai lo script inline, `node --check`, dopo ogni gruppo di
+   modifiche.
+2. **Struttura** — annidamento con `html.parser`, confronto classi CSS ↔ classi
+   nel markup nelle due direzioni, id duplicati.
+3. **Geometria** — chiamare il **codice di produzione**, non riscriverlo:
+   `scrollTo(0,y); scrollCur = scrollTarget = scrollY; sync(); applyProjects();`
+   e poi leggere `--p` e le transform delle quattro foto.
+4. **Convergenza.** Per posizionarsi a un punto preciso **non** basta un
+   `scrollTo`: la pagina ha uno scroll inseguito. Si converge — leggi `overCur`,
+   scrolla della differenza, aspetta ~450 ms, ripeti. `lockHero()` cambia
+   l'altezza dello scroller a metà strada e un conto fatto una volta sola salta.
+5. **Contrasto** — misurato sul rendering, non ricalcolato a mano.
+6. **Aspetto** — in headless lo screenshot parte dall'origine della pagina. Per
+   fotografare una sezione va nascosto il resto dei figli di `body` e portata in
+   cima con un margine negativo.
+7. **Altezza del documento** — prima e dopo il `load`, per confermare che le
+   cinque immagini non spostano niente.
+8. **Almeno due proporzioni di finestra** (1920×1000 e 1280×1024): diversi conti
+   di questa pagina hanno rami che scattano solo sulle finestre più alte che
+   larghe.
+9. **Giudizio percettivo** — solo l'utente, ricaricando. **Dichiarare sempre cosa
+   è stato misurato e cosa no.**
+
+---
+
+## 14. Un difetto preesistente, non introdotto qui
+
+In fondo a `index.html`:
+
+```js
+requestAnimationFrame(function loop(now){ ... })(introStart)
+```
+
+Il risultato di `requestAnimationFrame` è un numero, e viene chiamato: solleva un
+`TypeError` a ogni caricamento. **Non rompe niente** — il ciclo è già registrato
+ed è l'ultima istruzione del `.then()` — ma sporca la console e fa perdere tempo
+a chi lo trova. È preesistente e non è mai stato segnalato come da correggere.
+Passando di lì, si propone.
