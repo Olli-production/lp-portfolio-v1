@@ -1100,14 +1100,25 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    Il peso 300 di DM Sans si sfilaccia sul fondo scuro: i tratti sottili su
    fondo scuro perdono. Qui va 400 — stesso carattere, stessa scala, solo il
    peso. Senza, il testo sembra sbiadito e dai la colpa allo schermo. */
-.after .mv-tag,.after .lens em{color:#BFCFFF}
+.after .mv-tag{color:#BFCFFF}
 .after .mv-lead{color:var(--tlbg);font-weight:400}
 .after .mv-lead i{color:#BFCFFF}
-.after .sk h3,.after .lens p,.after .after-addr{color:var(--tlbg)}
+.after .sk h3,.after .after-addr{color:var(--tlbg)}
+/* LE TAG. Nascono col colore della carta chiara (#554135 in :is(.proj-tags,
+   .sk-tags) li) e su --ink fanno circa 1.4:1 — si vedeva il bordo e non la
+   parola. Difetto che c'era gia' prima di questa riscrittura, corretto qui
+   perche' e' questa la sezione che le contiene.
+   Bianco e non #BFCFFF: l'accento resta la lingua di UNA cosa sola per volta
+   — qui il titolo Design — e le tag sono contenuto, non enfasi. Il bordo
+   #BFCFFF che compare con .on continua a dire da solo che la riga e' viva. */
+.after .sk-tags li{color:var(--tlbg)}
 .after .after-mail{color:#BFCFFF}
 .after .after-star{fill:#BFCFFF}
-.after .sk,.after .sk:last-child,
-.after .lens,.after .lens:last-child{border-color:#BFCFFF}
+.after .sk,.after .sk:last-child{border-color:#BFCFFF}
+/* l'UNICO accento dell'elenco, ed e' l'argomento: il design viene prima.
+   :first-of-type e non :first-child — il primo figlio del corpo e' il
+   paragrafo di posizionamento, che e' un <p>; il primo <div> e' Design. */
+.after .sk:first-of-type h3{color:#BFCFFF}
 .after .mv::before{background:#BFCFFF}
 
 /* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
@@ -1200,6 +1211,17 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
 .gaze{
   --p:1;
   display:block;position:relative;height:140vh;
+  /* LO SBORDO A DESTRA ALLARGA IL DOCUMENTO. La foto dei vetri sta a
+     right:-5vw, e in lettura da sinistra a destra quel che esce a destra
+     diventa larghezza scorribile: il documento passava da 1920 a 2016 e la
+     pagina prendeva una barra orizzontale che prima non aveva. A sinistra non
+     succede — quel che esce dal bordo sinistro non e' scorribile.
+     CLIP E NON HIDDEN: hidden farebbe di questo elemento un contenitore di
+     scorrimento, e position:sticky si aggancia al contenitore di scorrimento
+     piu' vicino — la tesi smetterebbe di restare appesa allo schermo e si
+     inchioderebbe qui dentro, cioe' non si vedrebbe piu' ferma. clip taglia e
+     basta, senza diventare uno scroller. */
+  overflow-x:clip;
 }
 /* il padding-top NON si riscrive qui: .mv ce l'ha gia' (var(--pt)), e
    .after .mv:first-of-type lo porta a 40vh. box-sizing e' border-box in tutto
@@ -1243,38 +1265,42 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   position:sticky;top:38vh;
   padding:0;margin:0 auto;max-width:34vw;
 }
+/* IL BASKET. Una foto sola, FERMA. E' il contrasto a fare l'argomento: la
+   fotografia e' come guarda il mondo, la pallacanestro e' come sta dentro una
+   squadra — una cosa si osserva, l'altra si abita. Se anche questa
+   galleggiasse, le due sezioni direbbero la stessa cosa con due contenuti
+   diversi, e il campo perderebbe l'unica cosa che ne fa un gesto: essere il
+   solo che si muove.
+   Nessuna riga di JS: entra con .on come tutto il resto della coda. */
+.shot{margin:0 0 2.4em}
+.shot img{display:block;width:100%;height:auto}
 /* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
    confine fra le due colonne della griglia E' la guida: non c'e' un secondo
 
 /* LE COMPETENZE. La gerarchia E' l'argomento: il documento chiede di mettere in
    evidenza la progettazione e di tenere i linguaggi di back-end come profondita'
-   tecnica, senza far prevalere lo sviluppo sul ruolo. Quindi l'ordine del
-   documento resta e a dire il peso e' la taglia: --k moltiplica la sola misura
-   del titolo, cosi' c'e' un numero per riga e nessuna riga sparisce.
+   tecnica, senza far prevalere lo sviluppo sul ruolo.
+   PRIMA lo diceva la TAGLIA: --k moltiplicava la misura del titolo, un numero
+   per riga. Non va piu' bene da quando la coda e' portata dalle immagini —
+   cinque titoli di taglie diverse subito dopo cinque gesti fotografici forti
+   COMPETONO col campo invece di aiutarlo, e a vincere e' il rumore.
+   Adesso lo dicono L'ORDINE E UN ACCENTO: Design e' primo ed e' l'unico in
+   #BFCFFF. Stessa informazione, un terzo dello spazio, e una variabile in meno
+   da tenere allineata in tre posti (il foglio, il @media e i cinque style in
+   linea nel markup).
    Filetto sopra, e sotto solo all'ultima: e' la stessa costruzione di .pd-facts
    e di .proj-list — un elenco di righe separate da un capello, non schede. */
 .sk{padding:20px 0;border-top:1px solid #BFCFFF}
 .sk:last-child{border-bottom:1px solid #BFCFFF}
 .sk h3{
   font-family:var(--grotesk);font-weight:700;color:#554135;
-  font-size:calc(var(--k,1) * clamp(22px,2.6vw,44px));
+  font-size:clamp(22px,2.6vw,44px);
   line-height:1.05;letter-spacing:-.02em;margin-bottom:.5em;
 }
-/* LO SGUARDO. Il documento tiene questi due solo perche' spiegano come si
-   pensa: quindi l'hobby e' la micro-etichetta e a essere grande e' cio' che
-   insegna. Stessa scala della citazione di un progetto (.pd-quote p). */
-.lens{padding:20px 0;border-top:1px solid #BFCFFF}
-.lens:last-child{border-bottom:1px solid #BFCFFF}
-.lens em{
-  display:block;margin-bottom:10px;
-  font-family:var(--mono);font-style:normal;font-weight:500;font-size:12px;
-  letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
-}
-.lens p{
-  font-family:var(--grotesk);font-weight:500;
-  font-size:clamp(19px,1.85vw,29px);line-height:1.28;letter-spacing:-.5px;
-  color:#554135;max-width:42ch;
-}
+/* .lens NON C'E' PIU'. I due sguardi erano due paragrafi affiancati in fondo
+   all'ultimo movimento; adesso SONO le due sezioni — il campo delle fotografie
+   e il basket. Cancellato e non commentato: una regola commentata in un file di
+   questa lunghezza e' una regola che qualcuno rimette. */
 
 /* LA CHIUSURA. La linea della carriera finisce sulla stellina del marchio, e
    accanto c'e' la mail — l'unico recapito che il sito ha gia', nell'header.
@@ -1448,9 +1474,12 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   .gaze-ph{position:static;width:74vw;margin:18px 0 0;transform:none}
   .gaze-ph:nth-of-type(even){margin-left:26vw}
   .gaze-say{position:static;top:auto;max-width:none;margin:0}
+  /* a piena larghezza della colonna: a 24px dal bordo non c'e' niente da
+     riservare a sinistra, e una foto rientrata sembrerebbe un errore. */
+  .shot{margin-bottom:1.6em}
 
-  .sk h3{font-size:calc(var(--k,1) * 30px)}
-  .lens p{font-size:19px;max-width:none}
+  .sk h3{font-size:30px}
+
   .after-end{grid-template-columns:1fr;padding-top:16vh;gap:18px}
   .after-star{justify-self:start;translate:-50% 0;margin-left:24px}
   .after-out{padding-left:calc(24px + 20px)}
@@ -2016,25 +2045,34 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   </article>
 
   <article class="mv" id="mv2">
-    <h2 class="mv-tag">02 &mdash; competenze</h2>
+    <h2 class="mv-tag">02 &mdash; come sto in squadra</h2>
     <div class="mv-body">
-      <!-- l'ordine e' quello del documento. A dire il peso e' la TAGLIA (--k),
-           non un taglio: ci sono tutte e cinque le aree, per intero. -->
-      <div class="sk" style="--k:1"><h3>Design</h3><ul class="sk-tags"><li>Figma</li><li>Wireframe e Prototipazione UI/UX</li><li>User Research</li><li>Design System</li></ul></div>
-      <div class="sk" style="--k:.62"><h3>Web Tech</h3><ul class="sk-tags"><li>HTML</li><li>CSS</li><li>JS</li></ul></div>
-      <div class="sk" style="--k:.62"><h3>Sviluppo</h3><ul class="sk-tags"><li>React</li><li>Python</li><li>Go</li><li>Java</li><li>Kotlin</li><li>SQL</li></ul></div>
-      <div class="sk" style="--k:.62"><h3>AI / Tooling</h3><ul class="sk-tags"><li>Figma Maker &amp; Agent</li><li>Claude Code</li><li>Antigravity</li></ul></div>
-      <div class="sk" style="--k:.46"><h3>Project Management</h3><ul class="sk-tags"><li>YouTrack</li><li>Planner</li></ul></div>
+      <!-- <figure> e non <div>: e' un'immagine di contenuto con una relazione
+           col testo che la segue, ed e' il tag che lo dice. -->
+      <figure class="shot">
+        <img src="img/ph-basket.webp" width="1322" height="1190" loading="lazy"
+             alt="In campo, in maglia numero 23, nel caricamento di un tiro.">
+      </figure>
+      <p class="mv-lead">Da sempre gioco a pallacanestro. Visione d&rsquo;insieme, decisioni rapide sotto pressione, e <i>capire il proprio ruolo dentro una squadra</i> &mdash; che &egrave; poi come si lavora su un prodotto.</p>
     </div>
   </article>
 
   <article class="mv" id="mv3">
-    <h2 class="mv-tag">03 &mdash; lo sguardo</h2>
+    <h2 class="mv-tag">03 &mdash; cosa so fare</h2>
     <div class="mv-body">
-      <!-- l'hobby e' l'etichetta piccola, quel che insegna e' la riga grande:
-           il documento li tiene solo perche' spiegano come si pensa -->
-      <div class="lens"><em>Fotografia</em><p>Educa l&rsquo;occhio all&rsquo;equilibrio compositivo, alla luce, al dettaglio: la sensibilit&agrave; visiva del design &egrave; allenata, non innata.</p></div>
-      <div class="lens"><em>Pallacanestro</em><p>Lavoro di squadra sotto pressione, visione d&rsquo;insieme, rapidit&agrave; decisionale, comprensione del proprio ruolo: come si lavora in un team di prodotto.</p></div>
+      <!-- il posizionamento APRE il blocco e non la coda: da quando la tesi
+           della sezione e' lo sguardo, questa e' una nota tecnica, ed e' il
+           ruolo che le spetta. Il testo e' il primo capoverso della bio Media
+           di doc/bio.md, invariato. -->
+      <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti. <i>Il mio lavoro parte dal design</i>: scompongo processi complessi in flussi chiari, disegno interfacce ad alta fedelt&agrave; e scelgo la soluzione tecnica pi&ugrave; adatta a farle diventare prodotti reali, performanti e coerenti.</p>
+      <!-- l'ordine e' quello del documento e ci sono TUTTE E CINQUE le aree,
+           per intero: il taglio non e' mai stato il modo di dire il peso. A
+           dirlo adesso sono l'ordine e UN accento — vedi il commento di .sk. -->
+      <div class="sk"><h3>Design</h3><ul class="sk-tags"><li>Figma</li><li>Wireframe e Prototipazione UI/UX</li><li>User Research</li><li>Design System</li></ul></div>
+      <div class="sk"><h3>Web Tech</h3><ul class="sk-tags"><li>HTML</li><li>CSS</li><li>JS</li></ul></div>
+      <div class="sk"><h3>Sviluppo</h3><ul class="sk-tags"><li>React</li><li>Python</li><li>Go</li><li>Java</li><li>Kotlin</li><li>SQL</li></ul></div>
+      <div class="sk"><h3>AI / Tooling</h3><ul class="sk-tags"><li>Figma Maker &amp; Agent</li><li>Claude Code</li><li>Antigravity</li></ul></div>
+      <div class="sk"><h3>Project Management</h3><ul class="sk-tags"><li>YouTrack</li><li>Planner</li></ul></div>
     </div>
   </article>
 

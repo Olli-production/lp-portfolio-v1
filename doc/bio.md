@@ -31,13 +31,6 @@ L'etichetta professionale è **Software Designer** ovunque.
 > all'Università degli Studi di Milano. La fotografia ha educato il mio occhio
 > compositivo; la pallacanestro mi ha insegnato a lavorare in squadra sotto
 > pressione.
->
-> Ho maturato esperienza specifica nel software B2B per la sostenibilità (ESG),
-> dove la visualizzazione di dati complessi è fondamentale per le decisioni
-> aziendali. Mi sono laureato in Informatica per la Comunicazione Digitale
-> all'Università degli Studi di Milano. La fotografia ha educato il mio occhio
-> compositivo; la pallacanestro mi ha insegnato a lavorare in squadra sotto
-> pressione.
 
 ### Lunga (narrativa — about di portfolio, intervista)
 > Sono Oliviero Petrucci e progetto prodotti digitali dove il design
