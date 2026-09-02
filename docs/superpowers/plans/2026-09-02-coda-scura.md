@@ -1,12 +1,12 @@
-# La coda scura — Implementation Plan
+# La coda che guarda — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** La barra marrone che scende dopo la curva si apre fino a diventare il fondo scuro della coda del sito, e le quattro sezioni che ci stanno sopra vengono riscritte per quel fondo.
+**Goal:** Le sezioni della coda smettono di elencare e cominciano a guardare: quattro fotografie salgono in parallasse dietro una tesi ferma, il basket resta immobile accanto, le competenze scendono a nota tecnica.
 
-**Architecture:** Un solo file, `index.html` (CSS e JS inline, ~3300 righe). Nessuna build, nessuna dipendenza runtime, nessun file nuovo. Il fondo è lo stesso elemento `.after-rail` che c'è già, con una `scaleX` in più e un `clip-path` a cuneo. Le sezioni cambiano markup e palette; il ciclo di scroll esistente guadagna una riga.
+**Architecture:** Un solo file, `index.html` (CSS e JS in linea, ~3600 righe). Nessuna build, nessuna dipendenza, nessun file nuovo. Restano le tre `.mv` che ci sono già, con la stessa `.on` e lo stesso `mvs.forEach`: cambia cosa contengono. L'unica aggiunta al ciclo è **una** scrittura di stile per frame — `--p` sul campo — e il CSS la distribuisce alle quattro foto con un solo numero per foto.
 
-**Tech Stack:** HTML/CSS/JS vanilla. Python + Pillow per convertire le foto. Node per `--check` e per la matematica. Chrome headless per le sonde.
+**Tech Stack:** HTML/CSS/JS vanilla. Node per `node --check`. Chrome headless via CDP per le sonde. Python per le misure sulle immagini.
 
 **Spec:** `docs/superpowers/specs/2026-09-02-coda-scura-design.md` — va letta insieme a questo piano.
 
@@ -15,910 +15,535 @@
 - **Nessun file nuovo nel repo, nessuna dipendenza, nessun test runner.** Le sonde stanno in `C:\Users\Oliviero\AppData\Local\Temp\lp-portfolio-probe\`, fuori dal repo.
 - **Tre rami, sempre:** desktop con puntatore, touch/mobile (`mq`, `canHover`, `@media (max-width:640px)`), `prefers-reduced-motion`. In reduced-motion **non c'è ciclo rAF**: quel che dipende da una scrittura per frame va consegnato da CSS o da `measure()`.
 - **Si ricava, non si tara.** Se stai per scrivere lo stesso numero due volte, fermati.
-- **Nessun colore nuovo.** La palette scura usa valori già nel file: fondo `#554135`, testo `--tlbg` `#FFFEF8`, accento `#BFCFFF`.
-- **Commenti in italiano, estesi**, con la motivazione e cosa NON fare. Messaggi di commit in inglese, argomentati.
+- **Nessun colore nuovo.** La palette della coda è già in pagina: fondo `--ink` `#2B1A0F`, testo `--tlbg` `#FFFEF8`, accento `#BFCFFF`.
+- **`--p` vale `1` di default in CSS, mai `0`.** Ogni ramo che non lo scrive deve vedere il campo finito, non il campo vuoto.
+- **L'allagamento è approvato e non si tocca.** `TL_OUT`, `TL_FLOOD`, `TL_SPREAD`, `TL_FADE`, `TL_HOLD` e tutto il pin della linea del tempo restano come sono.
+- **Commenti in italiano, estesi**, con la motivazione e cosa NON fare. Messaggi di commit in inglese, argomentati, in prosa — non `feat:`/`fix:`.
 - **Non inventare dati.** Dove un dato non esiste va una frase, mai un numero verosimile.
-- **Ancoraggi unici:** per ogni sostituzione via script, `assert s.count(anchor) == 1`. I patch si scrivono in un file `.py` con Write e si lanciano da lì — mai virgolette inverse dentro `python -c`, mai heredoc con accenti.
-- **Il guardiano `tlLive`** (in `applyProjects`, dopo `const tlp = ...`) esce dalla funzione per tutto il ramo incolonnato: quel che deve girare anche su mobile va scritto **prima**, dov'è già la guida di `.after`.
+- **Il testo lo corregge l'utente.** Ogni bozza qui dentro è una bozza: si mostra, si aspetta l'ok, poi si committa.
 
 ---
 
 ## File Structure
 
-| File | Responsabilità | Fase |
-|---|---|---|
-| `index.html` | tutto: markup, CSS, JS | 2-7 |
-| `img/ph-*.webp` | le cinque immagini nuove | 1 |
-| `doc/immagini/*` | i sorgenti, già copiati, non serviti al browser | 1 |
-| `doc/04-bio-esperienze.md`, `doc/bio.md` | i testi che il sito copia | 3, 4 |
+| file | cosa cambia |
+|---|---|
+| `index.html` | markup di `.after` (1885-1924), CSS della coda (1063-1245 e i due `@media`), due blocchi nel JS (`measure()` ~2547, ciclo ~3003) |
+| `doc/bio.md` | il paragrafo duplicato nella bio Media |
+| `docs/superpowers/specs/2026-09-02-coda-scura-design.md` | aggiornata a fine lavoro con quel che è stato deciso a schermo |
 
-Non si splitta `index.html`: è la struttura del progetto ed è deliberata (nessuna build). L'ordine delle fasi è scelto perché **ogni fase lascia la pagina giudicabile a schermo**, e la fase 2 fa giudicare il fondo *prima* di riscrivere il contenuto — se il marrone non funziona, si scopre con due ore di lavoro dentro, non con dieci.
-
----
-
-## Task 1: Le immagini
-
-**Files:**
-- Create: `img/ph-architettura-bn.webp`, `img/ph-architettura-vetri.webp`, `img/ph-lampione.webp`, `img/ph-mensole.webp`, `img/ph-basket.webp`
-- Delete: i quattro `.lnk` e `ChatGPT Image 2 set 2026, 00_33_44.png` in `img/`
-- Script: `%TEMP%\lp-portfolio-probe\conv-foto.py`
-
-**Interfaces:**
-- Produces: i cinque percorsi `img/ph-*.webp` e le loro **dimensioni reali in pixel**, che le fasi 5 e 6 usano per scrivere `aspect-ratio`. Vanno annotate qui nel piano a conversione fatta.
-
-- [ ] **Step 1: Scrivi lo script di conversione**
-
-`%TEMP%\lp-portfolio-probe\conv-foto.py`:
-
-```python
-from PIL import Image
-import os
-SRC = r'D:\progetti\design\brand-personale\v5\doc\immagini'
-DST = r'D:\progetti\design\brand-personale\v5\img'
-# il '#' nel nome delle mensole aprirebbe un frammento in un URL: i nomi di
-# destinazione sono tutti nuovi anche per quello
-MAP = {
-    '_DSC0248-Modifica.jpg':      'ph-architettura-bn.webp',
-    '_DSC0304.jpg':               'ph-architettura-vetri.webp',
-    '_DSC7957.jpg':               'ph-lampione.webp',
-    'mensoleAlexPinna_#1.4.png':  'ph-mensole.webp',
-    'basket-chatgpt.png':         'ph-basket.webp',
-}
-LONG = 1600   # stessa scala delle webp di progetto gia' in img/
-for src, dst in MAP.items():
-    im = Image.open(os.path.join(SRC, src)).convert('RGB')
-    im.thumbnail((LONG, LONG), Image.LANCZOS)
-    im.save(os.path.join(DST, dst), 'webp', quality=82, method=6)
-    print(f'{dst}  {im.size[0]}x{im.size[1]}  '
-          f'{os.path.getsize(os.path.join(DST, dst))//1024} KB')
-```
-
-- [ ] **Step 2: Lancialo e annota le dimensioni**
-
-Run: `python "%TEMP%\lp-portfolio-probe\conv-foto.py"`
-Expected: cinque righe con nome, dimensioni, peso. **Trascrivi le dimensioni nella tabella qui sotto** — le fasi 5 e 6 le leggono da qui, non le rimisurano.
-
-| file | larghezza × altezza | peso | qualità |
-|---|---|---|---|
-| `ph-architettura-bn.webp` | **1280 × 1600** | 26 KB | 82 |
-| `ph-architettura-vetri.webp` | **1600 × 1280** | 48 KB | 82 |
-| `ph-lampione.webp` | **1280 × 1600** | 197 KB | 90 |
-| `ph-mensole.webp` | **1216 × 1600** | 43 KB | 82 |
-| `ph-basket.webp` | **1322 × 1190** | 76 KB | 82 |
-
-Il basket non arriva a 1600 perché il sorgente è 1322×1190 e `thumbnail` non
-ingrandisce mai: è giusto così, ingrandire un raster lo sgrana.
-
-**Livelli campionati** (servono ai due nodi cromatici della spec §6, e il fondo
-della coda è `#554135` = `(85,65,53)`):
-
-| foto | nero (5° percentile) | mediana |
-|---|---|---|
-| architettura B/N | `(34,34,34)` | `(38,38,38)` |
-| architettura vetri | `(0,2,3)` | `(102,107,104)` |
-| lampione | `(51,59,74)` | `(95,100,113)` |
-| mensole | `(28,24,25)` | `(230,185,188)` |
-| basket | `(2,3,5)` | `(30,41,15)` |
-
-Due cose che i numeri dicono e che la spec non aveva previsto, **da guardare
-alla fase 5**: il nero del bianco e nero è più scuro **e più freddo** del fondo,
-quindi quella foto rientra invece di staccare; e le mensole sono la foto **più
-chiara** delle quattro, non la più quieta — la scala di temperatura regge come
-tinta, ma in luminosità l'ultima è la più forte. Finire in crescendo è
-legittimo, ma la frase della spec «appartiene già alla stanza» è troppo generosa
-e va corretta o confermata a schermo.
-
-- [ ] **Step 3: Verifica che siano leggibili e non stravolte**
-
-Run:
-```bash
-python -c "from PIL import Image; import glob; [print(f, Image.open(f).size, Image.open(f).mode) for f in sorted(glob.glob('img/ph-*.webp'))]"
-```
-Expected: cinque file, `RGB`, lato lungo 1600 (tranne il basket, che parte da 1322 e non va ingrandito — `thumbnail` non ingrandisce mai, quindi resta 1322×1190).
-
-- [ ] **Step 4: Guarda le cinque webp**
-
-Aprile e confrontale a occhio con i sorgenti in `doc/immagini/`. Cerchi due cose: **banding nei cieli** del lampione (è il file più a rischio, ha una sfumatura larga) e **artefatti sui bordi netti** del bianco e nero. Se il lampione banda, per quel solo file `quality=90`.
-
-- [ ] **Step 5: Togli i file di appoggio da `img/`**
-
-```bash
-cd "D:/progetti/design/brand-personale/v5"
-rm img/*.lnk "img/ChatGPT Image 2 set 2026, 00_33_44.png"
-git status --short
-```
-Expected: in `img/` restano solo le webp; niente `.lnk`, niente PNG. I sorgenti in `doc/immagini/` restano.
-
-- [ ] **Step 6: Commit**
-
-**`doc/immagini/` è in `.gitignore`** (riga 18: *«sorgenti delle immagini: nel
-sito vanno le webp in img/, convertite da qui»*). Non provare ad aggiungerlo: è
-la convenzione del repo, e vale già per gli screenshot di progetto.
-
-```bash
-git add img/ph-*.webp
-git commit -m "Photographs: five of his own frames, converted for the page"
-```
+Nessun file creato. Nessun file cancellato.
 
 ---
 
-## Task 2: Il fondo che si apre
+## Task 1: Il campo, fermo
 
-Questa fase **non tocca il contenuto**: cambia solo il fondo e ricolora quel che c'è già. Serve a fargli giudicare il marrone prima che ci sia costruito sopra qualcosa.
+Prima la composizione, senza movimento. Se il campo non regge da fermo, non lo salva nessuna parallasse.
 
 **Files:**
-- Modify: `index.html:1046-1050` (`.after-rail`), `1031-1037` (`.after`), `1076-1105` (colori del testo), `1114-1136` (filetti), `1143-1163` (chiusura), `1341-1350` (reduced-motion), `2386-2400` (`measure()`), `2831-2843` (il ciclo)
+- Modify: `index.html:1886-1892` (markup `mv1`), `1063-1112` (CSS della coda, dove aggiungere il blocco `.gaze`), `1352-1369` (`@media max-width:640px`)
 
 **Interfaces:**
-- Consumes: niente.
-- Produces: la variabile CSS `--k` su `#afterRail` (apertura, 1 = linea sottile), `--wedge` su `.after` (dove il cuneo raggiunge la larghezza piena, in %), e in JS `afKMax` (apertura massima, ricavata) e `afterH` (altezza di `.after`). Le fasi 3-6 assumono il fondo scuro già in piedi.
+- Produces: la classe `.gaze` (il campo), `.gaze-ph` (una foto), `.gaze-say` (la tesi ferma), e la custom property `--s` — un numero per foto, da cui si ricavano **larghezza e corsa**. Le fasi 2 e 3 leggono questi nomi.
 
-- [ ] **Step 1: Sonda di partenza — fotografa lo stato di adesso**
+- [ ] **Step 1: Il CSS del campo**
 
-Prima di toccare: `python "%TEMP%\lp-portfolio-probe\shot-af.py"`. Tieni le immagini da parte. Servono per il confronto e perché se il marrone non piace si torna a queste.
-
-- [ ] **Step 2: `.after-rail` diventa il fondo**
-
-Sostituisci il blocco a `index.html:1046-1050`. Il commento vecchio va riscritto per intero: dice che la linea muore sulla mail, e non è più vero.
+Da aggiungere subito dopo il blocco della palette della coda (dopo `index.html:1111`, la riga `.after .mv::before{background:#BFCFFF}`):
 
 ```css
-/* LA GUIDA, CHE E' ANCHE IL FONDO. Nasce spessa 4px come la barra e il gomito
-   — e' la stessa linea, e va letta come tale — e scorrendo si APRE fino a
-   coprire lo schermo: da li' in giu' e' lei la carta su cui sta la coda del
-   sito. La timeline arriva a oggi, gira, e poi oggi e' tutto lo schermo.
-   MUORE QUI L'INVARIANTE DI df7497f («la linea deve morire sulla mail»): non
-   finisce piu' da nessuna parte, quindi l'altezza e' quella piena della
-   sezione e non piu' --railH ricavata dal centro della stellina.
-   NIENTE scaleY: il gesto del disegnarsi scendendo e' SOSTITUITO
-   dall'apertura, non affiancato. Due gesti nello stesso mezzo secondo si
-   annullavano.
-   IL CUNEO NON E' DECORAZIONE: un rettangolo che si allarga ha un bordo alto
-   orizzontale, e un bordo alto orizzontale si legge come «e' entrato un
-   pannello», non come «la linea ingrassa». Con la punta in alto la giuntura
-   col gomito resta una linea sola che si apre scendendo.
-   Le percentuali del clip-path stanno nello spazio LOCALE dell'elemento, prima
-   della transform: il cuneo si scala insieme a lui e resta un cuneo.
-   Niente border-radius: a scaleX 300 un raggio di 2px diventerebbe 600. */
-.after-rail{
-  position:absolute;left:var(--spine);top:0;height:100%;width:4px;
-  margin-left:-2px;background:#554135;
-  transform:scaleX(var(--k,1));transform-origin:center top;
-  clip-path:polygon(50% 0, 100% var(--wedge,4%), 100% 100%, 0 100%, 0 var(--wedge,4%));
+/* ---------- IL CAMPO ----------
+   Quattro fotografie che salgono da sotto mentre la tesi resta ferma in mezzo.
+   E' il primo movimento, e apre la coda: la prima cosa dopo l'allagamento sono
+   le sue foto, non un paragrafo.
+
+   --p E' 1 DI DEFAULT, NON 0. Ci sono tre rami che questa property non la
+   scrivono mai — reduced-motion (li' non c'e' ciclo), touch (li' il contenuto
+   sta incollato al dito e non si scrivono transform per frame) e il frame prima
+   che il ciclo parta. Tutti e tre devono vedere il campo FINITO. Con lo zero di
+   default il sintomo sarebbe "le foto non ci sono", che e' il piu' costoso da
+   inseguire perche' somiglia a un errore di percorso.
+
+   UN NUMERO SOLO PER FOTO. --s dice quanto e' grande, e da li' si ricava anche
+   di quanto sale: piu' e' grande piu' e' vicina, piu' e' vicina piu' si muove.
+   NON aggiungere una seconda property per la profondita' — sarebbe una seconda
+   tabella da tenere allineata alla prima, ed e' esattamente la deriva che
+   questo file evita da sempre. */
+.gaze{
+  --p:1;
+  display:block;position:relative;height:140vh;
+}
+/* il padding-top NON si riscrive qui: .mv ce l'ha gia' (var(--pt)), e
+   .after .mv:first-of-type lo porta a 40vh. box-sizing e' border-box in tutto
+   il file, quindi i 140vh COMPRENDONO quel padding e offsetHeight vale
+   esattamente 140vh — che e' il numero su cui la fase 2 costruisce --p. */
+/* il filetto che aggancia il movimento alla guida qui non ha senso: non ci sono
+   colonne, e crescerebbe dal nulla verso il nulla. */
+.gaze::before{content:none}
+/* l'etichetta perde l'allineamento a destra: fuori dalla griglia justify-self
+   non fa niente e text-align:right la spedirebbe contro il bordo destro dello
+   schermo, dove si leggerebbe come la didascalia della foto dei vetri. */
+.gaze .mv-tag{justify-self:auto;text-align:left;padding:0 0 0 2.6vw}
+.gaze-ph{
+  position:absolute;width:calc(var(--s) * 30vw);
+  transform:translateY(calc((1 - var(--p)) * var(--s) * 26vh));
+}
+/* height:auto con width e height dichiarati sull'<img>: il rapporto lo tiene il
+   browser dalle dimensioni vere, e lo spazio e' riservato PRIMA che il file
+   arrivi. Non e' ottimizzazione — measure() ha gia' preso le sue altezze in
+   pixel quando le immagini finiscono di caricare. */
+.gaze-ph img{display:block;width:100%;height:auto}
+/* LA TESI, FERMA. sticky nativo: nessuna riga di JS per tenerla in mezzo.
+   Il contenitore e' alto 140vh, quindi resta appesa per tutto l'attraversamento
+   e se ne va con lui. 30ch e non piu': deve restare una colonna stretta al
+   centro, perche' il vincolo di composizione e' che NESSUNA foto le passi
+   sotto. Un velo o una sfocatura dietro il testo sarebbero il modo di ammettere
+   che una foto e' nel posto sbagliato. */
+.gaze-say{
+  position:sticky;top:38vh;
+  padding:0;margin:0 auto;max-width:30ch;
 }
 ```
 
-- [ ] **Step 3: `.after` perde il fondo chiaro solo dove serve, e prende la palette**
+- [ ] **Step 2: Il markup del campo**
 
-A `index.html:1031-1037`, `.after` **conserva** `background:var(--tlbg)`: è la carta che si vede ancora mentre il cuneo si apre. Aggiungi sotto il blocco una fascia di regole che ricolora il contenuto esistente:
+Sostituisce `index.html:1886-1892` per intero (l'`<article id="mv1">` di oggi).
 
-```css
-/* LA PALETTE DELLA CODA. Nessun valore nuovo: sono i colori che il file ha
-   gia', con i ruoli scambiati. #174FFE su #554135 sono due colori scuri —
-   contrasto ~1.1:1, illeggibile — quindi nella sola coda l'azzurro acceso
-   lascia il posto a #BFCFFF, che e' gia' il colore dei filetti.
-   Il peso 300 di DM Sans si sfilaccia sul fondo scuro: qui va 400. Stesso
-   carattere, stessa scala, solo il peso — senza, il testo sembra sbiadito e
-   dai la colpa allo schermo. */
-.after .mv-tag,.after .lens em{color:#BFCFFF}
-.after .mv-lead{color:var(--tlbg);font-weight:400}
-.after .mv-lead i{color:#BFCFFF}
-.after .sk h3,.after .lens p,.after .after-addr{color:var(--tlbg)}
-.after .after-mail{color:#BFCFFF}
-.after .after-star{fill:#BFCFFF}
-.after .sk,.after .sk:last-child,
-.after .lens,.after .lens:last-child{border-color:#BFCFFF}
-.after .mv::before{background:#BFCFFF}
-```
-
-- [ ] **Step 4: `measure()` ricava l'apertura invece di tararla**
-
-A `index.html:2386-2400`, sostituisci il blocco che calcola `afRailH`. Il commento vecchio (quello sulla stellina e su `offsetTop` che non esiste sugli SVG) va **conservato in parte**: la trappola dell'SVG resta vera e va ricordata, anche se questa misura non serve più.
-
-```js
-  /* .after: dove comincia, quanto e' alta, e quanto deve aprirsi la guida.
-     NON si misura piu' il centro della stellina: la linea non deve piu'
-     fermarsi li' (vedi il CSS di .after-rail). La stellina resta il marchio in
-     fondo, e basta.
-     (Resta valida la trappola che quella misura ci aveva insegnato: offsetTop e
-     offsetHeight NON esistono sugli elementi SVG, li' tornano undefined e i
-     conti diventano NaN senza sollevare niente. Sugli <svg> si misura con
-     getBoundingClientRect.) */
-  af0 = after.offsetTop - (scroller.offsetHeight - innerHeight);
-  afterH = after.offsetHeight || 1;
-  /* L'APERTURA MASSIMA SI RICAVA, NON SI SCEGLIE. La fascia parte larga 4px e
-     cresce dal proprio centro, che sta a --spine: ogni lato guadagna 2*k px, e
-     deve bastare a coprire il lato PIU' LONTANO. Con la guida al 30% il lato
-     lungo e' sempre quello destro, ma scriverlo con un max() lo tiene vero
-     anche se AF_SPINE cambia o se il ramo incolonnato la porta a 24px. */
-  const spinePx = parseFloat(getComputedStyle(after).getPropertyValue('--spine')) || 0;
-  afKMax = Math.max(spinePx, innerWidth - spinePx) / 2;
-  /* dove il cuneo raggiunge la larghezza piena: UNO SCHERMO sotto l'inizio
-     della sezione, cioe' lo stesso vuoto in cui l'apertura avviene. In % perche'
-     il clip-path lavora in coordinate locali. */
-  after.style.setProperty('--wedge', (100 * innerHeight / afterH).toFixed(2) + '%');
-  /* reduced-motion non ha un ciclo per frame: il fondo va consegnato gia'
-     aperto da qui, altrimenti quel ramo vede una linea sottile e basta.
-     La variabile e' `reduce` (index.html:1922), non noMotion. */
-  if (reduce) afterRail.style.setProperty('--k', afKMax.toFixed(2));
-  mvs.forEach(m => m.top = af0 + m.el.offsetTop);
-```
-
-Dichiara le due variabili nuove accanto alle altre a `index.html:2133`:
-
-```js
-let af0 = 0, afterH = 1, afKMax = 1;   // dove comincia .after, quanto e' alta, quanto si apre
-```
-
-E togli `afRailH` da quella riga e da ogni suo uso.
-
-- [ ] **Step 5: Il ciclo scrive l'apertura al posto della discesa**
-
-A `index.html:2838-2839`, sostituisci la scrittura di `--d` con quella di `--k`. **Resta prima del guardiano `tlLive`**, per la ragione che il commento lì già spiega.
-
-```js
-  /* ---------- il fondo delle sezioni dopo la curva ----------
-     Sta PRIMA del guardiano qui sotto, e non e' un dettaglio: quel guardiano
-     esce dalla funzione quando la linea del tempo e' lontana e per tutto il
-     ramo incolonnato, dove pero' queste sezioni ci sono e il fondo deve
-     aprirsi lo stesso.
-     L'apertura si consuma in UNO SCHERMO a partire da quando la sezione entra:
-     e' il vuoto fra l'atterraggio della curva e il primo movimento, l'unico
-     punto della coda in cui non c'e' niente da leggere. Il gesto non compete
-     con nessun testo, ed e' per questo che sta li'.
-     out3 e non lineare: la fascia parte decisa e arriva morbida, come ogni
-     altra apertura del sito. */
-  const afOpen = out3(clamp((over - af0 + innerHeight * AF_READ) / (innerHeight * AF_OPEN)));
-  afterRail.style.setProperty('--k', (1 + (afKMax - 1) * afOpen).toFixed(2));
-```
-
-E accanto ad `AF_READ`/`AF_ON` a `index.html:2137`:
-
-```js
-const AF_OPEN = 1;    // in quanti schermi la fascia passa da linea a fondo
-```
-
-- [ ] **Step 6: Il ramo reduced-motion**
-
-A `index.html:1341-1350`, dove c'è già `.after-rail{transform:none}`, sostituisci: `transform:none` rimetterebbe la fascia a 4px. L'apertura la scrive `measure()` (Step 4), quindi qui basta non contraddirla:
-
-```css
-  /* la fascia e' gia' aperta: --k lo scrive measure(), che gira anche qui.
-     transform:none la richiuderebbe a 4px. */
-  .after-rail{transform:scaleX(var(--k,1))}
-```
-
-- [ ] **Step 7: `node --check`**
-
-```bash
-cd "D:/progetti/design/brand-personale/v5"
-python - <<'PY'
-import re
-s = open('index.html', encoding='utf-8').read()
-js = s.rsplit('<script>', 1)[1].rsplit('</script>', 1)[0]
-open('/tmp/inline.js', 'w', encoding='utf-8').write(js)
-PY
-node --check /tmp/inline.js
-```
-Expected: nessun output. Un errore qui **spegne la pagina**: non andare oltre.
-
-- [ ] **Step 8: Sonda — l'apertura si ricava e arriva a coprire**
-
-Scrivi `%TEMP%\lp-portfolio-probe\p-ground.js` e lancialo con `probe.py --dump-dom`. Chiama il codice di produzione, non una copia:
-
-```js
-const out = { errors: [] };
-window.onerror = e => out.errors.push(String(e));
-const after = document.getElementById('after');
-const rail  = document.getElementById('afterRail');
-const at = y => { scrollTo(0, y); scrollCur = scrollTarget = scrollY; sync(); applyProjects(); };
-
-// prima che la sezione entri: linea sottile
-at(af0 + scroller.offsetHeight - innerHeight - innerHeight);
-out.kPrima = getComputedStyle(rail).getPropertyValue('--k').trim();
-// uno schermo e mezzo dentro: aperta
-at(af0 + scroller.offsetHeight - innerHeight + innerHeight * 1.5);
-out.kDopo  = getComputedStyle(rail).getPropertyValue('--k').trim();
-out.kMax   = afKMax;
-// copre davvero? mezza larghezza scalata contro il lato piu' lontano
-const spine = parseFloat(getComputedStyle(after).getPropertyValue('--spine'));
-out.copre   = 2 * afKMax >= Math.max(spine, innerWidth - spine);
-out.wedge   = getComputedStyle(after).getPropertyValue('--wedge').trim();
-out.railRect = rail.getBoundingClientRect().width.toFixed(0);
-return out;
-```
-
-Expected:
-- `errors` vuoto
-- `kPrima` ≈ `1`, `kDopo` ≈ `kMax`
-- `copre` `true`
-- `wedge` una percentuale piccola ma non zero (~3-6% su una coda di qualche schermata)
-- `railRect` ≈ `4 * kMax`, cioè almeno la larghezza del viewport
-
-- [ ] **Step 9: Screenshot — il cuneo e il fondo**
-
-`python "%TEMP%\lp-portfolio-probe\shot-elbow.py"` e `shot-af.py`. Guarda:
-- la giuntura col gomito è **una linea sola che si apre**, non un pannello con un bordo alto orizzontale
-- il testo vecchio è leggibile sul marrone
-- da nessuna parte resta una striscia di carta `#FFFEF8` fra il fondo e il bordo dello schermo
-
-- [ ] **Step 10: Verifica i contrasti sul rendering vero**
-
-I rapporti della spec §3 sono **calcolati, non misurati**. Nella stessa sonda, leggi i colori calcolati e verificali:
-
-```js
-const px = el => getComputedStyle(el).color;
-out.colori = {
-  lead: px(document.querySelector('.after .mv-lead')),
-  tag:  px(document.querySelector('.after .mv-tag')),
-  fondo: getComputedStyle(document.getElementById('afterRail')).backgroundColor,
-};
-```
-Poi il rapporto in Node con la formula WCAG. Expected: **testo ≥ 4.5:1, accenti ≥ 3:1**. Se `#BFCFFF` su `#554135` non arriva a 4.5, il testo grande può stare a 3:1 ma le micro-etichette mono no — in quel caso si schiarisce l'accento, non si scurisce il fondo.
-
-- [ ] **Step 11: Fallo giudicare**
-
-Consegna un resoconto per punti, digli di ricaricare, e **dichiara cosa hai misurato e cosa no**: il ritmo mentre si scorre e gli `:hover` qui non sono verificabili. Se il marrone non funziona la manopola è il colore del fondo — ma è accoppiato al colore della guida e del gomito, che sono lo stesso colore per costruzione.
-
-- [ ] **Step 12: Commit (solo dopo il suo ok)**
-
-```bash
-git add index.html
-git commit -m "The line stops ending and becomes the ground"
-```
-
----
-
-## Task 3: Sezione 1 — chi sono
-
-**Files:**
-- Modify: `index.html:1817-1826` (markup `#mv1`), `1076-1093` (`.mv-tag` e l'ingresso), `1279-1293` (mobile)
-- Modify: `doc/bio.md` e `doc/04-bio-esperienze.md` — il paragrafo duplicato nella bio Media
-
-**Interfaces:**
-- Consumes: il fondo scuro della fase 2.
-- Produces: la classe `.mv-num` (il numero grande) e il pattern `<b class="mv-num">01</b>` dentro `.mv-tag`, che le fasi 4 e 5 riusano per `02` e `03`.
-
-- [ ] **Step 1: Il numero grande**
-
-Aggiungi dopo `.mv-tag` (`index.html:1082`):
-
-```css
-/* IL NUMERO. La colonna di sinistra e' larga un terzo di schermo e finora ci
-   stavano tre parole di mono: il commento di .after lo confessava gia'. Il
-   numero la riempie con ARCHITETTURA, non con contenuto — per questo sta basso
-   di opacita' e non compete con niente. I tre numeri che scendono danno alla
-   coda una spina dorsale visiva.
-   line-height:.8 e non 1: un numerale non ha discendenti, e con l'interlinea
-   piena l'etichetta sotto sembrerebbe scollata. */
-.mv-num{
-  display:block;font-family:var(--grotesk);font-weight:700;
-  font-size:clamp(48px,7vw,120px);line-height:.8;letter-spacing:-.04em;
-  color:#BFCFFF;opacity:.2;margin-bottom:.25em;
-}
-```
-
-- [ ] **Step 2: Il markup del movimento 1**
-
-Sostituisci `index.html:1817-1826`. Testo: la bio **Breve** di `doc/bio.md`, non la Media.
+`.gaze-say` sta **prima** delle foto: su desktop il posizionamento assoluto ignora l'ordine del DOM, ma su mobile e per chi legge con uno screen reader la tesi deve venire prima delle immagini che la dimostrano.
 
 ```html
-  <article class="mv" id="mv1">
-    <h2 class="mv-tag"><b class="mv-num">01</b>posizionamento</h2>
-    <div class="mv-body">
-      <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti. Unisco design dell&rsquo;esperienza e ingegneria del software per costruire prodotti digitali scalabili e intuitivi: progetto le interfacce e, quando serve, ne realizzo il front-end per renderle concrete. Mi sono occupato di software B2B per la sostenibilit&agrave;, dove rendere leggibili dati complessi &egrave; ci&ograve; che guida le decisioni.</p>
-      <!-- l'unica cosa accesa della schermata, e non e' un vezzo: e' la riga
-           che apre il credito che la sezione delle foto poi incassa. Senza,
-           gli scatti dopo sono decorazione. Sta in doc/bio.md, versione lunga,
-           e il sito non l'ha mai detta. -->
-      <p class="mv-lead mv-turn"><i>Prima del software, la fotografia &egrave; stata la mia professione.</i></p>
+  <article class="mv gaze" id="mv1">
+    <h2 class="mv-tag">01 &mdash; come guardo</h2>
+    <div class="mv-body gaze-say">
+      <p class="mv-lead">Prima del software, la fotografia era il mestiere. Ha educato l&rsquo;occhio all&rsquo;equilibrio, alla luce, al dettaglio: <i>la sensibilit&agrave; visiva del design &egrave; allenata, non innata</i>.</p>
+    </div>
+    <!-- un numero solo per foto (--s): da li' escono larghezza e corsa. La
+         posizione e' inline perche' e' composizione, non regola: sono quattro
+         casi unici, e quattro selettori in fondo al foglio direbbero la stessa
+         cosa piu' lontano da dove la si legge. -->
+    <div class="gaze-ph" style="--s:.72;top:6vh;left:-4vw">
+      <img src="img/ph-architettura-bn.webp" width="1280" height="1600" loading="lazy"
+           alt="Facciata in cemento in bianco e nero: pilastri e solette tagliati dalla luce diretta, senza mezzi toni.">
+    </div>
+    <div class="gaze-ph" style="--s:1;top:14vh;right:-5vw">
+      <img src="img/ph-architettura-vetri.webp" width="1600" height="1280" loading="lazy"
+           alt="Due facciate che si toccano ad angolo: una griglia di vetri turchesi e una parete bianca a finestre strette.">
+    </div>
+    <div class="gaze-ph" style="--s:.5;top:62vh;left:8vw">
+      <img src="img/ph-lampione.webp" width="1280" height="1600" loading="lazy"
+           alt="Un lampione a sei bracci acceso contro un cielo al tramonto, fra nuvole rosa e blu.">
+    </div>
+    <div class="gaze-ph" style="--s:.62;top:74vh;right:12vw">
+      <img src="img/ph-mensole.webp" width="1216" height="1600" loading="lazy"
+           alt="Due mensole triangolari nere a parete sopra un divano rosa; sul bordo di una cammina una figurina.">
     </div>
   </article>
 ```
 
-```css
-/* la riga della svolta: stessa scala del lead, ma staccata — e' un capoverso
-   che vale da solo */
-.mv-turn{margin-top:1.6em}
-```
+- [ ] **Step 3: Il ramo incolonnato**
 
-- [ ] **Step 3: Il mobile**
-
-A `index.html:1285`, `.mv-tag` su mobile è allineata a sinistra e il numero grande non ci sta accanto a 24px di spina. Aggiungi nel blocco `@media (max-width:640px)`:
+Nel `@media (max-width:640px)`, subito dopo `.mv-lead{font-size:19px;max-width:none}` (`index.html:1363`):
 
 ```css
-  /* incolonnato il numero non ha una colonna in cui stare: torna piccolo e
-     resta sulla stessa riga dell'etichetta, come una numerazione di paragrafo */
-  .mv-num{display:inline;font-size:inherit;opacity:.6;margin:0 .5em 0 0}
+  /* IL CAMPO SU TELEFONO. Le foto si incolonnano e la tesi torna in cima, nel
+     suo ordine di DOM. L'altezza fissa se ne va: qui il campo e' alto quanto il
+     suo contenuto.
+     PERCHE' NIENTE PARALLASSE QUI: sul dito il contenuto deve restare incollato,
+     e scrivere una transform a ogni frame e' esattamente il tremolio che questo
+     file ha gia' combattuto sui progetti (vedi il @media hover a 314-316 e il
+     commento in applyProjects). Le foto entrano con l'ingresso scalettato che
+     c'e' gia', e basta. */
+  .gaze{height:auto;padding-bottom:8vh}
+  .gaze-ph{
+    position:static;width:74vw;margin:18px 0 0;transform:none;
+  }
+  .gaze-ph:nth-of-type(even){margin-left:26vw}
+  .gaze-say{position:static;top:auto;max-width:none;margin:0}
 ```
 
-- [ ] **Step 4: Il paragrafo duplicato nei documenti**
+- [ ] **Step 4: Sonda di struttura**
 
-`doc/bio.md` e `doc/04-bio-esperienze.md` §1 ripetono **due volte** il paragrafo che comincia con «Ho maturato esperienza specifica…» dentro la bio Media. Il sito ne copiava uno solo, ma il documento è sbagliato da settimane. Togli la seconda occorrenza in **entrambi** i file.
+Controlla, con `html.parser`: che `#mv1` esista e abbia entrambe le classi `mv` e `gaze`; che contenga esattamente **quattro** `.gaze-ph`; che ognuna abbia un `<img>` con `src`, `width`, `height`, `loading="lazy"` e un `alt` **non vuoto**; che `.gaze-say` venga **prima** della prima `.gaze-ph` nell'ordine del documento.
 
-Run per confermare:
+Expected: quattro foto, quattro alt pieni, testo prima.
+
+- [ ] **Step 5: L'altezza del documento non si muove al `load`**
+
+Sonda: leggi `document.body.scrollHeight` prima che le immagini siano caricate e dopo l'evento `load`.
+
+Expected: **lo stesso numero**. Se cambia, un `width`/`height` manca o è sbagliato, e ogni misura presa da `measure()` prima del `load` è da buttare. È la trappola che rompe le sezioni *precedenti*, non questa.
+
+- [ ] **Step 6: Screenshot del campo fermo**
+
+Tre schermate, a 1920×1000 e a 1280×1024: il campo appena entrato, il campo a metà, il campo che esce. In headless lo screenshot parte dall'origine della pagina: per fotografare la sezione vanno nascosti gli altri figli di `body` e portata in cima con un margine negativo.
+
+Guarda due cose, che sono le sole già note dai livelli campionati:
+1. **La B/N rientra nel fondo?** Il suo nero è `(34,34,34)` contro un fondo `(43,26,15)`: più scuro e più freddo. Se sparisce, un filo di bordo `#BFCFFF` a bassa opacità — **non** una cornice.
+2. **Le mensole sono la foto più chiara** (mediana `(230,185,188)`). In basso a destra, a fine campo, potrebbe tirare l'occhio fuori dalla lettura.
+
+- [ ] **Step 7: Verifica che nessuna foto passi sotto il testo**
+
+Sonda: prendi il rettangolo di `.gaze-say` e i quattro di `.gaze-ph` con `getBoundingClientRect()`, a `--p` 0 e a `--p` 1, su entrambe le finestre.
+
+Expected: **nessuna intersezione**, in nessuno dei quattro casi. È il vincolo di composizione della spec, ed è l'unica cosa in questa fase che si può verificare senza guardare.
+
+- [ ] **Step 8: Fallo giudicare**
+
+Mostra gli screenshot. Dichiara cosa è stato misurato (intersezioni, altezza del documento, struttura) e cosa no (se il campo è bello). Aspettati due o tre passate sulle posizioni: sono composizione, si tarano a occhio ed è giusto così.
+
+- [ ] **Step 9: Commit (solo dopo il suo ok)**
+
 ```bash
-grep -c "Ho maturato esperienza specifica" doc/bio.md doc/04-bio-esperienze.md
+git add index.html
+git commit
 ```
-Expected: `1` per ciascuno.
 
-- [ ] **Step 5: `node --check` e la sonda di struttura**
-
-`node --check` come al Task 2 Step 7, più il confronto classi CSS ↔ markup nelle due direzioni e gli id duplicati. Expected: `.mv-num` e `.mv-turn` esistono in entrambi, nessun id doppio.
-
-- [ ] **Step 6: Screenshot**
-
-`shot-af.py`. Guarda che il numero **non competa** col testo: se lo leggi prima del paragrafo, l'opacità `.2` è troppo alta. È la manopola.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add index.html doc/bio.md doc/04-bio-esperienze.md
-git commit -m "First movement: a number fills the empty column, and the bio finally says the thing"
-```
+Messaggio in inglese, in prosa, che dica **perché** il campo apre la coda e perché `--p` parte da 1.
 
 ---
 
-## Task 4: Sezione 2 — cosa so fare
+## Task 2: La parallasse
 
 **Files:**
-- Modify: `index.html:1828-1840` (markup `#mv2`), `1108-1122` (le regole `.sk`), `1090-1093` (i ritardi scalettati), `1288` (mobile), `358` (`.mv.on .sk-tags li`)
+- Modify: `index.html` — `measure()` intorno a `2547`, il ciclo intorno a `3003`, e la dichiarazione delle variabili vicino a `2256`
 
 **Interfaces:**
-- Consumes: `.mv-num` dalla fase 3.
-- Produces: `.skl` (il paragrafo) e `.skl b` (i nomi degli strumenti). Le regole `.sk`, `.sk h3`, `.sk-tags` spariscono e nessuna fase successiva le usa.
+- Consumes: `.gaze` e `--s` dalla fase 1; `mvs` (`index.html:2036`), `af0`, `over`, `clamp()`, `mq`, `reduce`.
+- Produces: la scrittura di `--p` sul campo. Nessuna fase successiva ne dipende.
+
+- [ ] **Step 1: La variabile di stato**
+
+Accanto a `let af0 = 0;` (`index.html:2256`):
+
+```js
+let gazeH = 0;                 // altezza del campo, misurata: NON scritta a mano
+let gazeP = '';                // ultimo --p scritto, per non riscrivere lo stesso
+```
+
+`gazeP` è una **stringa**, non un numero, e si confronta con la stringa che sta per essere scritta: è lo stesso patto di `tlFo` poco sopra nel ciclo. Confrontare i numeri e poi formattare due volte costa una formattazione in più per frame e non salta niente.
+
+- [ ] **Step 2: La misura**
+
+In `measure()`, sulla riga dopo `mvs.forEach(m => m.top = af0 + m.el.offsetTop);` (~`2547`):
+
+```js
+/* L'ATTRAVERSAMENTO DEL CAMPO SI RICAVA, non si scrive. L'altezza sta in CSS
+   (140vh) e qui si LEGGE: cambiarla nel foglio non deve obbligare a toccare il
+   JS, o i due numeri divergono alla prima modifica e nessuno se ne accorge
+   finche' la parallasse non finisce mezzo schermo prima. */
+gazeH = mvs[0].el.offsetHeight;
+```
+
+`mvs[0]` è il campo perché è il primo `.mv` del documento. Se un giorno l'ordine cambia, questa riga sceglie l'elemento sbagliato **in silenzio**: il commento deve dirlo.
+
+- [ ] **Step 3: La scrittura per frame**
+
+Nel ciclo, subito **dopo** `mvs.forEach(m => m.el.classList.toggle('on', ...))` (~`3003`) e **prima** del guardiano `tlLive`. La posizione non è un dettaglio: quel guardiano esce dalla funzione per tutto il ramo incolonnato.
+
+```js
+  /* IL CAMPO. Una sola scrittura di stile per frame per tutta la sezione: il
+     CSS la distribuisce alle quattro foto con --s. Quattro scritture (una per
+     foto) direbbero la stessa cosa costando quattro volte tanto.
+
+     IL SEGNALE E' `over`, cioe' l'INSEGUITORE, e non lo scroll grezzo. Qui la
+     scelta e' vera e va capita: .after non sta dentro .projects — i progetti
+     sono position:fixed e li muove solo translateY(-over), la coda invece e' nel
+     flusso e la scorre il browser — quindi in questa sezione ci sono DUE
+     orologi possibili. Finora non se n'era accorto nessuno perche' .on e' un
+     interruttore, e un interruttore in ritardo di mezzo frame non si vede.
+     Con `over` le foto ereditano la stessa inerzia della stellina, del nastro e
+     dei progetti: un unico segnale, che e' la disciplina di questo file. Il
+     prezzo e' che in uno scatto veloce restano indietro dalla loro cornice di
+     (ritardo x --s) — pochi pixel con corse cosi' corte, e si legge come
+     morbidezza. Volendo l'altro orologio si scrive `scrollY - max` al posto di
+     `over`: UNA riga, ma allora il campo si muove con un tempo diverso dal
+     resto del sito e va detto qui.
+
+     LA CUBICA. Con --p lineare la salita durerebbe tutto l'attraversamento e
+     si leggerebbe come un galleggiamento lento: l'utente ha chiesto che le foto
+     salgano VELOCEMENTE. La cubica carica la corsa all'inizio — la maggior
+     parte succede nel primo terzo — e lascia una deriva lenta per il resto,
+     cosi' il campo non si congela mentre si legge la tesi appesa.
+     L'ESPONENTE 3 E' L'UNICO NUMERO SCELTO A OCCHIO DI TUTTO IL PEZZO. Tutto il
+     resto qui e' misurato. Se va cambiato si cambia qui e in nessun altro posto.
+
+     Il ramo touch e reduced-motion non entrano mai: la' --p resta al suo default
+     di 1 e il campo e' gia' finito. Vedi il commento di .gaze nel foglio. */
+  if (!mq.matches && !reduce){
+    const gz = clamp((innerHeight - (mvs[0].top - over)) / (innerHeight + gazeH));
+    const gp = (1 - (1 - gz) ** 3).toFixed(3);
+    if (gp !== gazeP){ mvs[0].el.style.setProperty('--p', gp); gazeP = gp; }
+  }
+```
+
+- [ ] **Step 4: `node --check`**
+
+Estrai lo script in linea fra l'ultimo `<script>` e `</script>` in un file temporaneo fuori dal repo, poi:
+
+```bash
+node --check "%TEMP%\lp-portfolio-probe\inline.js"
+```
+
+Expected: nessun output, exit 0.
+
+- [ ] **Step 5: Sonda — `--p` si ricava e arriva agli estremi**
+
+Chiama il **codice di produzione**, non riscriverlo. Per ogni punto: `scrollTo(0,y); scrollCur = scrollTarget = scrollY; sync(); applyProjects();` e poi leggi.
+
+Verifica tre cose:
+1. `gazeH` è **uguale** a `1.4 * innerHeight`, a meno di un pixel, su entrambe le finestre. Se non lo è, `140vh` e la misura non parlano dello stesso elemento.
+2. Con il bordo alto del campo al bordo basso del viewport, `--p` è **0.000**; con il bordo basso del campo uscito dal bordo alto, `--p` è **1.000**. Sono i due estremi della formula: se uno dei due non ci arriva, il denominatore è sbagliato.
+3. A metà attraversamento `--p` è **maggiore di .8**, non intorno a .5. È la cubica che fa il suo mestiere; se è .5 l'esponente non è stato applicato.
+
+- [ ] **Step 6: Sonda — le quattro corse stanno nel rapporto giusto**
+
+A `--p` = 0, leggi la `transform` calcolata delle quattro `.gaze-ph`.
+
+Expected, con `innerHeight` = 1000: vetri `260px`, B/N `187.2px`, mensole `161.2px`, lampione `130px`. Cioè **esattamente `--s × 26vh`**.
+
+Se una non torna, `--s` è finito in un posto sbagliato — ed è il modo in cui «la profondità si ricava dalla taglia» smette di essere vero senza che si veda.
+
+- [ ] **Step 7: Convergenza, non `scrollTo`**
+
+Per gli screenshot in movimento serve arrivare a una posizione precisa, e la pagina ha uno scroll inseguito: **non basta un `scrollTo`**. Si converge — leggi `overCur`, scrolla della differenza, aspetta ~450 ms, ripeti. `lockHero()` cambia l'altezza dello scroller a metà strada, quindi un conto fatto una volta sola salta.
+
+- [ ] **Step 8: Fagli vedere il movimento**
+
+Non si giudica da uno screenshot. Chiedigli di ricaricare e guardare. La domanda è una sola: **è abbastanza veloce?**
+
+Se dice che è lenta, sale l'esponente (4, 5). Se dice che scatta, scende (2). **Un numero, un posto.** Aspettati tre o quattro passate: è come è andata con l'allagamento.
+
+- [ ] **Step 9: Commit (solo dopo il suo ok)**
+
+Il messaggio deve dire perché il segnale è `over` e non `scrollY` — è la scelta che un domani qualcuno rifarà al contrario senza sapere che era stata fatta.
+
+---
+
+## Task 3: Il basket
+
+**Files:**
+- Modify: `index.html:1894-1905` (markup `mv2`), il CSS della coda, il `@media (max-width:640px)`
+
+**Interfaces:**
+- Consumes: la griglia `.mv` che c'è già (`var(--spine) 1fr`), l'ingresso `.on`.
+- Produces: la classe `.shot`. Nessuna fase successiva ne dipende.
 
 - [ ] **Step 1: Il markup**
 
-Sostituisci `index.html:1828-1840`. **Il testo è una bozza: fattelo correggere prima di committare.**
+Sostituisce `index.html:1894-1905` per intero (l'`<article id="mv2">` delle competenze).
 
 ```html
   <article class="mv" id="mv2">
-    <h2 class="mv-tag"><b class="mv-num">02</b>competenze</h2>
+    <h2 class="mv-tag">02 &mdash; come sto in squadra</h2>
     <div class="mv-body">
-      <!-- NON e' piu' un elenco, ed e' il punto. Cinque righe di nomi separate
-           da filetti sono un CV impaginato bene: dicono cosa sai, mai perche'.
-           doc/bio.md §4 chiede che i linguaggi di back-end restino profondita'
-           tecnica al servizio del ruolo — finora quella tesi era affidata a una
-           gerarchia di corpi che il lettore doveva indovinare. Detta, funziona.
-           Il prezzo e' dichiarato: una frase si scansiona peggio di una
-           tabella. I nomi degli strumenti sono la cosa piu' grande della riga
-           apposta, cosi' l'occhio li prende comunque. -->
-      <p class="skl">Disegno in <b>Figma</b> &mdash; wireframe, prototipi, design system &mdash; e verifico con la <b>user research</b>. Quando serve costruisco: <b>React</b>, <b>HTML</b>, <b>CSS</b>, <b>JS</b>. Sotto ci sono <b>Python</b>, <b>Go</b>, <b>Java</b>, <b>Kotlin</b>, <b>SQL</b>: non &egrave; il mio mestiere, <i>ma &egrave; quello che mi permette di sapere cosa sto chiedendo</i>. E lavoro con <b>Claude Code</b>, <b>Figma Maker</b>, <b>Antigravity</b>.</p>
+      <figure class="shot">
+        <img src="img/ph-basket.webp" width="1322" height="1190" loading="lazy"
+             alt="In campo, in maglia numero 23, nel caricamento di un tiro.">
+      </figure>
+      <p class="mv-lead">Da sempre gioco a pallacanestro. Visione d&rsquo;insieme, decisioni rapide sotto pressione, e <i>capire il proprio ruolo dentro una squadra</i> &mdash; che &egrave; poi come si lavora su un prodotto.</p>
     </div>
   </article>
 ```
 
-- [ ] **Step 2: Il CSS — un colore, due pesi**
+`<figure>` e non `<div>`: è un'immagine di contenuto con una relazione col testo che la segue, ed è il tag che lo dice.
 
-Sostituisci il blocco `.sk` a `index.html:1108-1122` (commento compreso):
+- [ ] **Step 2: Il CSS**
+
+Dopo il blocco `.gaze-say`:
 
 ```css
-/* LE COMPETENZE, che non sono piu' un elenco. Un colore solo e due pesi: gli
-   strumenti pieni, il raccordo spento. Si legge come una frase, si scansiona
-   come una lista.
-   Il chiaro sta nel COLORE e non in opacity: opacity su un genitore se la
-   portano dietro i figli, e qui i <b> devono restare pieni dentro un raccordo
-   spento. E' la stessa trappola gia' pagata altrove nel file.
-   I filetti #BFCFFF fra le righe spariscono con le righe: non c'e' piu' niente
-   da separare. */
-.skl{
-  font-family:var(--sans);font-variation-settings:"opsz" 40;font-weight:400;
-  font-size:clamp(20px,2.05vw,33px);line-height:1.42;letter-spacing:-.5px;
-  color:rgba(255,254,248,.45);max-width:40ch;
-}
-.skl b{font-weight:700;color:var(--tlbg)}
-.skl i{font-style:italic;color:#BFCFFF}
-/* l'ingresso scalettato non si aggiunge: si SPOSTA. I ritardi stavano sui
-   cinque figli di .mv-body, e con un paragrafo solo non avevano piu' su cosa
-   applicarsi. Vanno sugli strumenti, che si accendono in sequenza dentro la
-   frase. Nessun JS: sono ritardi CSS su .on, come per gli eventi della linea
-   del tempo. */
-.skl b{opacity:0;transition:opacity .5s cubic-bezier(.16,1,.3,1)}
-.mv.on .skl b{opacity:1}
-.mv.on .skl b:nth-of-type(n+2){transition-delay:calc(.05s * var(--i,0))}
+/* IL BASKET. Una foto sola, FERMA. E' il contrasto a fare l'argomento: la
+   fotografia e' come guarda il mondo, la pallacanestro e' come sta dentro una
+   squadra — una cosa si osserva, l'altra si abita. Se anche questa
+   galleggiasse, le due sezioni direbbero la stessa cosa con due contenuti
+   diversi, e il campo perderebbe l'unica cosa che lo rende un gesto: essere
+   l'unico che si muove.
+   Nessuna riga di JS: entra con .on come tutto il resto della coda. */
+.shot{margin:0 0 2.4em}
+.shot img{display:block;width:100%;height:auto}
 ```
 
-Il `--i` per strumento va scritto inline nel markup dello Step 1: `<b style="--i:1">`, `<b style="--i:2">`… fino a 15. **Aggiungilo mentre scrivi il markup**, non dopo.
+- [ ] **Step 3: Il ramo incolonnato**
 
-- [ ] **Step 3: Togli le regole morte**
+Nel `@media (max-width:640px)`, accanto alle altre regole della coda:
 
-Cancella `index.html:358` (`.mv.on .sk-tags li{border-color:#BFCFFF}`), la regola `.sk-tags` ovunque sia, e `index.html:1288` (`.sk h3` nel blocco mobile). Cerca `sk-tags` e `\.sk\b` in tutto il file e verifica che non resti niente.
-
-Run:
-```bash
-grep -n "sk-tags\|\.sk\b\|\.sk{" index.html
+```css
+  /* a piena larghezza della colonna: a 24px dal bordo non c'e' niente da
+     riservare a sinistra, e una foto rientrata sembrerebbe un errore. */
+  .shot{margin-bottom:1.6em}
 ```
-Expected: nessun risultato.
 
-- [ ] **Step 4: `node --check` + sonda di struttura**
+- [ ] **Step 4: Sonda di struttura + `node --check`**
 
-Come sopra. In più: il confronto classi CSS ↔ markup **nelle due direzioni** è il controllo che qui conta di più — è la fase che cancella più regole.
+Nessun JS è cambiato, ma `node --check` va rifatto lo stesso: costa un secondo e la modifica precedente potrebbe non essere stata committata.
 
-- [ ] **Step 5: Sonda — gli strumenti si accendono in sequenza**
+Struttura: `#mv2` contiene una `figure.shot`, una sola `<img>`, `alt` non vuoto, `width` e `height` presenti. Nessun residuo di `.sk` dentro `#mv2`.
 
-```js
-const at = y => { scrollTo(0, y); scrollCur = scrollTarget = scrollY; sync(); applyProjects(); };
-at(document.getElementById('mv2').offsetTop + scroller.offsetHeight - innerHeight - innerHeight * .5);
-const bs = [...document.querySelectorAll('.skl b')];
-return {
-  acceso: document.getElementById('mv2').classList.contains('on'),
-  n: bs.length,
-  ritardi: bs.map(b => getComputedStyle(b).transitionDelay),
-};
-```
-Expected: `acceso` `true`, `n` = 15, i ritardi crescenti dal secondo in poi.
-**Nota:** sotto virtual time le transizioni CSS non avanzano mai, quindi `opacity` letta qui è il valore di **partenza**. Non è un difetto: si verifica il ritardo, non l'opacità.
+- [ ] **Step 5: Altezza del documento, di nuovo**
 
-- [ ] **Step 6: Fagli correggere il testo, poi commit**
+Prima e dopo il `load`. Cinque immagini su cinque adesso sono in pagina: è l'ultimo momento in cui questa verifica può ancora salvare le sezioni precedenti.
 
-```bash
-git add index.html
-git commit -m "Second movement: the skills stop listing and start arguing"
-```
+- [ ] **Step 6: Screenshot**
+
+Su entrambe le finestre. Guarda una cosa sola oltre alla composizione: **il verde della palestra contro il fondo `--ink`**. È l'unica delle cinque foto con una dominante fredda larga, e il fondo è marrone caldo.
+
+- [ ] **Step 7: Fagli correggere il testo, poi commit**
+
+La bozza è una bozza. Mostragliela, aspetta l'ok, poi committa.
 
 ---
 
-## Task 5: Sezione 3 — le foto
+## Task 4: Cosa so fare
 
 **Files:**
-- Modify: `index.html:1842-1849` (markup `#mv3`), `1124-1136` (le regole `.lens`), `1289` (mobile)
+- Modify: `index.html:1907-1915` (markup `mv3`), `1183-1195` (CSS `.sk`), `1196-1209` (CSS `.lens`, da cancellare), `1364-1365` (le due regole mobile), `1409-1410` circa (reduced-motion, se cita `.lens`)
+- Modify: `doc/bio.md`
 
 **Interfaces:**
-- Consumes: `.mv-num`, i cinque `img/ph-*.webp` e le dimensioni annotate al Task 1 Step 2.
-- Produces: `.ph` (la figura), `.ph img`, `.ph figcaption`. La fase 6 non li usa.
+- Consumes: `.sk` e `.sk-tags`, che restano.
+- Produces: niente. È l'ultima sezione di contenuto.
 
 - [ ] **Step 1: Il markup**
 
-Sostituisci `index.html:1842-1849`. Le dimensioni negli `width`/`height` vanno prese dalla tabella del Task 1: **se non l'hai riempita, torna a riempirla** — non stimarle.
+Sostituisce `index.html:1907-1915` per intero (l'`<article id="mv3">` dello sguardo). Il paragrafo di posizionamento è il primo della bio Media di `doc/bio.md`, invariato: **non riscriverlo**.
 
 ```html
-  <article class="mv mv-ph" id="mv3">
-    <h2 class="mv-tag"><b class="mv-num">03</b>lo sguardo</h2>
+  <article class="mv" id="mv3">
+    <h2 class="mv-tag">03 &mdash; cosa so fare</h2>
     <div class="mv-body">
-      <p class="ph-claim">L&rsquo;occhio non &egrave; innato. <i>&Egrave; allenato.</i></p>
+      <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti. <i>Il mio lavoro parte dal design</i>: scompongo processi complessi in flussi chiari, disegno interfacce ad alta fedelt&agrave; e scelgo la soluzione tecnica pi&ugrave; adatta a farle diventare prodotti reali, performanti e coerenti.</p>
+      <!-- l'ordine e' quello del documento e ci sono TUTTE E CINQUE le aree, per
+           intero: il taglio non e' mai stato il modo di dire il peso. A dirlo
+           adesso sono l'ordine e UN accento — vedi il commento di .sk. -->
+      <div class="sk"><h3>Design</h3><ul class="sk-tags"><li>Figma</li><li>Wireframe e Prototipazione UI/UX</li><li>User Research</li><li>Design System</li></ul></div>
+      <div class="sk"><h3>Web Tech</h3><ul class="sk-tags"><li>HTML</li><li>CSS</li><li>JS</li></ul></div>
+      <div class="sk"><h3>Sviluppo</h3><ul class="sk-tags"><li>React</li><li>Python</li><li>Go</li><li>Java</li><li>Kotlin</li><li>SQL</li></ul></div>
+      <div class="sk"><h3>AI / Tooling</h3><ul class="sk-tags"><li>Figma Maker &amp; Agent</li><li>Claude Code</li><li>Antigravity</li></ul></div>
+      <div class="sk"><h3>Project Management</h3><ul class="sk-tags"><li>YouTrack</li><li>Planner</li></ul></div>
     </div>
-    <!-- LE FOTO ESCONO DALLA GRIGLIA, ed e' il punto: fin qui tutto sta nel
-         --spine 1fr, ma una fotografia non vuole una colonna, vuole la pagina.
-         E' il momento in cui la coda smette di essere un documento.
-         L'ORDINE NON E' IL SOGGETTO, E' LA TEMPERATURA: architettura B/N,
-         architettura fredda, cielo che si scalda, still life caldo. Quattro
-         generi diversi non sono un corpo di lavoro, ma una scala di temperatura
-         si', e l'ultima foto appartiene gia' alla stanza — il suo rosa-beige sta
-         sul #554135 del fondo senza litigare. E' anche quel che giustifica il
-         bianco e nero: non e' «una in B/N fra le altre», e' l'inizio della scala.
-         LE DIDASCALIE SONO I DATI DI SCATTO, letti dall'EXIF dei file, mai
-         inventati. Due file non ne hanno: quelle righe dicono solo cio' che il
-         file sa davvero. Non si riempie un buco con un numero verosimile.
-         width/height dichiarati NON sono ottimizzazione: tutta la geometria del
-         sito e' misurata da measure(), e immagini che arrivano dopo il load
-         cambiano l'altezza del documento a misure gia' prese. Il sintomo non
-         sembrerebbe affatto colpa delle foto. -->
-    <figure class="ph ph-r">
-      <img src="img/ph-architettura-bn.webp" width="__W__" height="__H__" loading="lazy" decoding="async" alt="Dettaglio di una facciata: solai bianchi che tagliano l&rsquo;ombra, in bianco e nero.">
-      <figcaption>architettura &middot; 26mm &middot; f/10 &middot; 1/125 &middot; ISO 100 &middot; 2019</figcaption>
-    </figure>
-    <figure class="ph ph-wide">
-      <img src="img/ph-architettura-vetri.webp" width="__W__" height="__H__" loading="lazy" decoding="async" alt="Lo spigolo di un edificio: vetrate turchesi da un lato, facciata bianca a lame dall&rsquo;altro.">
-      <figcaption>architettura &middot; 62mm &middot; f/10 &middot; 1/125 &middot; ISO 100 &middot; 2019</figcaption>
-    </figure>
-    <figure class="ph ph-l">
-      <img src="img/ph-lampione.webp" width="__W__" height="__H__" loading="lazy" decoding="async" alt="Un lampione a sei bracci acceso contro un cielo al tramonto, rosa e blu.">
-      <figcaption>32mm &middot; f/2.8 &middot; 1/800 &middot; ISO 125 &middot; 2020</figcaption>
-    </figure>
-    <figure class="ph ph-r">
-      <img src="img/ph-mensole.webp" width="__W__" height="__H__" loading="lazy" decoding="async" alt="Interno: due mensole nere triangolari a parete sopra un divano rosa.">
-      <figcaption>still life &middot; Alex Pinna</figcaption>
-    </figure>
   </article>
 ```
 
-- [ ] **Step 2: Il CSS**
+- [ ] **Step 2: Muore `--k`**
 
-Sostituisci il blocco `.lens` a `index.html:1124-1136`:
-
-```css
-/* LA FRASE, e poi silenzio. Una sola, grande: la tesi. Da qui in giu' non c'e'
-   piu' prosa, ci sono le fotografie e i loro dati. */
-.ph-claim{
-  font-family:var(--grotesk);font-weight:500;
-  font-size:clamp(24px,2.6vw,44px);line-height:1.18;letter-spacing:-.6px;
-  color:var(--tlbg);max-width:20ch;
-}
-.ph-claim i{font-style:italic;color:#BFCFFF}
-/* LE FIGURE. ~70vh e non una schermata piena a testa: quattro foto pesano cosi'
-   circa tre schermate invece di quattro, su una coda che deve restare calma.
-   Nessun pin, nessuna corsa orizzontale — di la' dalla curva lo scroll e'
-   tornato quello del browser, ed era la richiesta.
-   aspect-ratio dalle dimensioni vere del file: lo spazio e' riservato prima che
-   l'immagine arrivi (vedi il commento nel markup). */
-.ph{margin-top:14vh;display:flex;flex-direction:column;gap:12px}
-.ph img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain}
-.ph figcaption{
-  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
-  color:#BFCFFF;
-}
-/* alternate, non in griglia: e' una SEQUENZA, come si monta un portfolio */
-.ph-r{margin-left:auto;margin-right:10vw;width:min(38vw,520px)}
-.ph-l{margin-left:10vw;margin-right:auto;width:min(38vw,520px)}
-.ph-wide{margin-left:auto;margin-right:auto;width:min(74vw,1100px)}
-/* la sezione delle foto esce dalla griglia a due colonne: le figure sono figlie
-   dirette di .mv e non di .mv-body, e non devono incolonnarsi con l'etichetta */
-.mv-ph{display:block}
-.mv-ph .mv-tag{display:block;text-align:left;padding:0 0 0 30vw}
-```
-
-Nota: `.mv-ph` passa a `display:block`, quindi `.mv::before` (il filetto che cresce dalla spina) qui non ha più la griglia sotto. Verifica a schermo se il filetto resta al posto giusto; se no, in questa sola sezione si toglie.
-
-- [ ] **Step 3: Il mobile**
+In `index.html:1189-1193`, il titolo di `.sk` perde il moltiplicatore. Riscrivi il commento sopra il blocco (`1181-1186`), che oggi spiega `--k`: se resta, il file mente.
 
 ```css
-  .ph-r,.ph-l,.ph-wide{width:auto;margin-left:24px;margin-right:24px}
-  .ph img{max-height:none}
-  .ph-claim{font-size:24px;max-width:none}
-  .mv-ph .mv-tag{padding:0 24px 0 calc(24px + 20px)}
+/* LE COMPETENZE. La gerarchia E' l'argomento: il documento chiede di mettere in
+   evidenza la progettazione e di tenere i linguaggi di back-end come profondita'
+   tecnica, senza far prevalere lo sviluppo sul ruolo.
+   PRIMA lo diceva la TAGLIA: --k moltiplicava la misura del titolo, un numero
+   per riga. Non va piu' bene da quando la coda e' portata dalle immagini —
+   cinque titoli di taglie diverse subito dopo cinque gesti fotografici forti
+   COMPETONO col campo invece di aiutarlo, e vince il rumore.
+   Adesso lo dicono L'ORDINE E UN ACCENTO: Design e' primo ed e' l'unico in
+   #BFCFFF. Stessa informazione, un terzo dello spazio, e una variabile in meno
+   da tenere allineata in tre posti (il foglio, il @media, i cinque style in
+   linea nel markup).
+   Filetto sopra, e sotto solo all'ultima: e' la stessa costruzione di .pd-facts
+   e di .proj-list — un elenco di righe separate da un capello, non schede. */
+.sk{padding:20px 0;border-top:1px solid #BFCFFF}
+.sk:last-child{border-bottom:1px solid #BFCFFF}
+.sk h3{
+  font-family:var(--grotesk);font-weight:700;color:#554135;
+  font-size:clamp(22px,2.6vw,44px);
+  line-height:1.05;letter-spacing:-.02em;margin-bottom:.5em;
+}
 ```
 
-- [ ] **Step 4: Togli le regole morte**
+E nella palette della coda (accanto a `index.html:1106`), l'accento sul primo:
 
-```bash
-grep -n "\.lens" index.html
+```css
+/* l'unico accento dell'elenco, ed e' l'argomento: il design viene prima. */
+.after .sk:first-of-type h3{color:#BFCFFF}
 ```
-Expected: nessun risultato.
 
-- [ ] **Step 5: `node --check` + struttura + alt text**
+Nel `@media (max-width:640px)`, `index.html:1364` diventa:
 
-Oltre ai soliti: ogni `<img>` ha un `alt` non vuoto, un `width` e un `height` numerici. Nessun `__W__` rimasto.
-
-```bash
-grep -n "__W__\|__H__" index.html
+```css
+  .sk h3{font-size:30px}
 ```
-Expected: nessun risultato. **Se ne trovi, non hai riempito la tabella del Task 1.**
 
-- [ ] **Step 6: Sonda — l'altezza del documento non si muove al `load`**
+- [ ] **Step 3: Muore `.lens`**
 
-È la verifica che conta più di tutte in questa fase.
+Cancella:
+- il blocco CSS `index.html:1196-1209` (`.lens`, `.lens em`, `.lens p`) e il commento sopra
+- `index.html:1365` (`.lens p{font-size:19px;max-width:none}`)
+- da `index.html:1103` togli `,.after .lens em`; da `1106` togli `,.after .lens p`; da `1109-1110` togli le due righe di `.lens`
 
-```js
-const h1 = document.body.firstElementChild.offsetHeight;
-await Promise.all([...document.images].map(i => i.complete ? 0 : i.decode().catch(() => 0)));
-const h2 = document.body.firstElementChild.offsetHeight;
-return { h1, h2, uguali: h1 === h2 };
-```
-Expected: `uguali` `true`. Se è `false`, un `aspect-ratio` o un `width/height` è sbagliato e **tutta la geometria del sito si sfasa** — pin, corsa della timeline, curva. Non andare oltre.
-**Nota:** `scrollHeight` conta anche le transform dei figli: si misura `firstElementChild.offsetHeight`.
+**Cancellare, non commentare.** Un blocco commentato in un file di 3600 righe è una regola che qualcuno rimetterà.
 
-- [ ] **Step 7: Screenshot delle quattro foto**
+- [ ] **Step 4: Il paragrafo duplicato**
 
-`shot-af.py`. Qui si guardano i **due nodi cromatici** che la spec §6 lascia aperti apposta:
-1. il nero quasi puro del bianco e nero sul marrone caldo — buco freddo o stacco voluto?
-2. il turchese, che è quasi complementare del marrone — litiga?
+In `doc/bio.md`, la bio **Media** ripete due volte, identico, il capoverso «Ho maturato esperienza specifica nel software B2B per la sostenibilità (ESG)…». Togline uno.
 
-Se falliscono, la manopola è **il colore del fondo**, che è accoppiato al colore della guida e del gomito.
+Controlla anche `doc/04-bio-esperienze.md`: se ha lo stesso difetto, stessa correzione.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 5: `node --check` + sonda di struttura + classi orfane**
 
-```bash
-git add index.html
-git commit -m "Third movement: four of his photographs, ordered by temperature"
-```
+Oltre alle solite: confronta le classi del CSS con quelle del markup **nelle due direzioni**. Expected: **zero occorrenze di `lens` e zero di `--k`** in tutto il file.
+
+È la verifica che dice se la cancellazione è finita o se è rimasto un selettore che non seleziona più niente.
+
+- [ ] **Step 6: Screenshot + ok sul testo, poi commit**
 
 ---
 
-## Task 6: La chiusura
+## Task 5: I tre rami, la pagina intera, la consegna
 
 **Files:**
-- Modify: `index.html:1849-1856` (markup `.after-end`), `1139-1163` (le regole), `1433-1435` (`.social`), `158-165` (`.social` CSS), `2545` (l'opacità di `#ui-social`), `1290-1293` (mobile)
-
-**Interfaces:**
-- Consumes: `img/ph-basket.webp` e le sue dimensioni, il fondo della fase 2.
-- Produces: niente — è l'ultima sezione.
-
-- [ ] **Step 1: Il markup**
-
-Sostituisci `index.html:1849-1856`:
-
-```html
-  <div class="after-end">
-    <!-- IL RITRATTO CHE NON E' UN RITRATTO. Non c'era una foto in posa, e va
-         benissimo cosi': questa e' l'unica immagine in cui c'e' lui, e sta
-         nella colonna che fin qui ha portato 01, 02, 03. La sequenza dei numeri
-         finisce e nello stesso slot compare una faccia. Non serve annunciarlo.
-         SENZA DIDASCALIA DI DATI: il file non ha EXIF (e' uno scatto vero
-         ripulito con ChatGPT, dichiarato dall'utente), quindi non si afferma
-         niente che non si possa reggere. -->
-    <img class="after-me" src="img/ph-basket.webp" width="__W__" height="__H__" loading="lazy" decoding="async" alt="Oliviero Petrucci in campo, in procinto di tirare.">
-    <div class="after-out">
-      <a class="after-mail" href="mailto:olivieropetrucci@gmail.com">scrivimi <span>&#8594;</span></a>
-      <p class="after-addr">olivieropetrucci@gmail.com</p>
-      <!-- I SOCIAL SMETTONO DI ESSERE UNA BARRA. Quella fissa in fondo e'
-           #212121 e sul marrone sparirebbe comunque: invece di ricolorarla,
-           svanisce (vedi il JS) e i link tornano QUI, grandi, sotto la mail.
-           L'interfaccia passa la mano al contenuto, e i tre link smettono di
-           essere una striscia sotto la fine: sono la seconda riga della fine. -->
-      <ul class="after-soc">
-        <li><a href="#">LinkedIn</a></li>
-        <li><a href="#">Instagram</a></li>
-        <li><a href="#">Github</a></li>
-      </ul>
-    </div>
-  </div>
-  <!-- il marchio come punto finale: dopo tutto, non piu' accanto alla mail -->
-  <svg class="after-star" id="afterStar" viewBox="0 0 541 541" aria-hidden="true"><use href="#starPath"/></svg>
-```
-
-**Gli `href="#"` restano finché non dà gli URL.** Sono un punto aperto dichiarato nella spec §11. Non inventarli, e **non committare la fase come finita** senza averglieli richiesti: in una chiusura costruita attorno a loro, tre link morti sono peggio che non averli. Due link veri battono tre finti.
-
-- [ ] **Step 2: Il CSS**
-
-Sostituisci `index.html:1139-1163`:
-
-```css
-/* LA CHIUSURA. La colonna di sinistra e' larga --spine, la stessa dei numeri:
-   la foto ci si appoggia a destra e basta. */
-.after-end{
-  display:grid;grid-template-columns:var(--spine) 1fr;
-  align-items:center;padding-top:26vh;
-}
-.after-me{
-  display:block;justify-self:end;width:min(22vw,300px);height:auto;
-  margin-right:2.6vw;
-}
-.after-out{padding-left:2.6vw;padding-right:10vw;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
-/* la cosa piu' grande della pagina: e' l'ultima che il sito dice. Prima era
-   clamp(22px,2.2vw,34px), cioe' piu' piccola dei titoli delle competenze. */
-.after-mail{
-  color:#BFCFFF;text-decoration:none;
-  display:inline-flex;align-items:center;gap:.5rem;
-  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
-  font-size:clamp(40px,6vw,110px);line-height:1;letter-spacing:-2px;
-}
-.after-mail span{transition:transform .35s cubic-bezier(.16,1,.3,1)}
-.after-mail:hover span{transform:translateX(.35rem)}
-.after-mail:focus-visible{outline:1px solid #BFCFFF;outline-offset:4px}
-.after-addr{
-  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
-  color:var(--tlbg);
-}
-.after-soc{list-style:none;display:flex;gap:2.4vw;margin-top:1.4em}
-.after-soc a{
-  color:var(--tlbg);text-decoration:none;
-  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
-  font-size:clamp(18px,1.8vw,26px);letter-spacing:-.4px;
-}
-.after-soc a:hover{color:#BFCFFF}
-.after-soc a:focus-visible{outline:1px solid #BFCFFF;outline-offset:4px}
-/* il punto in fondo alla pagina, centrato sulla spina come tutto il resto */
-.after-star{
-  display:block;width:clamp(28px,3.4vw,52px);height:auto;overflow:visible;
-  margin:18vh 0 0 var(--spine);translate:-50% 0;fill:#BFCFFF;
-}
-```
-
-- [ ] **Step 3: La barra fissa passa la mano**
-
-A `index.html:2545` c'è `document.getElementById('ui-social').style.opacity = ui;`. `ui` è l'opacità dell'interfaccia durante l'intro.
-
-**Attenzione allo scope, verificato:** quella riga sta dentro `apply(scroll)` (`index.html:2424`), **non** dentro `applyProjects()` (`2646`). Quindi `over` lì **non esiste** — è locale ad `applyProjects` (`const over = overCur`, riga 2647). Quello che si legge da entrambe è `overCur`, che è di modulo (riga 2644), e così `af0` e `afterH`.
-
-```js
-  /* la barra fissa dei social passa la mano alla chiusura: li' i tre link
-     tornano dentro il contenuto, grandi, sotto la mail (vedi .after-soc). Su
-     fondo #554135 questa barra sparirebbe comunque, essendo #212121 — quindi
-     invece di ricolorarla si toglie di mezzo, ed e' anche il gesto giusto:
-     l'interfaccia si ritira quando la pagina e' arrivata.
-     Un termine in piu' nella formula che c'era, nessun macchinario nuovo.
-     overCur e non over: questa funzione e' apply(), e `over` e' locale ad
-     applyProjects(). */
-  const socOut = 1 - clamp((overCur - (af0 + afterH - innerHeight * 1.6)) / (innerHeight * .5));
-  document.getElementById('ui-social').style.opacity = (ui * socOut).toFixed(3);
-```
-
-**Prima di scrivere, verifica dove gira `apply()`.** Se in `prefers-reduced-motion` non viene chiamata (lì non c'è ciclo rAF), in quel ramo la barra resterebbe accesa e `#212121` su `#554135` — invisibile, ma anche non cliccabile per chi ci arriva. In quel caso la spegne una regola CSS dentro il blocco `@media (prefers-reduced-motion:reduce)` (`index.html:1296`), non altro JS:
-
-```css
-  /* apply() non gira qui: la barra la spegne il CSS, e i social veri stanno
-     nella chiusura */
-  .social{display:none}
-```
-
-Run per decidere: `grep -n "apply(" index.html` e guarda i punti di chiamata.
-
-- [ ] **Step 4: Il mobile**
-
-```css
-  .after-end{grid-template-columns:1fr;padding-top:16vh;gap:18px}
-  .after-me{justify-self:start;width:min(60vw,280px);margin-left:24px;margin-right:0}
-  .after-out{padding-left:calc(24px + 20px)}
-  .after-mail{font-size:40px;letter-spacing:-1px}
-  .after-soc{flex-wrap:wrap;gap:16px}
-  .after-star{margin-left:24px}
-```
-
-- [ ] **Step 5: `node --check` + struttura**
-
-Come sopra. In più: nessun `__W__`/`__H__` rimasto, e `#afterStar` esiste ancora — `measure()` non lo usa più per l'altezza (fase 2) ma la sonda `p-end.js` potrebbe cercarlo.
-
-- [ ] **Step 6: Sonda — la barra svanisce e la chiusura arriva**
-
-```js
-const at = y => { scrollTo(0, y); scrollCur = scrollTarget = scrollY; sync(); applyProjects(); };
-const doc = document.body.firstElementChild.offsetHeight;
-at(doc - innerHeight);
-return {
-  barra: getComputedStyle(document.getElementById('ui-social')).opacity,
-  mailPx: getComputedStyle(document.querySelector('.after-mail')).fontSize,
-  soc: [...document.querySelectorAll('.after-soc a')].map(a => a.getAttribute('href')),
-  stella: document.getElementById('afterStar').getBoundingClientRect().top < innerHeight,
-};
-```
-Expected: `barra` ≈ `0`, `mailPx` la più grande della pagina, `stella` `true`.
-`soc` dirà `["#","#","#"]` finché non dà gli URL: **è il promemoria, non un successo.**
-
-- [ ] **Step 7: Screenshot + richiedi gli URL**
-
-`shot-af.py` sulla chiusura. Poi chiediglieli.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add index.html
-git commit -m "The ending gets a face, and the interface hands off to it"
-```
-
----
-
-## Task 7: I tre rami, e la pagina intera
-
-Le fasi 2-6 hanno già scritto il proprio mobile e il proprio reduced-motion. Questa fase **verifica**, non costruisce.
-
-**Files:**
-- Modify: `index.html` solo se la verifica trova qualcosa
-- Modify: `docs/superpowers/specs/2026-09-02-coda-scura-design.md` — chiudere i punti aperti risolti
+- Modify: `index.html` (solo correzioni emerse qui), `docs/superpowers/specs/2026-09-02-coda-scura-design.md`
 
 - [ ] **Step 1: Reduced-motion**
 
-Lancia la sonda con `prefers-reduced-motion: reduce` forzato. Expected:
-- il fondo è **già aperto** (`--k` ≈ `afKMax`) senza che nessun ciclo abbia girato
-- nessun errore in console
-- i movimenti sono tutti visibili (`.on` o le regole del ramo li mostrano comunque)
+Con `prefers-reduced-motion:reduce`, a 1920×1000. Verifica:
+- le quattro foto sono al loro posto **finale** (`--p` non è mai stato scritto, il default di 1 regge)
+- non c'è nessuna transizione in corso
+- il fondo scuro c'è
+
+Se le foto sono spostate in basso, il default in CSS è `0` e va corretto: è il sintomo esatto che il commento di `.gaze` descrive.
 
 - [ ] **Step 2: Il ramo incolonnato**
 
-La finestra headless ha una **larghezza minima ~500px**: dove puoi, **misura invece di fotografare**. Expected:
-- `--spine` vale `24px` e la proprietà inline è stata **rimossa**, non riscritta (c'è già un `after.style.removeProperty('--spine')` a `index.html:2383` che serve a questo)
-- `afKMax` ricalcolato su quella spina, e `copre` ancora `true`
-- il numero è tornato piccolo (`.mv-num{display:inline}`)
-- la barra dei social si spegne lo stesso — cioè il codice dello Step 3 del Task 6 sta **prima** del guardiano `tlLive`
-- nessuno scorrimento orizzontale: `document.documentElement.scrollWidth <= innerWidth`
+A 390×844. Verifica: campo incolonnato, tesi **prima** delle foto, nessuna `transform` scritta sulle `.gaze-ph`, il basket a piena larghezza, le competenze leggibili.
+
+Sonda: `mvs[0].el.style.getPropertyValue('--p')` deve essere **vuoto**. Se ha un valore, la scrittura è finita fuori dal suo guardiano.
 
 - [ ] **Step 3: La pagina intera, dall'inizio**
 
-`p-final.js` aggiornato: errori in console, scroll orizzontale, `--spine`, l'apertura del fondo, i movimenti che si accendono. Percorri l'intera pagina a passi di mezzo schermo e conferma che **non c'è nessun frame con errori** e che l'altezza del documento non cambia.
+Scorri tutto il racconto dall'intro alla chiusura, su entrambe le finestre desktop. Cerchi **regressioni**, non la coda: le sezioni prima leggono altezze che le cinque immagini potrebbero aver spostato.
 
-**Trappola nota:** dopo uno `scrollTo` a mano il ciclo fa scattare `lockHero()`, il documento si accorcia di ~10 000px e lo scroll viene ricacciato indietro — la scena misurata non è quella chiesta. Rifai il piazzamento a ripetizione finché `scrollY` è quello voluto.
+Controlla in particolare che l'allagamento arrivi ancora esattamente dove arrivava — è approvato e non deve essersi mosso di un pixel.
 
-- [ ] **Step 4: `sim.js`**
+- [ ] **Step 4: I punti aperti**
 
-`sim.js` era già fuori registro prima di questa modifica (coda della traccia e lunghezza dell'asse), e adesso lo è di più: `--railH` non esiste più. **O si riallineano le costanti in cima, o si scrive in testa al file che non è affidabile.** Non lasciarlo com'è: un file che sembra una fonte e mente è peggio di un file assente.
+Chiedigli le tre cose che la spec lascia aperte:
+1. **Gli URL social** (LinkedIn, Instagram, Github: `index.html:1508-1509` sono `href="#"`). Due link veri battono tre finti: se ne ha due, si mettono quei due.
+2. Se le **mensole** sono una sua fotografia di un'opera di Alex Pinna, l'`alt` lo deve dire.
+3. Conferma dei due nodi cromatici guardati alla fase 1.
+4. **Il `TypeError` preesistente.** In fondo a `index.html` c'è
+   `requestAnimationFrame(function loop(now){ ... })(introStart)`: il risultato di
+   `requestAnimationFrame` è un numero e viene chiamato, quindi ogni caricamento
+   solleva un `TypeError`. **Non rompe niente** — il ciclo è già registrato ed è
+   l'ultima istruzione del `.then()` — ma sporca la console. È preesistente, non
+   è mai stato segnalato, e **non va corretto di iniziativa**: si propone, e si
+   tocca solo se dice di sì.
 
 - [ ] **Step 5: Aggiorna la spec**
 
-Nella spec, §11 «Punti aperti»: segna quali sono chiusi (gli URL social, i dati delle mensole, i due nodi cromatici) e con che esito. La spec resta il documento che spiega **perché**, e va lasciata vera.
+Riporta in `docs/superpowers/specs/2026-09-02-coda-scura-design.md` quel che è stato **deciso a schermo** e che la spec dava per aperto: l'esponente finale della cubica, le posizioni finali delle foto, l'esito dei due nodi cromatici, gli URL social. Una spec che resta ferma alle ipotesi è una spec che mente al prossimo.
 
-- [ ] **Step 6: Consegna il resoconto**
+- [ ] **Step 6: Il resoconto**
 
-Per punti, e **separa quello che hai misurato da quello che hai solo letto nel codice**. Non verificabili qui, e vanno dichiarati: il ritmo mentre si scorre, gli stati `:hover`, e il giudizio se il marrone funziona. Quelli li dà lui, ricaricando.
+Dichiara, separandoli: **cosa è stato misurato** (intersezioni, altezza del documento, estremi di `--p`, rapporti delle corse, classi orfane) e **cosa no** (ogni giudizio di composizione). È la regola di questo repo e non è una formalità: l'unica cosa che rende utili le sonde è non spacciarle per gusto.
 
 - [ ] **Step 7: Commit finale e push**
-
-```bash
-git add index.html sim.js docs/superpowers/specs/2026-09-02-coda-scura-design.md
-git commit -m "Branches verified, and the docs left true"
-git push
-```
 
 ---
 
 ## Rollback
 
-Ogni fase è un commit. Se una non funziona, `git revert` di quello. La fase 2 è la sola che cambia il carattere della pagina: se il marrone non piace, si torna al commit prima di lei e le fasi 3-6 vanno ripensate per la carta chiara — il contenuto resta valido, la palette no.
+Ogni fase è un commit. Per tornare indietro di una fase: `git revert <sha>`.
+
+Le fasi 1 e 2 sono separate apposta — se la parallasse non convince, si revoca la 2 e resta un campo fermo che regge da solo. È il motivo per cui la composizione viene prima del movimento e non insieme.
+
+Le fasi 3 e 4 sono indipendenti fra loro e dalla 2: si possono revocare da sole.
