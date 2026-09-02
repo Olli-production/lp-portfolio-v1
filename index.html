@@ -1247,13 +1247,18 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    colonne, e crescerebbe dal nulla verso il nulla. */
 .gaze::before{content:none}
 
-/* IL PALCO. Uno schermo, appiccicato in cima. Con lo scroll bloccato lo sticky
-   ha poco da fare, ma serve nei due momenti in cui il blocco non c'e' ancora o
-   non c'e' piu' — l'arrivo e l'uscita — e su mobile, dove il blocco non esiste.
-   overflow:clip e non hidden: hidden ne farebbe un contenitore di scorrimento. */
-.gaze-stage{
-  position:sticky;top:0;height:100vh;overflow:clip;
-}
+/* IL PALCO. Uno schermo esatto, e NIENTE sticky: il campo e' alto quanto lui,
+   quindi lo sticky avrebbe zero corsa e non farebbe niente — mentre la pagina
+   ferma la tiene il blocco dello scroll. Un pezzo che non fa niente non e'
+   gratis: e' una cosa in piu' da capire quando qualcosa non torna.
+   overflow:clip e non hidden: hidden ne farebbe un contenitore di scorrimento.
+   E' lui a tagliare le fotografie sui quattro bordi, come nei fotogrammi.
+   POSITION:RELATIVE E' QUELLO CHE FA FUNZIONARE IL RITAGLIO, e non e' ovvio:
+   overflow non taglia un discendente assoluto il cui blocco contenitore sia un
+   ANTENATO della scatola che taglia. Senza questa riga le foto si posizionano su
+   .gaze, escono dal palco come se il clip non ci fosse, e lo sbordo a destra dei
+   vetri allarga il documento di 6vw — la pagina prende una barra orizzontale. */
+.gaze-stage{position:relative;height:100vh;overflow:clip}
 .gaze .mv-tag{justify-self:auto;text-align:left;padding:0;margin-bottom:1.4em}
 
 .gaze-ph{
@@ -2339,64 +2344,147 @@ function dust(els, prog, stagger = .28){
   });
 }
 
-/* ---------- il campo: disegno, blocco, gesti ----------
-   Sta qui e non piu' in basso perche' gzPaint() ha bisogno di dust(), che e'
-   appena sopra: la frase del campo compare con la STESSA funzione del claim e
-   dei titoli delle sezioni precedenti. */
+/* IL CAMPO SI CERCA PER CLASSE, NON PER POSIZIONE. Prima era mvs[0], e quando
+   le competenze sono passate davanti a lui quella riga avrebbe preso il
+   movimento sbagliato IN SILENZIO: le foto sarebbero rimaste ferme e il
+   colpevole sarebbe sembrato il ciclo. Cosi' l'ordine dei movimenti si cambia
+   nel markup senza toccare una riga di qui.
+   STA QUI e non piu' duecento righe piu' in basso: il blocco che segue lo usa
+   subito, e una const usata prima della propria dichiarazione e' un errore di
+   zona morta che si manifesta solo caricando la pagina — node --check non lo
+   vede, perche' non e' un errore di sintassi. */
+const gazeM = mvs.find(m => m.el.classList.contains('gaze'));
+let gazeH = 0;   // altezza del campo: MISURATA in measure(), non scritta a mano
+
+/* ---------- IL CAMPO: una diapositiva a tre stati ----------
+   Sta tutto qui: stato, disegno, aggancio, gesti e passo per frame. Prima era
+   sparso in tre punti lontani del file — le funzioni stavano perfino sopra le
+   variabili che leggevano — e ogni correzione ne toccava tre. Sta DOPO dust()
+   perche' gzPaint() la usa: la frase del campo compare con la stessa funzione
+   del claim e dei titoli delle sezioni precedenti.
+
+   I cinque fotogrammi (905-909) sono la specifica:
+     905  marrone vuoto      -> stato 0
+     906  primo scroll       -> il passaggio 0 -> 1
+     907  punto statico      -> stato 1
+     908  secondo scroll     -> il passaggio 1 -> 2
+     909  marrone vuoto      -> stato 2
+
+   E' l'UNICO punto del sito in cui la rotella viene tolta a chi guarda. Vale la
+   pena dire perche' si puo' fare qui e non altrove: il campo e' alto ESATTAMENTE
+   uno schermo e ai due estremi e' vuoto, quindi entrare, uscire e saltare da un
+   bordo all'altro non sposta niente di visibile. Tutto il resto del sito resta
+   una funzione della posizione; questo pezzo no, ed e' l'unico che porta stato. */
+
+const GZ_DUR   = 900;   // durata di un passaggio, in millisecondi
+const GZ_SOGLIA = 55;   // quanta rotella serve per contare come UN gesto
+const GZ_QUIETE = 220;  // silenzio richiesto dopo un passaggio, in millisecondi
+
+const gzEl   = gazeM.el;
+const gzSay  = gzEl.querySelector('.gaze-say');
+/* le unita' della comparsa dalla polvere: l'etichetta e le tre righe della
+   frase. Stessa dust() del claim e dei titoli, non una dissolvenza nuova. */
+const gzDust = [gzSay.querySelector('.mv-tag'),
+                ...gzSay.querySelectorAll('.mv-lead span')];
+
+let gzStep = 1;      // lo stato verso cui si va: 0, 1 o 2
+let gzT    = 1;      // il valore mostrato, continuo; parte dal 907 come il foglio
+let gzFrom = 1;      // da dove e' partito il passaggio in corso
+let gzT0   = 0;      // quando e' partito
+let gzLock = false;  // la rotella e' nostra?
+let gzY    = 0;      // dove la pagina resta ferma mentre e' bloccata
+let gzPrev = 1e9;    // dov'era il bordo alto del campo al frame scorso
+let gzAcc  = 0;      // rotella accumulata nella passata in corso
+let gzLast = 0;      // istante dell'ultimo evento di rotella
+let gzUsata = false; // la passata in corso ha gia' mosso di un passo?
+let gzDip  = '';     // ultimo --t scritto, per non riscrivere lo stesso
+
+const gzBusy = () => gzT !== gzStep;
+
 function gzPaint(){
-  gazeM.el.style.setProperty('--t', gzT.toFixed(4));
-  /* LA FRASE ESCE DOPO LE FOTO, ed e' il fotogramma 908 a dirlo: li' le
-     fotografie se ne sono quasi andate e la frase e' ancora INTERA. Sparisce
-     solo fra 908 e 909.
-     Quindi entra su --t 0..1 e se ne va sull'ultimo quinto, 1.8..2. Sembra una
-     finestra stretta e non lo e': l'ammorbidimento e' out3, quindi in --t si
-     arriva a 1.8 nel primo quarto del tempo e il restante tre quarti se lo
-     prende tutto la frase. Il tempo dell'orologio e quello di --t non sono la
-     stessa cosa, e qui e' il primo a decidere cosa si vede. */
-  const vis = gzT <= 1 ? gzT : 1 - clamp((gzT - 1.8) / .2);
-  dust(gzDust, vis, .18);
+  const v = gzT.toFixed(4);
+  if (v !== gzDip){ gzEl.style.setProperty('--t', v); gzDip = v; }
+  /* LA FRASE ESCE DOPO LE FOTO, ed e' il 908 a dirlo: li' le fotografie se ne
+     sono quasi andate e la frase e' ancora INTERA. Entra su 0..1 e se ne va
+     sull'ultimo quinto. Sembra una finestra stretta e non lo e': out3 carica il
+     movimento all'inizio, quindi in --t si arriva a 1.8 nel primo quarto del
+     tempo e i restanti tre quarti se li prende tutti la frase. */
+  dust(gzDust, gzT <= 1 ? gzT : 1 - clamp((gzT - 1.8) / .2), .18);
 }
 
-/* dove la pagina deve stare ferma perche' il palco tocchi il bordo alto. Si
-   ricava dalle stesse misure del ciclo: nessun numero scritto a mano. */
-const gzAnchor = () =>
+/* dove deve stare la pagina perche' il campo riempia lo schermo. Si ricava dalle
+   stesse misure del ciclo: nessun numero scritto a mano. */
+const gzAncora = () =>
   Math.max(1, scroller.offsetHeight - innerHeight) + gazeM.top;
 
-function gzEngage(){
-  gzY = gzAnchor();
-  scrollTo(0, Math.round(gzY));
-  scrollCur = scrollTarget = scrollY; scrollVel = 0;
-  gzLock = true;
-  /* SI DIPINGE SUBITO, e non e' un dettaglio: --t in linea non esiste finche'
-     gzPaint() non lo scrive, e senza di lui vale il default del foglio, che e'
-     1 — il punto statico. Chi arriva al campo vedrebbe il fotogramma 907 gia'
-     fatto invece del 905 vuoto, e il primo scroll non avrebbe niente da far
-     entrare. */
-  gzPaint();
-}
-/* SI ESCE SPOSTANDOSI DI UN PIXEL oltre l'ancora, non restandoci sopra: fermi
-   sull'ancora il ciclo del frame dopo ri-aggancerebbe, e la sezione diventerebbe
-   una trappola da cui non si esce piu'. */
-function gzRelease(dir){
-  gzLock = false; gzOut = dir;
-  scrollTo(0, Math.round(gzY + dir * 2));
+/* porta la pagina dove diciamo noi, INSEGUITORE COMPRESO. Senza allineare
+   scrollCur e scrollTarget la molla continuerebbe a rincorrere il valore
+   vecchio e riporterebbe indietro la pagina al frame dopo. */
+function gzVai(y){
+  scrollTo(0, Math.round(y));
   scrollCur = scrollTarget = scrollY; scrollVel = 0;
 }
 
-function gzGesture(dir){
-  if (gzBusy()) return;                 // "prima dello scroll successivo deve essere terminata"
+function gzArma(){
+  gzY = gzAncora();
+  gzStep = gzFrom = gzT = 0;   // si arriva SEMPRE dall'alto: si parte dal 905
+  gzAcc = 0; gzUsata = false; gzLast = 0;
+  gzLock = true;
+  /* si dipinge SUBITO: --t in linea non esiste finche' gzPaint() non lo scrive,
+     e senza vale il default del foglio, che e' 1. Chi arriva vedrebbe il 907
+     gia' montato e il primo scroll non avrebbe niente da far entrare. */
+  gzPaint();
+  gzVai(gzY);
+}
+
+/* Si esce SALTANDO al bordo opposto, e il salto e' gratis: ai due estremi il
+   campo e' vuoto, quindi non c'e' niente di visibile da spostare. Senza il
+   salto resterebbe da scorrere uno schermo di marrone vuoto — che e' esattamente
+   la "sezione scomparsa" segnalata dall'utente.
+   Subito dopo si torna al 907: chi ripassa di qui scorrendo all'insu' deve
+   trovare la composizione, non il vuoto. */
+function gzEsci(dir){
+  gzLock = false;
+  gzVai(dir > 0 ? gzY + gazeH : gzY - 1);
+  gzStep = gzFrom = gzT = 1;
+  gzPaint();
+  gzPrev = dir > 0 ? -gazeH - 1 : 1;
+}
+
+/* UNA PASSATA, UN PASSO. E' la regola, ed e' piu' forte di una soglia.
+   Un colpo di trackpad manda decine di eventi per un secondo abbondante, con
+   l'inerzia che continua dopo che il dito si e' alzato. Contarli a delta
+   accumulato non basta: appena il passaggio finisce, la coda della stessa
+   passata ne fa scattare un altro, e la sequenza si attraversa tutta con un
+   gesto solo. E' esattamente il contrario della richiesta.
+   Quindi non si guarda quanta rotella arriva, si guarda QUANDO TACE: finche' gli
+   eventi si susseguono senza una pausa vera e' sempre lo stesso gesto, e un
+   gesto muove di un passo. La soglia resta, ma solo per non far scattare niente
+   con uno sfioramento. */
+function gzRotella(dy, ora){
+  /* una pausa vera chiude la passata precedente e ne apre una nuova */
+  if (ora - gzLast > GZ_QUIETE){ gzUsata = false; gzAcc = 0; }
+  gzLast = ora;
+
+  if (gzUsata || gzBusy()) return;
+  if (Math.sign(dy) !== Math.sign(gzAcc)) gzAcc = 0;   // cambio di verso: si riparte
+  gzAcc += dy;
+  if (Math.abs(gzAcc) < GZ_SOGLIA) return;
+
+  const dir = Math.sign(gzAcc);
+  gzAcc = 0; gzUsata = true;
   const next = gzStep + dir;
-  if (next < 0 || next > 2){ gzRelease(dir); return; }
-  gzFrom = gzT; gzStep = next; gzT0 = performance.now();
+  if (next < 0 || next > 2){ gzEsci(dir); return; }
+  gzFrom = gzT; gzStep = next; gzT0 = ora;
 }
 
 /* passive:false perche' serve preventDefault: e' il solo modo di togliere lo
-   scroll senza toccare overflow del documento, che farebbe saltare la posizione
-   e con lei tutte le misure gia' prese. */
+   scroll senza toccare overflow del documento, che sposterebbe la posizione e
+   con lei tutte le misure gia' prese. */
 addEventListener('wheel', e => {
   if (!gzLock) return;
   e.preventDefault();
-  if (Math.abs(e.deltaY) > 2) gzGesture(Math.sign(e.deltaY));
+  gzRotella(e.deltaY, performance.now());
 }, { passive: false });
 
 addEventListener('keydown', e => {
@@ -2405,8 +2493,52 @@ addEventListener('keydown', e => {
   const su  = ['ArrowUp', 'PageUp'].includes(e.key);
   if (!giu && !su) return;
   e.preventDefault();
-  gzGesture(giu ? 1 : -1);
+  gzRotella(giu ? GZ_SOGLIA : -GZ_SOGLIA, performance.now());
 });
+
+/* il passo per frame. Lo chiama il ciclo con la posizione del bordo alto del
+   campo, nello stesso metro di tutto il resto (over). */
+function gzTick(top){
+  const ora = performance.now();
+
+  if (gzLock){
+    if (gzBusy()){
+      const k = clamp((ora - gzT0) / GZ_DUR);
+      gzT = gzFrom + (gzStep - gzFrom) * out3(k);
+      if (k >= 1) gzT = gzStep;
+      gzPaint();
+      /* ARRIVATI A UN ESTREMO ANDANDO VERSO L'ESTERNO, LA PAGINA TORNA SUBITO
+         A CHI GUARDA. Senza, il 909 resterebbe bloccato ad aspettare un TERZO
+         gesto su uno schermo vuoto, e i due scroll della richiesta diventerebbero
+         tre di cui uno speso sul nulla. Vale anche all'insu': tornati al 905 si
+         continua a salire senza doverlo chiedere due volte.
+         IL `return` NON E' FACOLTATIVO: gzEsci() sposta la pagina di una
+         schermata, e la riga qui sotto — quella che tiene ferma la pagina
+         mentre e' bloccata — la riporterebbe indietro nello stesso giro,
+         annullando il salto. gzLock e' gia' false, ma questo blocco l'ha letto
+         all'inizio. */
+      if (k >= 1 && gzStep !== 1){ gzEsci(gzStep > gzFrom ? 1 : -1); return; }
+    }
+    /* preventDefault copre la rotella; questa riga copre tutto il resto —
+       barra di scorrimento trascinata, inerzia che arriva dopo il rilascio,
+       un ancoraggio del browser. Mezzo pixel di tolleranza per non litigare
+       con l'arrotondamento. */
+    if (Math.abs(scrollY - gzY) > .5) gzVai(gzY);
+    gzPrev = 0;
+    return;
+  }
+
+  /* SI ARMA SUL PASSAGGIO, non sulla presenza. Con uno scorrimento veloce il
+     campo puo' essere attraversato in un frame solo: chiedere "il bordo alto e'
+     dentro?" lo mancherebbe, chiedere "l'ha appena superato?" no. */
+  if (gzPrev > 0 && top <= 0) gzArma();
+  else {
+    /* fuori dalla diapositiva il campo mostra il 907. Ripassandoci all'insu' si
+       vede la composizione ferma, e non uno schermo vuoto senza spiegazione. */
+    if (gzT !== 1){ gzStep = gzFrom = gzT = 1; gzPaint(); }
+    gzPrev = top;
+  }
+}
 
 /* ---------- atto 2 (frame 808/809) ----------
    Lo scroller vale 1395vh: i primi 775vh sono l'atto 1 (intro -> 806, costanti
@@ -2537,48 +2669,7 @@ const TL_HOLD = .12;
    Quando comincia a ingrossare non c'e' gia' piu' niente da spegnere. */
 const TL_FADE = .8;
 let af0 = 0;                   // dove comincia .after
-/* IL CAMPO SI CERCA PER CLASSE, NON PER POSIZIONE. Prima era mvs[0], e quando
-   le competenze sono passate davanti a lui quella riga avrebbe preso il
-   movimento sbagliato IN SILENZIO: le foto sarebbero rimaste ferme e il
-   colpevole sarebbe sembrato il ciclo. Adesso l'ordine dei movimenti si puo'
-   cambiare nel markup senza toccare una riga di qui. */
-const gazeM = mvs.find(m => m.el.classList.contains('gaze'));
-let gazeH = 0;                 // altezza del campo: MISURATA, non scritta a mano
 
-/* ---------- il campo: una diapositiva a tre stati ----------
-   E' l'UNICO punto del sito in cui lo scroll viene tolto all'utente, ed e' una
-   richiesta esplicita: qui la pagina si comporta come una diapositiva. Quando il
-   palco tocca il bordo alto dello schermo la rotella viene intercettata, e ogni
-   gesto fa avanzare (o tornare) di UNO stato:
-
-     0  vuoto   (fotogramma 905)
-     1  pieno   (907)
-     2  uscito  (909)
-
-   Fra uno stato e l'altro c'e' un'animazione a tempo di GZ_DUR: finche' corre,
-   i gesti si ignorano — "prima di poter eseguire lo scroll successivo deve
-   essere terminata". Lo scroll si riprende solo uscendo dai due estremi: in giu'
-   dallo stato 2, in su dallo stato 0.
-
-   PERCHE' A TEMPO E NON LEGATO ALLO SCROLL. Ovunque altro in questo sito il
-   movimento e' una funzione della posizione, e va avanti e indietro senza stato.
-   Qui no, e la differenza e' voluta: una sequenza che si puo' interrompere a
-   meta' non e' una diapositiva. Il prezzo e' che questo pezzo ha uno STATO, con
-   tutto quello che comporta — va rimesso a posto al resize e non sopravvive a un
-   ricaricamento. */
-const GZ_DUR  = 900;           // durata di un passaggio, in millisecondi
-const gzSay   = document.querySelector('.gaze-say');
-/* le unita' della comparsa dalla polvere: l'etichetta e le tre righe della
-   frase. Stessa dust() del claim e dei titoli — non una dissolvenza nuova. */
-const gzDust  = [gzSay.querySelector('.mv-tag'),
-                 ...gzSay.querySelectorAll('.mv-lead span')];
-let gzStep = 0;                // lo stato in cui stiamo andando: 0, 1 o 2
-let gzT    = 0;                // il valore mostrato, continuo fra 0 e 2
-let gzFrom = 0, gzT0 = 0;      // partenza e istante del passaggio in corso
-let gzLock = false;            // la rotella e' nostra?
-let gzY    = 0;                // dove la pagina resta ferma mentre e' bloccata
-let gzOut  = 0;                // da che parte siamo usciti: -1 su, +1 giu', 0 dentro
-const gzBusy = () => gzT !== gzStep;
 /* il valore di `over` a cui header e footer passano alla palette scura: e' il
    momento in cui la carta scura arriva sotto di loro, e lo ricava measure(). */
 let darkFrom = Infinity;
@@ -3332,48 +3423,12 @@ function applyProjects(){
      frame costa un confronto. */
   mvs.forEach(m => m.el.classList.toggle('on', m.top - over < innerHeight * AF_ON));
 
-  /* ---------- il campo, a diapositiva ----------
-     Qui il ciclo fa tre cose sole, e nessuna e' un disegno: il disegno lo fa
-     gzPaint(), e sotto di lui il foglio.
+  /* IL CAMPO. Tutta la diapositiva sta nel suo blocco, sopra: qui c'e' solo il
+     via, con la posizione del suo bordo alto nel metro del ciclo.
+     Sul dito e in reduced-motion non si entra mai: la' il campo resta al 907 e
+     nessuno si trova la rotella sequestrata. */
+  if (!mq.matches && !reduce) gzTick(gazeM.top - over);
 
-     1. AGGANCIA quando il palco arriva al bordo alto dello schermo. `top` e' la
-        posizione del campo nello stesso metro del resto del ciclo (over), quindi
-        non c'e' una seconda misura da tenere allineata.
-        gzOut ricorda da che parte siamo usciti l'ultima volta: senza, appena
-        rilasciato il campo si riaggancerebbe al frame dopo e la sezione
-        diventerebbe una trappola.
-     2. AVANZA il passaggio in corso, a tempo. E' l'unico movimento del sito che
-        non e' una funzione della posizione, ed e' voluto: una sequenza che si
-        puo' fermare a meta' non e' una diapositiva.
-     3. TIENE FERMA la pagina mentre e' bloccata. preventDefault sulla rotella
-        copre il caso normale; questa riga copre tutto il resto — barra di
-        scorrimento trascinata, scroll da tastiera che ci sfugge, inerzia del
-        trackpad che arriva dopo il rilascio. */
-  if (!mq.matches && !reduce){
-    const top = gazeM.top - over;
-    if (!gzLock){
-      const dentro = top <= 0 && top > -gazeH;
-      /* si riaggancia solo dopo essere tornati dalla parte da cui si e' usciti:
-         usciti in giu' (gzOut 1) bisogna prima risalire sopra il campo. */
-      const puo = gzOut === 0 || (gzOut > 0 ? top > 0 : top < -gazeH);
-      if (puo) gzOut = 0;
-      if (dentro && gzOut === 0) gzEngage();
-    }
-    if (gzBusy()){
-      /* performance.now() e non `now`: quello e' il timestamp del rAF e vive
-         nel ciclo, non qui dentro. Scriverlo qui sollevava un ReferenceError a
-         ogni frame — e siccome succedeva DENTRO applyProjects(), moriva in
-         silenzio tutto quello che veniva dopo, header scuro compreso. */
-      const k = clamp((performance.now() - gzT0) / GZ_DUR);
-      gzT = gzFrom + (gzStep - gzFrom) * out3(k);
-      if (k >= 1) gzT = gzStep;
-      gzPaint();
-    }
-    if (gzLock && Math.abs(scrollY - gzY) > .5){
-      scrollTo(0, Math.round(gzY));
-      scrollCur = scrollTarget = scrollY; scrollVel = 0;
-    }
-  }
   document.body.classList.toggle('dark', over >= darkFrom);
 
   const tlp = (over - tl0) / tlRun;
