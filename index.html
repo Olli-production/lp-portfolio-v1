@@ -164,6 +164,22 @@ body::after{
 .social a{color:inherit;text-decoration:none}
 .social a:hover{color:var(--blue)}
 
+/* ---------- header e footer sopra la carta scura ----------
+   Sono FISSI e vivono fuori da .after: la palette della coda, che quella
+   sezione si scrive addosso, non li raggiunge. Finche' il fondo scuro era una
+   fascia che si apriva dentro .after nessuno se n'era accorto piu' di tanto;
+   con --ink sotto, #212121 su #2B1A0F fa 1.05:1 e il nome dell'autore sparisce
+   per tutto l'ultimo terzo del sito. Stessi colori della coda, stessi ruoli.
+   La classe la mette il ciclo quando la carta scura arriva DAVVERO sotto di
+   loro — non a occhio: il momento lo ricava measure() (vedi darkFrom).
+   La transizione e' l'unico punto in cui questi due colori si animano a tempo e
+   non sullo scroll: e' un cambio di stato, non un gesto, e scrubbarlo darebbe
+   un testo mezzo leggibile per mezza schermata. */
+.id,.social{transition:color .45s cubic-bezier(.16,1,.3,1)}
+.id .contact,.id em{transition:inherit}
+body.dark .id,body.dark .social{color:var(--tlbg)}
+body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
+
 .hint{
   position:fixed;left:50%;bottom:2.2vh;transform:translateX(-50%);z-index:61;
   font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink);
@@ -601,12 +617,13 @@ body::after{
 .tl-stage{position:sticky;top:0;height:100svh;overflow:hidden}
 .tl-track{
   /* --tail e' un VALORE DI PARTENZA, non la manopola: measure() lo riscrive in
-     pixel a ogni resize, perche' e' la coda a decidere dove la barra di oggi
-     finisce a corsa terminata e quel punto deve cadere sul playhead, dove
-     comincia la curva. Cambiarlo qui non sposta niente sul desktop — si cambia
+     pixel a ogni resize, perche' e' la coda a decidere dove si ferma la barra di
+     oggi e quell'inizio deve arrivare a filo del bordo sinistro — e' li' che il
+     nome «Software Designer» si stacca e si appoggia al bordo, ed e' da li' che
+     parte l'allagamento. Cambiarlo qui non sposta niente sul desktop: si cambia
      nel conto in measure(). Serve ancora ai rami mobile e reduced-motion, dove
      quel conto non gira. */
-  --lead:62vw;--yw:46vh;--tail:70vh;
+  --lead:62vw;--yw:46vh;--tail:12vh;
   position:absolute;left:0;top:0;z-index:2;height:100%;
   width:calc(var(--lead) + 8 * var(--yw) + var(--tail));
   will-change:transform;
@@ -896,8 +913,11 @@ body::after{
   position:absolute;left:0;top:var(--top);width:100%;height:4px;border-radius:2px;
   background:#B2998C;transform:scaleX(var(--d,0));transform-origin:left center;
 }
-/* il ruolo di oggi pesa di più: è l'unico che non ha una fine */
-.tl-exp.now .tl-bar{background:#554135}
+/* il ruolo di oggi pesa di più: è l'unico che non ha una fine. Ed è --ink, il
+   nero-bruno del sito, e non un marrone come le altre: è la stessa tinta in cui
+   fra poco si aprirà tutto lo schermo (vedi .tl-flood), e le due devono essere
+   LO STESSO colore o l'allagamento si legge come un secondo oggetto. */
+.tl-exp.now .tl-bar{background:var(--ink)}
 .tl-lab{
   position:absolute;left:0;bottom:calc(100% - var(--top) + 14px);
   /* stacca il testo dal filetto che scende dall'asse (richiesta dell'utente):
@@ -960,7 +980,7 @@ body::after{
 .tl-card b{font-size:20px;color:#554135}
 
 /* PRIMO PIANO */
-.tl-exp.now .tl-bar{height:6px;background:#554135;top:calc(var(--top) - 2px)}
+.tl-exp.now .tl-bar{height:6px;background:var(--ink);top:calc(var(--top) - 2px)}
 .tl-exp.now .tl-lab em{color:#554135}
 .tl-exp.now .tl-lab b{font-size:clamp(26px,2.4vw,34px);letter-spacing:-.68px;color:var(--ink)}
 .tl-ev.key .tl-card em{font-size:12px}
@@ -982,101 +1002,98 @@ body::after{
 .tl-ev.key .tl-card{transform:translateY(18px) scale(.96)}
 .tl-exp.now.on .tl-lab,.tl-ev.key.on .tl-card{transform:none}
 
-/* IL GOMITO: LA BARRA DI OGGI GIRA DI 90 GRADI E SCENDE (richiesta
-   dell'utente). Al posto del marcatore «oggi» — un filetto verticale con una
-   pillola, che diceva a parole quel che adesso dice la linea — la barra di
-   «Software Designer» non finisce: curva e diventa la guida verticale delle
-   sezioni che seguono. E' il punto in cui lo scroll torna verticale.
-   STA NELLO STAGE, NON NELLA TRACCIA: la traccia trasla, e il gomito deve
-   restare fermo dove la barra ha smesso di correre.
-   Il tracciato lo scrive measure() in pixel: il punto di partenza e' una MISURA
-   (la fine vera della barra, letta dal DOM) e non un numero, e il raggio scala
-   con l'altezza. Si disegna con stroke-dashoffset — il modo in cui in questo
-   sito si disegna una linea, come il nastro dell'atto 2 e il contorno del logo.
-   Spessore e colore sono quelli della barra: dev'essere LA STESSA linea, non
-   una che le somiglia. La coda arriva esattamente al fondo dello stage, che e'
-   anche il bordo alto di .after: li' la guida riprende, e la giuntura non si
-   vede perche' i due pezzi hanno la stessa x e lo stesso tratto. */
-.tl-elbow{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visible}
-.tl-elbow path{
-  fill:none;stroke:#554135;stroke-width:4;
-  stroke-linecap:round;stroke-linejoin:round;
+/* L'ALLAGAMENTO: LA BARRA DI OGGI SI APRE E DIVENTA IL FONDO (richiesta
+   dell'utente, sui suoi fotogrammi). Prima qui c'era un gomito: la barra girava
+   di 90 gradi e scendeva a fare la guida verticale delle sezioni che seguono.
+   Adesso non gira. Resta orizzontale e INGRASSA dal proprio centro finche' non
+   e' lo schermo intero: la linea del tempo arriva a oggi, e oggi diventa tutto.
+
+   STA NELLO STAGE, NON NELLA TRACCIA: la traccia trasla di qualche migliaio di
+   pixel, e questa deve restare inchiodata dove la barra ha smesso di correre.
+   Non e' la barra vera — quella vive nella traccia e se ne va con lei — ma deve
+   leggersi come LEI: stessa quota, stessa lunghezza di partenza, stesso
+   spessore, stesso colore, capi tondi come i suoi. Tutti e cinque i numeri li
+   MISURA measure() dal DOM; qui non ce n'e' scritto nessuno.
+
+   I CAPI TONDI NON SONO DECORAZIONE: sono tutta la differenza fra «la linea si
+   ingrossa» e «e' entrato un pannello». Un rettangolo che cresce ha quattro
+   spigoli vivi da subito e si legge come una lastra che arriva. Una pillola che
+   cresce resta la stessa linea finche' non e' abbastanza grande da non essere
+   piu' una linea — e solo allora il raggio se ne va. Per questo il raggio non
+   e' costante: vale meta' del lato corto (pillola esatta, a ogni taglia) e il
+   ciclo lo spegne col CUBO del progresso, cioe' tardi e tutto insieme.
+
+   CLIP-PATH E NON WIDTH/HEIGHT: la forma cresce ridisegnando un inset su un
+   elemento che resta sempre della stessa taglia. Animare le misure vere
+   vorrebbe dire un ricalcolo di layout a ogni frame, in mezzo alla sezione piu'
+   pesante del sito; cosi' e' una riverniciatura e basta. Ed e' anche l'unico
+   modo di avere un rettangolo arrotondato con raggio e lati indipendenti: uno
+   `scale` su una pillola alta 6px le lascerebbe i capi schiacciati in ellisse.
+
+   I QUATTRO BORDI SONO INDIPENDENTI, e non e' un vezzo. La forma NON cresce
+   simmetrica attorno al proprio centro: parte dalla barra vera, che finisce di
+   correre spostata verso destra, e deve arrivare esattamente ai bordi dello
+   schermo — non «larga quanto lo schermo», che centrata altrove lascerebbe una
+   striscia di carta chiara da una parte. Il ciclo scrive quattro numeri, uno
+   per lato, e ognuno sa dove deve andare.
+
+   LO SBORDO STA NELL'ELEMENTO, NON NEL CONTO. L'elemento e' lo stage allargato
+   di --fb per lato, quindi «uscire dallo schermo» e' semplicemente un inset
+   negativo rispetto allo stage: nessuna moltiplicazione per 1.06 da spiegare, e
+   il ritaglio se ne occupa lo stage, che e' gia' overflow:hidden.
+
+   z-index 4 — SOPRA la traccia (2) e sopra il marchio della sezione (3). Non
+   c'e' nessuna dissolvenza da scrivere per schede, reticolo e tabellone: li
+   copre lei. E' la via piu' economica ed e' anche quella giusta — quel che
+   sparisce non svanisce, ci passa sopra il presente. */
+.tl-flood{
+  position:absolute;inset:calc(0px - var(--fb,160px));z-index:4;
+  pointer-events:none;background:var(--ink);
+  /* il default e' la forma a riposo: nessuna. Il ciclo la riscrive per intero,
+     e finche' non lo fa qui non si vede niente. */
+  clip-path:inset(50% 50%);
 }
+/* quel che il fondo si sta mangiando se ne va mentre lui arriva. Serve al solo
+   nome di «Software Designer», che sta SOPRA la barra e resterebbe stampato
+   fuori dalla forma finche' non e' cresciuta abbastanza; il resto e' gia'
+   coperto, e spegnerlo insieme costa una riga invece di tre.
+   Il :not() e' quel che tiene il fondo fuori dalla propria dissolvenza. */
+.tl-stage > :not(.tl-flood){opacity:var(--fade,1)}
 
-/* ---------- dopo la curva: chi sono, cosa so fare, come guardo ----------
-   Tre movimenti appesi alla stessa guida verticale, che e' la barra di oggi
-   dopo il gomito. BLOCCO NEL FLUSSO: niente pin, niente corsa orizzontale,
-   niente transform sulla sezione — lo scroll e' tornato quello del browser, ed
-   e' esattamente il punto della richiesta.
+/* ---------- dopo l'allagamento: chi sono, cosa so fare, come guardo ----------
+   Tre movimenti incolonnati su una guida che ORA NON SI VEDE PIU'. BLOCCO NEL
+   FLUSSO: niente pin, niente corsa orizzontale, niente transform sulla sezione
+   — lo scroll e' tornato quello del browser, ed e' esattamente il punto della
+   richiesta.
 
-   --spine e' la x della guida, e la scrive measure() in pixel: e' il punto in
-   cui la curva atterra, quindi non puo' essere un numero deciso qui — deve
-   ESSERE quello. Il 30vw qui sotto e' solo il valore di partenza e quello dei
-   rami senza corsa; il numero vero e' AF_SPINE nel JS, che dice alla coda della
-   traccia dove far finire la barra.
-   PERCHE' IL 30 E NON IL 62 DEL PLAYHEAD: la prima versione metteva la guida
-   sul playhead, dove la barra gia' finiva, e non serviva allungare niente. Ma
-   alla guida resta a destra il 38% dello schermo, e li' c'e' solo una
-   micro-etichetta di tre parole: due terzi di pagina vuoti che si leggono come
-   un errore, non come aria. Cosi' invece la colonna stretta e' quella
-   dell'etichetta — allineata a destra, contro la guida, come .proj-mark-label e
-   .tl-mark fanno gia' — e la lettura ha i due terzi larghi. E' anche l'ordine
-   giusto: prima l'etichetta che dice dove sei, poi il testo.
-   Il prezzo e' che la barra deve correre piu' a lungo per arrivare al 30%,
-   quindi la coda si allunga e negli ultimi metri la scena resta con la sola
-   linea di oggi. Va bene cosi': e' il momento in cui il passato e' passato.
+   --spine E' RIMASTA UNA MISURA DI IMPAGINAZIONE, e non piu' una posizione da
+   far combaciare. Finche' c'era il gomito, la barra doveva girare esattamente
+   li' e il numero lo scriveva measure() in pixel: la guida DOVEVA stare dove la
+   curva era atterrata. Adesso non atterra niente — la barra si apre in piano e
+   diventa il fondo mentre la sezione e' ancora fuori campo — quindi il 30vw e'
+   di nuovo una scelta di composizione, e sta tutta qui.
+   PERCHE' IL 30: alla colonna stretta resta l'etichetta, allineata a destra
+   contro il confine, come .proj-mark-label e .tl-mark fanno gia'; alla lettura
+   restano i due terzi larghi. La prima versione la metteva al 62 del playhead e
+   lasciava a destra due terzi di pagina vuoti, che si leggono come un errore e
+   non come aria. E' anche l'ordine giusto: prima l'etichetta che dice dove sei,
+   poi il testo.
 
-   Il fondo e' pieno e non sfumato: la sfumatura serve a .timeline perche' ci si
-   arriva scorrendo sopra la carta scura, qui sopra c'e' gia' la stessa carta. */
+   IL FONDO E' SCURO DA SUBITO, e non e' un colore che arriva: e' lo stesso
+   --ink in cui il fondo si e' appena aperto un attimo prima, nel pin della
+   linea del tempo. Quando lo sticky si sgancia, la forma cresciuta a schermo
+   pieno esce dall'alto e questa carta entra dal basso — stessa tinta, giuntura
+   invisibile, nessun secondo gesto da sincronizzare. E' tutto il vantaggio di
+   aver spostato l'apertura PRIMA della sezione invece che dentro. */
 .after{
   --spine:30vw;
-  position:relative;z-index:3;background:var(--tlbg);
+  position:relative;z-index:3;background:var(--ink);
   /* il fondo della pagina e' occupato dalla barra fissa dei social: senza
      questo l'ultima riga ci finisce sotto */
   padding-bottom:calc(80px + 20vh);
 }
-/* LA GUIDA, CHE E' ANCHE IL FONDO. Nasce spessa 4px come la barra e il gomito
-   — e' la stessa linea, e va letta come tale, e margin-left:-2px la centra
-   sulla x come il tratto del gomito e' centrato sul suo tracciato — e
-   scorrendo si APRE fino a coprire lo schermo: da li' in giu' e' lei la carta
-   su cui sta la coda del sito. La linea del tempo arriva a oggi, gira, e poi
-   oggi e' tutto lo schermo.
-   QUI MUORE L'INVARIANTE DI df7497f («la linea deve morire sulla mail»). Non
-   finisce piu' da nessuna parte, quindi l'altezza e' quella piena della
-   sezione e non piu' --railH ricavata dal centro della stellina. La stellina
-   resta il marchio in fondo alla pagina, e basta.
-   NIENTE scaleY: il gesto del disegnarsi scendendo e' SOSTITUITO
-   dall'apertura, non affiancato. Due gesti nello stesso mezzo secondo si
-   annullano a vicenda, e quello che dice qualcosa di nuovo e' l'apertura.
-   IL CUNEO NON E' DECORAZIONE. Un rettangolo che si allarga ha un bordo alto
-   ORIZZONTALE, e un bordo alto orizzontale si legge come «e' entrato un
-   pannello», non come «la linea ingrassa». Con la punta in alto la giuntura
-   col gomito resta una linea sola che si apre scendendo.
-   Le percentuali del clip-path stanno nello spazio LOCALE dell'elemento, prima
-   della transform: il cuneo si scala insieme a lui e resta un cuneo. --wedge
-   dice a che altezza raggiunge la larghezza piena, e lo ricava measure().
-   Niente border-radius: a scaleX 300 un raggio di 2px diventerebbe 600. */
-.after-rail{
-  position:absolute;left:var(--spine);top:0;height:100%;width:4px;
-  margin-left:-2px;background:#554135;
-  /* z-index:-1 NON E' UN DETTAGLIO, ed e' costato mezz'ora. Un elemento
-     ASSOLUTO dipinge sopra il contenuto NON posizionato: finche' la fascia era
-     larga 4px non se ne accorgeva nessuno, ma da fondo si mangiava la chiusura
-     intera. (La stellina si salvava per caso: ha un `translate`, e questo la
-     fa dipingere nel livello dei posizionati.)
-     Si mette qui e non `position:relative` sul contenuto, perche' altrimenti
-     andrebbe ripetuto su OGNI figlio non posizionato che verra' aggiunto —
-     le figure delle fotografie per prime.
-     Il -1 non la fa sparire dietro la carta di .after: .after ha z-index:3 e
-     position:relative, quindi e' la radice di un contesto di impilamento, e li'
-     dentro un figlio negativo sta SOPRA lo sfondo della radice e SOTTO il suo
-     contenuto. Che e' esattamente il mestiere di un fondo. */
-  z-index:-1;
-  transform:scaleX(var(--k,1));transform-origin:center top;
-  clip-path:polygon(50% 0, 100% var(--wedge,4%), 100% 100%, 0 100%, 0 var(--wedge,4%));
-}
 /* LA PALETTE DELLA CODA. Nessun valore nuovo: sono i colori che il file ha
-   gia', con i ruoli scambiati. --blue #174FFE su #554135 sono due colori
+   gia', con i ruoli scambiati. --blue #174FFE su --ink #2B1A0F sono due colori
    scuri — contrasto ~1.1:1, illeggibile — quindi nella SOLA coda l'azzurro
    acceso lascia il posto a #BFCFFF, che e' gia' il colore dei filetti. Altrove
    nel sito --blue resta quello che e'.
@@ -1096,19 +1113,21 @@ body::after{
    confine fra le due colonne della griglia E' la guida: non c'e' un secondo
    numero da tenere allineato. */
 .mv{
-  --pt:24vh;   /* UN numero solo: lo usano il padding, il filetto qui sotto e
-                  measure() per il cuneo. Scriverlo tre volte lo faceva gia'
-                  andare fuori registro alla prima modifica. */
+  --pt:24vh;   /* UN numero solo: lo usano il padding e il filetto qui sotto.
+                  Scriverlo due volte lo faceva gia' andare fuori registro alla
+                  prima modifica. */
   position:relative;display:grid;grid-template-columns:var(--spine) 1fr;
   align-items:start;padding-top:var(--pt);
 }
-/* IL RESPIRO DOPO LA CURVA. Il primo movimento parte molto piu' in basso degli
-   altri, e non e' aria decorativa: e' lo spazio in cui la linea si apre e
-   diventa il fondo. Prima ce n'erano 24vh, e la diagonale del cuneo finiva
-   addosso al primo paragrafo. E' anche il momento giusto per una pausa: sopra
-   c'e' una linea del tempo lunga, e la coda deve arrivare calma.
-   measure() ricava --wedge DA QUESTO padding: si cambia qui e basta. */
-.after .mv:first-of-type{--pt:80vh}
+/* IL RESPIRO DOPO L'ALLAGAMENTO. Il primo movimento parte piu' in basso degli
+   altri: sopra c'e' una linea del tempo lunga e un fondo che si e' appena
+   chiuso sopra la testa, e la coda deve arrivare calma.
+   40 E NON 80: gli ottanta servivano al cuneo, che si apriva DENTRO questa
+   sezione e doveva aver finito prima che ci fosse qualcosa da leggere. Adesso
+   l'apertura e' finita da un pezzo quando la sezione entra — succede nel pin
+   della linea del tempo — e ottanta sarebbero mezzo schermo di scuro vuoto da
+   scorrere per niente. Quaranta sono la pausa, non l'attesa. */
+.after .mv:first-of-type{--pt:40vh}
 .mv-body{padding:0 10vw 0 2.6vw}
 /* il filetto che aggancia il movimento alla guida: cresce dalla guida verso
    l'etichetta quando il movimento arriva sulla riga di lettura. Stesso gesto e
@@ -1292,7 +1311,7 @@ body::after{
      applyProjects), quindi lo stato finale deve stare tutto in queste regole. */
   .tl-stage{position:static;height:auto;overflow:visible;padding:40px 0 80px}
   .tl-track{position:static;width:auto;height:auto;transform:none;padding:0 24px}
-  .tl-grid,.tl-year,.tl-axis,.tl-elbow,.tl-stem,.tl-tick,.tl-bar{display:none}
+  .tl-grid,.tl-year,.tl-axis,.tl-flood,.tl-stem,.tl-tick,.tl-bar{display:none}
   /* incolonnata la sezione parte da sinistra come tutto il resto: qui il
      titolo torna allineato a quel bordo */
   .tl-mark{position:static;align-items:flex-start;padding:0 24px 28px}
@@ -1325,17 +1344,16 @@ body::after{
   .pd-story{grid-template-columns:1fr}
   .pd-quote{padding-left:20px}
 
-  /* dopo la curva: qui la curva non c'e' (la linea del tempo e' incolonnata e
-     non c'e' nessuna barra che possa girare), quindi la guida e' solo un
-     filetto a sinistra e il contenuto gli sta a DESTRA — a 24px dal bordo non
-     c'e' una colonna di sinistra in cui mettere niente. L'etichetta torna
+  /* la coda: qui l'allagamento non c'e' (la linea del tempo e' incolonnata e
+     non c'e' nessuna barra che possa aprirsi), e il fondo scuro c'e' e basta.
+     --spine torna un margine, il contenuto gli sta a DESTRA — a 24px dal bordo
+     non c'e' una colonna di sinistra in cui mettere niente. L'etichetta torna
      sopra il testo, che e' il suo posto quando le colonne diventano una. */
   .after{--spine:24px;padding-bottom:calc(80px + 10vh)}
   .mv{--pt:14vh;grid-template-columns:1fr;gap:14px}
-  /* incolonnato la curva non c'e' e il respiro serve meno: 80vh di marrone
-     vuoto su un telefono sono mezzo minuto di pollice. Ma il cuneo ha comunque
-     bisogno di spazio, e measure() lo ricava da qui. */
-  .after .mv:first-of-type{--pt:40vh}
+  /* senza il gesto da accompagnare il respiro serve meno: 40vh di scuro vuoto
+     su un telefono sono un bel po' di pollice. */
+  .after .mv:first-of-type{--pt:20vh}
   .mv-body{padding:0 24px 0 calc(24px + 20px)}
   /* l'allineamento a destra del desktop qui non ha senso: la colonna
      dell'etichetta non esiste piu', e appoggiata al bordo destro si leggerebbe
@@ -1394,15 +1412,12 @@ body::after{
   .proj-detail{transition:none}
   .pd-in{opacity:1;transform:none;transition:none}
 
-  /* dopo la curva. Il gomito qui non ha senso: senza corsa la traccia non e'
+  /* la coda. L'allagamento qui non ha senso: senza corsa la traccia non e'
      traslata, la barra di oggi sta a qualche migliaio di pixel a destra e una
-     curva disegnata sul playhead non toccherebbe niente. Resta la guida, che
-     e' l'unica cosa che serve davvero — e arriva gia' tracciata, con i
-     movimenti gia' agganciati: qui nessuno scrivera' mai --d ne' la classe. */
-  .tl-elbow{display:none}
-  /* la fascia e' gia' aperta: --k lo scrive measure(), che gira anche qui.
-     transform:none la richiuderebbe ai suoi 4px. */
-  .after-rail{transform:scaleX(var(--k,1))}
+     forma cresciuta sul playhead non coprirebbe la linea, coprirebbe il vuoto.
+     Il fondo scuro pero' resta — quello e' la carta della coda, non un gesto —
+     e ce l'ha .after per conto suo, senza che nessuno debba scrivere niente. */
+  .tl-flood{display:none}
   .mv::before{transform:scaleX(1)}
   .mv-tag,.mv-body > *{opacity:1;transform:none;transition:none}
   .sk-tags li{border-color:#BFCFFF}
@@ -1860,21 +1875,14 @@ body::after{
 
     </div>
 
-    <!-- dopo .tl-track: stesso z, e a parita' di z vince chi viene dopo, cosi'
-         la curva passa sopra la coda della barra invece che sotto -->
-    <svg class="tl-elbow" id="tlElbow" aria-hidden="true" preserveAspectRatio="none">
-      <path id="tlElbowPath"/>
-    </svg>
+    <!-- il fondo che si apre dalla barra di oggi. Ultimo nello stage e con lo z
+         piu' alto: da qui in poi non deve passargli sopra piu' niente. -->
+    <i class="tl-flood" id="tlFlood" aria-hidden="true"></i>
   </div>
 </section>
 
-<!-- ===================== dopo la curva ===================== -->
+<!-- ===================== dopo l'allagamento ===================== -->
 <section class="after" id="after" aria-label="Chi sono">
-  <!-- la guida: e' la barra di oggi dopo il gomito. L'altezza gliela scrive
-       measure(), che sa dove sta la stellina di chiusura: la linea deve finire
-       LI', sulla mail, non un pixel piu' in giu'. -->
-  <i class="after-rail" id="afterRail" aria-hidden="true"></i>
-
   <article class="mv" id="mv1">
     <h2 class="mv-tag">01 &mdash; posizionamento</h2>
     <div class="mv-body">
@@ -2016,15 +2024,15 @@ const tlTrack  = document.getElementById('tlTrack');
 const tlAxis   = document.getElementById('tlAxis');
 const tlMark   = document.getElementById('tlMark');
 const tlStage  = document.querySelector('.tl-stage');
-/* il gomito e i due nodi da cui ne ricavo la geometria: la barra di oggi (dove
-   finisce) e il suo filetto (a che quota sta). Nessun numero ripetuto. */
-const tlElbow  = document.getElementById('tlElbow');
-const tlElbowP = document.getElementById('tlElbowPath');
+/* il fondo che si apre, e i due nodi da cui ne ricavo la geometria: la barra di
+   oggi (dove comincia e dove finisce) e il suo filetto (a che quota sta e
+   quanto e' spesso). Nessun numero ripetuto. */
+const tlFlood  = document.getElementById('tlFlood');
 const tlExpNow = document.querySelector('.tl-exp.now');
 const tlBarNow = tlExpNow.querySelector('.tl-bar');
-/* le sezioni dopo la curva */
+const tlLabNow = tlExpNow.querySelector('.tl-lab');
+/* le sezioni della coda */
 const after     = document.getElementById('after');
-const afterRail = document.getElementById('afterRail');
 const mvs       = [...document.querySelectorAll('.mv')].map(el => ({ el, top: 0 }));
 /* le righe del reticolo sono i confini d'anno: da loro vengono la larghezza di
    una colonna e l'anno in cui si e' */
@@ -2183,29 +2191,75 @@ const FIN_RUN = mq.matches ? 1 : 2.8;     // schermi di corsa: deve stare dentro
    niente qui. */
 const TL_PLAY = .62;
 const TL_RATE = 2;
-const TL_OUT  = .6;     // schermi di pin fermo dopo che la traccia ha finito
+/* schermi di pin fermo dopo che la traccia ha finito. Dentro ci sta l'apertura
+   del fondo (TL_FLOOD), piu' un residuo di scuro pieno prima che lo sticky
+   molli: e' il respiro che rende la consegna a .after un passaggio e non un
+   taglio. Segue TL_FLOOD, che e' l'unico numero da toccare per cambiare il
+   passo: qui basta che ci stia dentro con un margine. */
+const TL_OUT  = 1.7;
 const TL_LAND = 1.2;    // schermi PRIMA del pin in cui la stella scende sull'asse
 const TL_AXIS = .54;    // altezza dell'asse: deve valere quanto il `top` di .tl-axis
 const TL_DOT  = 26;     // il lato della stella una volta posata, in px
 let tl0 = 0, tlRun = 1, tlTravel = 1, tlLeadPx = 0, tlAxisW = 1, tlYw = 1;
-let elbowLen = 1;              // lunghezza del tracciato della curva, per il dash
-let af0 = 0, afterH = 1, afKMax = 1;  // dove comincia .after, quanto e' alta, quanto si apre
-/* dove passa la riga di lettura, in frazioni di schermo. L'apertura del fondo
-   comincia quando la sezione arriva li' — deve accompagnare, non inseguire — e
-   un movimento si accende poco prima, quando il suo bordo alto ha passato
-   AF_ON. */
-const AF_READ = .78;
+/* LA GEOMETRIA DEL FONDO CHE SI APRE, tutta misurata da measure() e tutta in
+   pixel dello stage. fdL0/fdR0 sono i due capi della barra di oggi a corsa
+   terminata e fdY/fdH0 la sua mezzeria e il suo mezzo spessore: insieme sono la
+   forma al fotogramma zero, cioe' la barra stessa. fdSW/fdSH sono lo stage, cioe'
+   dove la forma deve arrivare; fdB e' di quanto lo sborda. */
+let fdL0 = 0, fdR0 = 0, fdY = 0, fdH0 = 3, fdSW = 1, fdSH = 1, fdB = 160;
+/* da dove parte la deriva del nome: il `translate` che il ciclo delle
+   esperienze gli mette addosso a corsa finita. NON e' 24 — quello e' il valore
+   solo quando l'inizio del periodo cade esattamente sul bordo, e da quando c'e'
+   TL_HOLD non ci cade piu'. Scriverlo a mano faceva saltare il nome a sinistra
+   di duecento pixel al primo frame del gesto. */
+let fdLabX = 24;
+/* IN QUANTI SCHERMI DI SCROLL LA LINEA DIVENTA IL FONDO. Sta dentro TL_OUT — il
+   pin fermo dopo che la traccia ha finito di correre — e deve finire PRIMA che
+   il pin si sganci, o l'ultimo pezzo del gesto lo si vedrebbe scorrere via
+   invece che aprirsi.
+   UNO E QUATTRO DECIMI, ERANO TRE DECIMI DUE VERSIONI FA. Con tre il gesto
+   passava prima di essere letto: due giri di rotella e la pagina era gia' nera.
+   Il movimento che l'autore vuole e' quello di un liquido, e un liquido lo si
+   guarda salire — la lentezza qui non e' attesa, e' la cosa stessa. */
+const TL_FLOOD = 1.4;
+/* QUANTA PARTE DELL'APERTURA SE NE VA NEL PRIMO TEMPO, quello in cui la linea
+   si ALLUNGA e basta. Sono i fotogrammi 900 e 901 dei disegni dell'autore, ed
+   erano stati saltati: la prima versione cominciava a ingrossare subito, dalla
+   lunghezza che la barra si ritrova a fine corsa. Ma quella lunghezza e' un
+   fatto della linea del tempo — dice fin dove arriva Zucchetti — e usarla come
+   larghezza di partenza del fondo le fa dire una cosa che non c'entra.
+   Prima la linea si sfila fuori dai due bordi e smette di essere una misura;
+   POI, da tutta larga, ingrossa. Sono due gesti in fila, non uno solo.
+   QUATTRO DECIMI E DUE, ERANO TRE. Con tre lo schermo diventava scuro troppo
+   presto: il primo tempo — il nome che se ne va e la linea che si sfila — e' la
+   parte che si legge, e quella che riempie e' solo la conseguenza. Adesso il
+   primo tempo si prende quasi meta' del gesto. */
+const TL_SPREAD = .42;
+/* QUANTO ANCORA SCORRE LA SCENA dopo che il nome si e' appoggiato al bordo, in
+   frazione di larghezza dello schermo. E' l'unica cosa in questo pezzo che non
+   si ricava da una misura, perche' non c'e' niente da cui ricavarla: e' una
+   scelta di composizione dell'autore, che al fotogramma di partenza voleva le
+   ultime schede piu' a sinistra e piu' aria attorno alla linea. In larghezza e
+   non in altezza perche' quel che misura e' uno slittamento orizzontale.
+   Costa corsa in piu' alla linea del tempo e accorcia il pezzo di barra che
+   resta in campo (l'inizio del periodo va sotto il bordo sinistro): sono
+   esattamente le due cose che si volevano. */
+const TL_HOLD = .12;
+/* A CHE PUNTO DEL PRIMO TEMPO la scena e' finita di spegnersi. E' una frazione
+   dell'ALLUNGAMENTO gia' addolcito, non degli schermi di scroll: cosi' il buio
+   del contorno e il movimento della linea sono la stessa cosa, e non due che
+   corrono a velocita' diverse.
+   E sta nel primo tempo, non nel secondo, perche' e' li' che serve: il 901 e'
+   una linea sola su carta bianca, senza schede, senza marchio, senza tabellone.
+   Quando comincia a ingrossare non c'e' gia' piu' niente da spegnere. */
+const TL_FADE = .8;
+let af0 = 0;                   // dove comincia .after
+/* il valore di `over` a cui header e footer passano alla palette scura: e' il
+   momento in cui la carta scura arriva sotto di loro, e lo ricava measure(). */
+let darkFrom = Infinity;
+/* dove passa la riga di lettura, in frazioni di schermo: un movimento si accende
+   poco prima, quando il suo bordo alto ha passato AF_ON. */
 const AF_ON   = .84;
-/* in quanti schermi la fascia passa da linea a fondo. Uno: e' il vuoto fra
-   l'atterraggio della curva e il primo movimento, l'unico punto della coda in
-   cui non c'e' niente da leggere, ed e' per questo che il gesto sta li'. */
-const AF_OPEN = 1;
-/* dove cade la guida, in frazione di larghezza. NON e' una scelta di stile
-   isolata: e' lei a dire alla coda della traccia quanto allungarsi, perche' la
-   barra di oggi deve finire esattamente li' per potersi girare. Cambiandola si
-   sposta anche la lunghezza della linea del tempo, e con essa quanto si scorre
-   prima della curva. Il 30vw nel CSS di .after e' solo il valore di partenza. */
-const AF_SPINE = .30;
 let tlWas = false, tlFo = '';
 const tlEvX = [], tlExpX = [], tlExpW = [], tlLabW = [];
 
@@ -2373,24 +2427,35 @@ function measure(){
      l'inseguitore finisce di arrivare prima che lo sticky si sganci.
      Su mobile e in reduced-motion la sezione è incolonnata e nel flusso: non
      c'è nessuna corsa da darle, l'altezza resta quella del contenuto. */
-  /* --tail SI RICAVA, NON SI TARA (era 70vh scritti nel CSS). E' la coda a
-     decidere dove finisce la barra di oggi a corsa terminata, e quel punto deve
-     cadere su AF_SPINE: e' li' che la barra gira di 90 gradi e diventa la guida
-     delle sezioni che seguono, ed e' li' che la guida scende.
+  /* --tail SI RICAVA, E IL BERSAGLIO E' IL BORDO SINISTRO DELLO SCHERMO
+     (richiesta dell'utente). La coda decide dove si ferma la traccia, quindi
+     decide dove sta la barra di oggi a corsa finita: si allunga finche' l'INIZIO
+     del periodo Zucchetti non arriva a filo del bordo sinistro.
+     PERCHE' PROPRIO LI'. Il nome «Software Designer» e' ancorato all'inizio del
+     suo periodo e ci resta finche' quell'inizio e' in campo; quando esce, il
+     nome si stacca e si appoggia a 24px dal bordo (vedi la coda del ciclo, dove
+     si scrive `translate`). Portando l'inizio esattamente sul bordo, il nome
+     arriva al suo posto da solo, come ultimo gesto della corsa e non come una
+     cosa in piu' da animare — ed e' il fotogramma 900 dei disegni: il nome a
+     sinistra, la linea che parte da sotto di lui.
      Due passate invece di una formula: si azzera la coda, si guarda dove
-     cadrebbe la fine della barra, si allunga di quanto manca. Cosi' qui non
-     compaiono ne' il 7.66 di oggi ne' gli 8 anni del reticolo — cambiando le
-     date o allungando la linea del tempo, il conto si rifa' da solo.
-     Il minimo e' una sicurezza per le finestre molto piu' alte che larghe (sotto
-     circa 0.6 di rapporto), dove la coda calcolata andrebbe sotto zero e il
-     gomito cadrebbe oltre il bordo destro. Sotto quel rapporto la curva sta un
-     po' a destra del playhead e la guida la segue lo stesso, perche' la sua x
-     gliela scrive la misura qui sotto e non il CSS. */
+     cadrebbe l'inizio della barra, si allunga di quel tanto. Cosi' qui non
+     compaiono ne' il 4.75 di Zucchetti ne' gli 8 anni del reticolo — cambiando
+     le date, il conto si rifa' da solo.
+     POI TL_HOLD, che e' l'unico pezzo scelto e non misurato: la scena continua
+     a scorrere ancora un po' dopo che il nome si e' appoggiato al bordo. Serve
+     al fotogramma di partenza, che con le ultime schede ancora al centro era
+     affollato. Sta DENTRO al max() apposta: e' corsa da fare, non un extra da
+     aggiungere a un minimo di sicurezza.
+     Il minimo e' quella sicurezza, per le finestre molto piu' alte che larghe,
+     dove la coda calcolata andrebbe sotto zero: li' l'inizio della barra resta
+     un po' dentro il campo e il nome resta attaccato a lui, che va bene lo
+     stesso. */
   if (!mq.matches && !reduce){
     tlTrack.style.setProperty('--tail', '0px');
-    const barEnd = tlExpNow.offsetLeft + tlExpNow.offsetWidth;
-    tlTrack.style.setProperty('--tail', Math.max(innerHeight * .15,
-      barEnd - tlTrack.offsetWidth + innerWidth * (1 - AF_SPINE)).toFixed(1) + 'px');
+    const barLeft = tlExpNow.offsetLeft;
+    tlTrack.style.setProperty('--tail', Math.max(innerHeight * .12,
+      barLeft - tlTrack.offsetWidth + innerWidth * (1 + TL_HOLD)).toFixed(1) + 'px');
   }
   tlTravel = Math.max(1, tlTrack.offsetWidth - innerWidth);
   tlRun = tlTravel * TL_RATE;
@@ -2413,75 +2478,83 @@ function measure(){
   tlAxisW  = tlAxis.offsetWidth || 1;
   tlYw = (tlGrids[1].offsetLeft - tlGrids[0].offsetLeft) || 1;   // un anno, in px
 
-  /* IL TRACCIATO DELLA CURVA, in pixel dello stage.
-     Punto di partenza e quota li da' il DOM: dove finisce davvero la barra a
-     corsa terminata, e la mezzeria del suo filetto. Nessun 44% ripetuto qui —
-     spostando --top di .tl-exp.now la curva lo segue.
-     Il tratto comincia una sessantina di pixel PRIMA dell'arco e ci passa sopra:
-     stesso colore e stesso spessore, quindi non si vede, e non c'e' modo che
-     fra la barra e la curva resti un buco di mezzo pixel per un arrotondamento.
-     La coda scende fino al fondo dello stage, che e' anche il bordo alto di
-     .after: li' la guida riprende, alla stessa x, e la giuntura non si vede.
-     --spine gliela scrivo io invece di fidarmi che 62vw e TL_PLAY coincidano:
-     se il minimo qui sopra e' entrato in gioco, la guida deve stare dove la
-     curva e' atterrata davvero, non dove il CSS credeva. */
+  /* LA GEOMETRIA DEL FONDO CHE SI APRE, in pixel dello stage.
+     Il fotogramma zero e' la barra vera, e i suoi quattro numeri li da' il DOM:
+     dove comincia e dove finisce a corsa terminata, a che quota sta e quanto e'
+     spessa. Spostando --top di .tl-exp.now, cambiandole spessore o cambiando le
+     date, la forma li segue da sola — qui non c'e' scritto nessun numero.
+
+     LE x DELLA BARRA A CORSA FINITA sono offsetLeft meno la traslazione massima
+     della traccia: offsetLeft non risente della transform, quindi e' la stessa
+     sottrazione che il ciclo fa a ogni frame, fatta una volta per l'ultimo.
+
+     IL CAPO DESTRO E' IL PLAYHEAD, NON LA FINE DEL PERIODO. Le barre non sono
+     disegnate per intero: si tracciano fino al playhead e li' si fermano, ed e'
+     `--d` a dirlo (vedi il ciclo). La fine del periodo Zucchetti sta cinquecento
+     pixel piu' a destra, in un pezzo di traccia che non e' ancora stato
+     scoperto: partendo da li' il fondo nasceva piu' lungo della linea da cui
+     dice di nascere, e i cinquecento in eccesso erano una barretta scura appesa
+     nel vuoto. Il min() copre anche le finestre in cui il periodo finisce prima
+     del playhead, dove il capo giusto e' di nuovo quello del periodo. */
+
+  /* LO SBORDO e' un ottavo del lato lungo dello stage: abbastanza perche'
+     nell'ultimo fotogramma nessun angolo della forma sia ancora dentro il
+     campo, e abbastanza poco da non sprecare superficie da dipingere.
+
+     Sotto mq (incolonnato) e in reduced-motion non serve niente: il fondo li'
+     e' display:none e la carta scura ce l'ha .after per conto suo. */
   if (!mq.matches && !reduce){
-    const sh = tlStage.offsetHeight;
-    const cx = tlExpNow.offsetLeft + tlExpNow.offsetWidth - (tlTrack.offsetWidth - innerWidth);
-    const cy = tlBarNow.offsetTop + tlBarNow.offsetHeight / 2;
-    const r  = Math.min(56, sh * .05);
-    tlElbow.setAttribute('viewBox', '0 0 ' + tlStage.offsetWidth + ' ' + sh);
-    tlElbowP.setAttribute('d',
-      'M' + (cx - r - 60).toFixed(1) + ' ' + cy.toFixed(1) +
-      'H' + (cx - r).toFixed(1) +
-      'A' + r.toFixed(1) + ' ' + r.toFixed(1) + ' 0 0 1 ' +
-            cx.toFixed(1) + ' ' + (cy + r).toFixed(1) +
-      'V' + sh);
-    elbowLen = tlElbowP.getTotalLength() || 1;
-    tlElbowP.style.strokeDasharray = elbowLen.toFixed(1);
-    after.style.setProperty('--spine', cx.toFixed(1) + 'px');
-  } else {
-    /* incolonnato e in reduced-motion la curva non c'e', e la guida torna dove
-       la mette il CSS: 24px dal bordo su mobile. Va TOLTA la proprieta' inline,
-       o restando scritta vincerebbe sul @media dopo un ridimensionamento. */
-    after.style.removeProperty('--spine');
+    fdSW = tlStage.offsetWidth;
+    fdSH = tlStage.offsetHeight;
+    fdL0 = tlExpNow.offsetLeft - (tlTrack.offsetWidth - innerWidth);
+    fdR0 = Math.min(fdL0 + tlExpNow.offsetWidth, innerWidth * TL_PLAY);
+    fdY  = tlBarNow.offsetTop + tlBarNow.offsetHeight / 2;
+    fdH0 = tlBarNow.offsetHeight / 2;
+    fdB  = Math.max(fdSW, fdSH) / 8;
+    tlFlood.style.setProperty('--fb', fdB.toFixed(1) + 'px');
+    /* LA STESSA ESPRESSIONE DEL CICLO, valutata per l'ultimo frame della corsa.
+       Copiarla e' brutto, ma l'alternativa e' peggio: leggere indietro lo stile
+       che il ciclo ha appena scritto, cioe' fidarsi di una stringa. Se quella
+       riga cambia, va cambiata anche questa — e il sintomo si vede subito, e'
+       il nome che salta di lato quando parte il gesto. */
+    fdLabX = clamp(24 - fdL0, 0,
+      Math.max(0, tlExpNow.offsetWidth - tlLabNow.offsetWidth));
   }
 
-  /* .after: dove comincia, quanto e' alta, e quanto deve aprirsi la fascia.
-     NON si misura piu' il centro della stellina di chiusura: la linea non deve
-     piu' fermarsi li' (vedi il CSS di .after-rail), si apre e diventa il fondo.
-     Resta pero' valida la trappola che quella misura ci aveva insegnato, ed e'
-     il motivo per cui e' scritta qui: offsetTop e offsetHeight NON esistono
-     sugli elementi SVG — sono roba di HTMLElement, li' tornano undefined e il
-     conto diventa NaN senza sollevare niente. Sugli <svg> si misura con
+  /* .after: dove comincia. NON si misura piu' ne' la sua altezza ne' il centro
+     della stellina di chiusura — non c'e' piu' niente, dentro questa sezione,
+     che debba aprirsi o fermarsi da qualche parte.
+     Resta valida la trappola che quelle misure ci avevano insegnato, ed e' il
+     motivo per cui e' scritta qui: offsetTop e offsetHeight NON esistono sugli
+     elementi SVG — sono roba di HTMLElement, li' tornano undefined e il conto
+     diventa NaN senza sollevare niente. Sugli <svg> si misura con
      getBoundingClientRect. */
   af0 = after.offsetTop - (scroller.offsetHeight - innerHeight);
-  afterH = after.offsetHeight || 1;
-  /* L'APERTURA MASSIMA SI RICAVA, NON SI SCEGLIE. La fascia parte larga 4px e
-     cresce dal proprio centro, che sta a --spine: ogni lato guadagna 2*k px, e
-     deve bastare a coprire il lato PIU' LONTANO. Con la guida al 30% il lato
-     lungo e' sempre il destro, ma scriverlo con un max() lo tiene vero anche se
-     AF_SPINE cambia o se il ramo incolonnato porta la spina a 24px. */
-  const spinePx = parseFloat(getComputedStyle(after).getPropertyValue('--spine')) || 0;
-  afKMax = Math.max(spinePx, innerWidth - spinePx) / 2;
-  /* DOVE IL CUNEO RAGGIUNGE LA LARGHEZZA PIENA. Non e' innerHeight: la prima
-     versione lo ricavava da li' e la diagonale TAGLIAVA IL PRIMO PARAGRAFO a
-     meta' — mezza riga chiara sul marrone, mezza scura sulla carta. Il numero
-     giusto e' dove comincia il TESTO del primo movimento: il cuneo deve aver
-     finito di aprirsi prima che ci sia qualcosa da leggere, sempre, anche se
-     domani quel padding cambia.
-     E' anche il motivo per cui il primo movimento ha un padding-top suo: senza
-     quel respiro la diagonale sarebbe una frittata quasi orizzontale, cioe'
-     esattamente il bordo da pannello che il cuneo serviva a evitare.
-     In % perche' il clip-path lavora in coordinate locali, non in pixel. */
-  const mv0 = mvs[0] && mvs[0].el;
-  const wedgePx = mv0
-    ? mv0.offsetTop + parseFloat(getComputedStyle(mv0).paddingTop)
-    : innerHeight;
-  after.style.setProperty('--wedge', (100 * wedgePx / afterH).toFixed(2) + '%');
-  /* reduced-motion non ha un ciclo per frame: li' il fondo va consegnato gia'
-     aperto da qui, altrimenti quel ramo vede una linea sottile e basta. */
-  if (reduce) afterRail.style.setProperty('--k', afKMax.toFixed(2));
+
+  /* QUANDO L'HEADER DIVENTA CHIARO. Non e' un momento scelto a occhio: e' il
+     frame in cui il bordo alto della forma raggiunge il bordo alto dello stage,
+     cioe' quando sotto il nome dell'autore non c'e' piu' carta chiara.
+     Si ricava invertendo la stessa formula che il ciclo usa per il bordo alto:
+     T(b) = (fdY - fdH0) * (1 - inOut(b)) - fdB * inOut(b), e la si vuole a zero.
+     Sciolta per inOut(b) da' una frazione fra due distanze, e inOut e' fatta di
+     due cubiche, quindi la si inverte a mano, ramo per ramo — due radici cubiche
+     e via; poi si rimette `b` nel secondo tempo, che comincia a TL_SPREAD.
+     SI INVERTE LA STESSA CURVA CHE DISEGNA, non una che le somiglia: cambiando
+     l'ammorbidimento nel ciclo va cambiata anche questa, o l'header si
+     schiarirebbe qualche frame prima o dopo il buio, che e' l'unico modo di
+     accorgersene.
+     Incolonnato e in reduced-motion la forma non c'e': li' la carta scura e'
+     semplicemente .after, e il momento e' quello in cui la sezione tocca il
+     bordo alto del viewport. */
+  if (!mq.matches && !reduce){
+    const q = (fdY - fdH0) / (fdY - fdH0 + fdB);
+    const b = q < .5 ? Math.cbrt(q / 4) : 1 - Math.cbrt(2 * (1 - q)) / 2;
+    darkFrom = tl0 + tlRun +
+      (TL_SPREAD + b * (1 - TL_SPREAD)) * innerHeight * TL_FLOOD;
+  } else {
+    darkFrom = af0;
+  }
+
   mvs.forEach(m => m.top = af0 + m.el.offsetTop);
   tlEvs.forEach((el, i) => tlEvX[i] = el.offsetLeft);
   tlExps.forEach((it, i) => {
@@ -2913,23 +2986,22 @@ function applyProjects(){
   const fo = (1 - seg(over, tl0 - innerHeight * 1.4, tl0 - innerHeight * .3)).toFixed(3);
   if (fo !== tlFo){ finaleClaim.style.setProperty('--fo', fo); tlFo = fo; }
 
-  /* ---------- il fondo delle sezioni dopo la curva ----------
+  /* ---------- i movimenti della coda ----------
      Sta PRIMA del guardiano qui sotto, e non e' un dettaglio: quel guardiano
      esce dalla funzione quando la linea del tempo e' lontana e per tutto il
-     ramo incolonnato, dove pero' queste sezioni ci sono e il fondo deve
-     aprirsi lo stesso.
-     L'apertura si consuma in AF_OPEN schermi a partire da quando la sezione
-     tocca la riga di lettura: e' il vuoto fra l'atterraggio della curva e il
-     primo movimento, l'unico punto della coda in cui non c'e' niente da
-     leggere. Il gesto non compete con nessun testo, ed e' per questo che sta li'.
-     out3 e non lineare: parte decisa e arriva morbida, come ogni altra
-     apertura del sito. */
-  const afOpen = out3(clamp((over - af0 + innerHeight * AF_READ) / (innerHeight * AF_OPEN)));
-  afterRail.style.setProperty('--k', (1 + (afKMax - 1) * afOpen).toFixed(2));
-  /* i movimenti: il ciclo dice solo QUANDO. Il come sono ritardi CSS su .on,
-     come per gli eventi della linea del tempo — cosi' tre sezioni lunghe non
-     costano una scrittura di stile per figlio a ogni frame. */
+     ramo incolonnato, dove pero' queste sezioni ci sono e devono accendersi lo
+     stesso.
+     Il ciclo dice solo QUANDO. Il come sono ritardi CSS su .on, come per gli
+     eventi della linea del tempo — cosi' tre sezioni lunghe non costano una
+     scrittura di stile per figlio a ogni frame.
+
+     Stesso discorso per l'header e la barra dei social, che sono fissi e non
+     stanno dentro nessuna delle due sezioni: qui si dice solo che da adesso
+     sotto di loro c'e' la carta scura, il resto lo fa il CSS. classList.toggle
+     con un booleano non scrive niente se lo stato non cambia, quindi a ogni
+     frame costa un confronto. */
   mvs.forEach(m => m.el.classList.toggle('on', m.top - over < innerHeight * AF_ON));
+  document.body.classList.toggle('dark', over >= darkFrom);
 
   const tlp = (over - tl0) / tlRun;
   /* fuori campo non c'è niente da riscrivere: per tutta la sezione progetti
@@ -2986,14 +3058,136 @@ function applyProjects(){
       clamp(24 - x, 0, Math.max(0, tlExpW[i] - tlLabW[i])).toFixed(1) + 'px';
   });
   tlEvs.forEach((el, i) => el.classList.toggle('on', tlEvX[i] + tx < play));
-  /* LA CURVA SI DISEGNA NELL'ULTIMO TRATTO DEL PIN: i TL_OUT schermi in cui lo
-     sticky sta ancora fermo dopo che la traccia ha finito di correre. Non e' un
-     margine trovato per l'occasione — c'era gia', ed e' esattamente il tempo in
-     cui non succede piu' niente di orizzontale. Quando finisce, lo sticky si
-     sgancia e lo scroll riprende verticale con la guida gia' tracciata: e' quel
-     passaggio di consegne il senso della richiesta. */
-  tlElbowP.style.strokeDashoffset =
-    (elbowLen * (1 - out3(clamp((over - tl0 - tlRun) / (innerHeight * TL_OUT))))).toFixed(1);
+  /* IL FONDO SI APRE NELL'ULTIMO TRATTO DEL PIN: dentro i TL_OUT schermi in cui
+     lo sticky sta ancora fermo dopo che la traccia ha finito di correre. Non e'
+     un margine trovato per l'occasione — c'era gia', ed e' esattamente il tempo
+     in cui non succede piu' niente di orizzontale. Il gesto ne occupa i primi
+     TL_FLOOD: deve aver finito PRIMA che il pin si sganci, o l'ultimo pezzo
+     dell'apertura lo si vedrebbe scorrere via invece che aprirsi. Quando lo
+     sticky molla, sotto c'e' gia' .after con la stessa carta scura, e la
+     giuntura non esiste.
+     Tutto scrubbato sullo scroll e non a tempo: risalendo si richiude, come
+     ogni altro gesto di questo sito.
+
+     inOut SULLE MISURE, E NON out3 COME OGNI ALTRA APERTURA DEL SITO. Le altre
+     out3 sono cose che ARRIVANO: partono a tutta e si posano. Questa invece
+     PARTE, e parte da ferma — c'e' una linea che sta li' da tutta la sezione.
+     Con out3 la mezza altezza faceva 3px -> 50px nei primi quattro pixel di
+     rotella: uno scatto, non un ingrossarsi, e i due fotogrammi in cui la linea
+     e' ancora una linea (900 e 901) non esistevano proprio. inOut li tiene: il
+     primo quarto della corsa e' quasi fermo, la meta' e' la pillola larga, e
+     l'ultimo quarto chiude. E' la stessa curva della stella e del nastro, cioe'
+     quella che questo sito usa quando una cosa parte E arriva.
+
+     Il RAGGIO va invece col CUBO del progresso grezzo: il tondo deve reggere per
+     quasi tutta la corsa e sparire solo alla fine. Con la stessa curva delle
+     misure la forma diventerebbe un rettangolo a meta' strada, cioe' un
+     pannello, che e' precisamente quel che i capi tondi servono a evitare.
+
+     Il raggio si misura sul lato CORTO: e' li' che la pillola e' pillola, e un
+     raggio piu' grande della meta' del lato corto il browser lo taglia da se'
+     — ma tagliato non e' interpolato, e i primi fotogrammi perderebbero la
+     costanza del tondo.
+
+     IL !reduce NON E' PARANOIA. Il guardiano qui sopra lascia passare
+     reduced-motion: li' non c'e' il ciclo, ma un resize chiama applyProjects()
+     lo stesso, e li' la traccia e' incolonnata — tlRun vale 2 pixel, quindi il
+     progresso schizza a 1 e --fade spegnerebbe la sezione intera. La forma la
+     nasconde gia' il @media; il fade no, e va fermato qui. */
+  if (!reduce){
+    const fdP = clamp((over - tl0 - tlRun) / (innerHeight * TL_FLOOD));
+    /* PRIMA DEL GESTO IL FONDO NON C'E'. Non e' pignoleria: senza questa riga
+       clamp() teneva fdP a zero per TUTTA la corsa della traccia, e a zero la
+       forma e' la barra di oggi ALLA POSIZIONE CHE AVRA' A CORSA FINITA. La
+       barra vera intanto scorre da tutt'altra parte, quindi quello che si vedeva
+       era una barretta scura ferma in mezzo alla linea del tempo, per tutta la
+       sezione, che non nasceva da niente. Fuori dal gesto non si dipinge.
+       Non serve una dissolvenza: al primo frame in cui compare sta ESATTAMENTE
+       sopra la barra, stesso colore e stesso spessore, quindi non compare. */
+    if (fdP <= 0){
+      tlFlood.style.clipPath = 'inset(50%)';
+      tlStage.style.setProperty('--fade', '1');
+      /* la stringa vuota RESTITUISCE la proprieta' al CSS, dove l'opacita' del
+         nome e' quella della classe .on. Con uno `1` scritto a mano risalendo
+         il nome resterebbe acceso anche prima di essere entrato. Il `translate`
+         invece non si tocca: a riscriverlo ci pensa il ciclo delle esperienze,
+         qui sopra, a ogni frame. */
+      tlLabNow.style.opacity = tlLabNow.style.transition = '';
+    } else {
+      /* DUE TEMPI IN FILA, non uno. `a` allunga, `b` ingrossa, e `b` non
+         comincia finche' `a` non ha finito. Tutte e due addolcite con inOut,
+         quindi il passaggio fra loro e' una vera pausa: la prima arriva ferma,
+         la seconda parte da ferma. Quella pausa E' il fotogramma 901, e non
+         c'e' nessun ritardo scritto da nessuna parte per ottenerla. */
+      const a = inOut(clamp(fdP / TL_SPREAD));
+      const b = inOut(clamp((fdP - TL_SPREAD) / (1 - TL_SPREAD)));
+      /* i quattro bordi, in pixel dello stage. Ognuno ha due tappe: dove sta la
+         barra, dove sta il bordo dello schermo, dove sta il fuori-campo. I due
+         lati corrono su `a` fino al bordo e poi su `b` oltre; sopra e sotto
+         stanno fermi per tutto il primo tempo e poi vanno oltre insieme.
+         ARRIVARE AL BORDO E RESTARCI E' IL FOTOGRAMMA 902: i capi tondi si
+         vedono, tangenti ai due lati dello schermo, mentre la forma ingrossa.
+         Per questo lo sbordo laterale non parte con `b` ma con `wb`, che aspetta
+         i primi quattro decimi del secondo tempo: legandolo a `b` i capi
+         uscivano dal campo dopo due pixel di rotella, e della pillola non
+         restava che una fascia. Escono quando sono gia' capi di qualcosa di
+         grosso, ed e' li' che la forma smette di essere una linea e diventa il
+         fondo. */
+      const wb = clamp((b - .4) / .6);
+      const L = fdL0 * (1 - a) - fdB * wb;
+      const R = fdR0 + (fdSW - fdR0) * a + fdB * wb;
+      const T = (fdY - fdH0) * (1 - b) - fdB * b;
+      const B = (fdY + fdH0) + (fdSH + fdB - fdY - fdH0) * b;
+      const hw = (R - L) / 2;
+      const hh = (B - T) / 2;
+      /* IL RAGGIO SEGUE IL LATO CORTO, che nel primo tempo e' lo spessore fermo
+         a 3px: la linea si allunga tenendo i suoi capi tondi, e non se ne
+         accorge nessuno finche' non ingrossa.
+         E RESTA PIENO FINO A TARDI. Non il cubo di `b` — quello cominciava a
+         raddrizzare gli angoli da subito, e a nove decimi la forma era gia'
+         quasi squadrata: nel 903 dell'autore, che e' quasi pieno schermo, gli
+         angoli sono ancora larghi. Qui il raggio e' quello di una pillola esatta
+         per i primi sette decimi del secondo tempo, e collassa nei tre finali.
+         Il cubo ci sta ancora, ma su quei tre decimi soli. */
+      const rk = clamp((b - .7) / .3);
+      const fr = Math.min(hw, hh) * (1 - rk * rk * rk);
+      /* gli inset sono nello spazio dell'ELEMENTO, che comincia --fb sopra e a
+         sinistra dello stage: da qui il + fdB su due lati e il fdS* + fdB sugli
+         altri due. Un solo posto in cui sbagliarlo, ed e' questo. */
+      tlFlood.style.clipPath = 'inset(' +
+        (T + fdB).toFixed(1) + 'px ' + (fdSW + fdB - R).toFixed(1) + 'px ' +
+        (fdSH + fdB - B).toFixed(1) + 'px ' + (L + fdB).toFixed(1) +
+        'px round ' + fr.toFixed(1) + 'px)';
+      /* la scena si spegne mentre la linea si allunga, cioe' nel PRIMO tempo:
+         quando comincia a ingrossare deve essere gia' rimasta sola sulla carta,
+         come nel 901. Su `a` addolcita e non sullo scroll, cosi' e' un movimento
+         solo con l'allungamento e non due che corrono a velocita' diverse. */
+      tlStage.style.setProperty('--fade', (1 - clamp(a / TL_FADE)).toFixed(3));
+      /* IL NOME SE NE VA A SINISTRA (richiesta dell'utente), e non semplicemente
+         si spegne con tutto il resto. E' il gesto che apre il pezzo: la corsa
+         l'ha appena portato contro il bordo, e da li' esce dalla parte da cui e'
+         arrivata la linea del tempo. Scivolare mentre sbiadisce e' quel che
+         distingue «se ne va» da «si spegne».
+         Piu' svelto della scena — se n'e' andato a poco piu' di meta' del primo
+         tempo — perche' e' l'ultima cosa che c'era da leggere, e la linea che si
+         sfila deve restare sola prima di arrivare ai bordi.
+         Il `translate` e' scritto DOPO il ciclo delle esperienze, che a ogni
+         frame ci mette il suo: fdLabX E' QUEL VALORE, misurato per l'ultimo
+         frame della corsa, e per questo la deriva parte da li' e non da zero ne'
+         dai 24px del nome a filo del bordo. Con un numero scritto a mano il
+         primo frame del gesto era uno scatto laterale. */
+      tlLabNow.style.translate = (fdLabX - 110 * a).toFixed(1) + 'px';
+      tlLabNow.style.opacity = (1 - clamp(a / .55)).toFixed(3);
+      /* .tl-lab ha una transizione di .6s su opacity per il proprio ingresso, e
+         qui va spenta: scrubbando sullo scroll una transizione trasforma ogni
+         valore scritto in un inseguimento di mezzo secondo, e il nome resterebbe
+         indietro rispetto alla linea — e risalendo tornerebbe a sfarfallare.
+         Il `translate` non ne ha bisogno: la transizione e' su `transform`, che
+         e' una proprieta' diversa, ed e' esattamente per questo che il nome si
+         sposta con `translate` (vedi il ciclo delle esperienze). */
+      tlLabNow.style.transition = 'none';
+    }
+  }
 
   /* LA STELLA SI POSA SULL'ASSE (richiesta dell'utente): diventa il primo punto
      del 2019. --lead vale quanto TL_PLAY, quindi a corsa zero l'origine cade
@@ -3280,6 +3474,14 @@ document.fonts.ready.then(() => {
     projRows.forEach(el => el.classList.add('on'));
     projMark.style.setProperty('--mo', 1);
     document.body.classList.add('in-projects');   // su mobile l'header va compatto comunque
+    /* L'UNICO STATO CHE QUI DEVE ANCORA SEGUIRE LO SCROLL. Header e footer sono
+       fissi: sopra la carta scura della coda restano #212121 su --ink e non si
+       leggono piu'. Senza ciclo nessuno lo scriverebbe mai, quindi qui serve un
+       listener — passivo, e con una sola lettura di layout per evento. */
+    const darkWatch = () =>
+      document.body.classList.toggle('dark', after.getBoundingClientRect().top <= 0);
+    addEventListener('scroll', darkWatch, { passive:true });
+    darkWatch();
     return;
   }
 
