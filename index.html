@@ -1109,6 +1109,7 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
 .after .sk,.after .sk:last-child,
 .after .lens,.after .lens:last-child{border-color:#BFCFFF}
 .after .mv::before{background:#BFCFFF}
+
 /* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
    confine fra le due colonne della griglia E' la guida: non c'e' un secondo
    numero da tenere allineato. */
@@ -1176,6 +1177,74 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
 /* l'unica enfasi, e non e' decorativa: e' la tesi della pagina. Stesso corsivo
    blu del finale (.finale-claim i). */
 .mv-lead i{font-style:italic;color:var(--blue)}
+/* ---------- IL CAMPO ----------
+   Quattro fotografie che salgono da sotto mentre la tesi resta ferma in mezzo.
+   E' il primo movimento, e apre la coda: la prima cosa dopo l'allagamento sono
+   le sue foto, non un paragrafo. La sezione arriva dopo i progetti e dopo la
+   linea del tempo, che hanno gia' detto COSA ha fatto: qui si dice COME guarda,
+   e le foto sono l'argomento, non il contorno.
+
+   --p E' 1 DI DEFAULT, NON 0. Ci sono tre rami che questa property non la
+   scrivono mai — reduced-motion (li' non c'e' ciclo rAF), touch (li' il
+   contenuto sta incollato al dito e non si scrivono transform per frame) e il
+   frame prima che il ciclo parta. Tutti e tre devono vedere il campo FINITO.
+   Con lo zero di default il sintomo sarebbe "le foto non ci sono", che e' il
+   piu' costoso da inseguire perche' somiglia a un errore di percorso e non a un
+   valore iniziale sbagliato.
+
+   UN NUMERO SOLO PER FOTO. --s dice quanto e' grande, e da li' si ricava anche
+   di quanto sale: piu' e' grande piu' e' vicina, piu' e' vicina piu' si muove.
+   E' la parallasse, ed e' derivata. NON aggiungere una seconda property per la
+   profondita': sarebbe una seconda tabella da tenere allineata alla prima, ed e'
+   esattamente la deriva che questo file evita da sempre. */
+.gaze{
+  --p:1;
+  display:block;position:relative;height:140vh;
+}
+/* il padding-top NON si riscrive qui: .mv ce l'ha gia' (var(--pt)), e
+   .after .mv:first-of-type lo porta a 40vh. box-sizing e' border-box in tutto
+   il file, quindi i 140vh COMPRENDONO quel padding e offsetHeight vale
+   esattamente 140vh — che e' il numero su cui il ciclo costruisce --p. */
+/* il filetto che aggancia il movimento alla guida qui non ha senso: non ci sono
+   colonne, e crescerebbe dal nulla verso il nulla. */
+.gaze::before{content:none}
+/* l'etichetta perde l'allineamento a destra: qui non c'e' la colonna stretta
+   contro cui appoggiarla, e text-align:right la manderebbe contro il bordo
+   destro della colonna della tesi, dove si leggerebbe come una didascalia. */
+.gaze .mv-tag{justify-self:auto;text-align:left;padding:0;margin-bottom:1.4em}
+.gaze-ph{
+  position:absolute;width:calc(var(--s) * 30vw);
+  transform:translateY(calc((1 - var(--p)) * var(--s) * 26vh));
+}
+/* height:auto con width e height dichiarati sull'<img>: il rapporto lo tiene il
+   browser dalle dimensioni vere, e lo spazio e' riservato PRIMA che il file
+   arrivi. Non e' ottimizzazione — measure() ha gia' preso le sue altezze in
+   pixel quando le immagini finiscono di caricare, e un'immagine che si
+   materializza dopo sposta il documento sotto misure gia' fatte. Il sintomo non
+   sembra affatto colpa delle foto: sembra che si sia rotta una sezione prima. */
+.gaze-ph img{display:block;width:100%;height:auto}
+/* LA TESI, FERMA. sticky nativo: nessuna riga di JS per tenerla in mezzo. Il
+   contenitore e' alto 140vh, quindi resta appesa per tutto l'attraversamento e
+   se ne va con lui.
+   LA LARGHEZZA E' IN vw, e non in ch. In ch sembrava la scelta giusta ed e'
+   una trappola: `ch` si risolve nel font dell'elemento su cui e' scritto — qui
+   il genitore, 16px — non in quello del testo dentro, che e' tre volte piu'
+   grande. 30ch davano 309px, cioe' una colonna da nove caratteri per riga alta
+   piu' di uno schermo.
+   34vw invece esce dal VINCOLO, che e' l'unica cosa che conta qui: nessuna foto
+   deve passare sotto il testo. Il corridoio libero fra le foto va da 23vw (il
+   bordo destro del lampione: left 8 + larghezza 15) a 69.4vw (il bordo sinistro
+   delle mensole: 100 - right 12 - larghezza 18.6). Una colonna di 34vw centrata
+   sta fra 33vw e 67vw: dentro, con un margine per parte.
+   SE SPOSTI UNA FOTO, RIFAI QUESTO CONTO. Un velo o una sfocatura dietro il
+   testo sarebbero il modo di ammettere che una foto e' nel posto sbagliato — su
+   una pagina che sostiene di avere l'occhio allenato, si vedrebbe. */
+.gaze-say{
+  position:sticky;top:38vh;
+  padding:0;margin:0 auto;max-width:34vw;
+}
+/* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
+   confine fra le due colonne della griglia E' la guida: non c'e' un secondo
 
 /* LE COMPETENZE. La gerarchia E' l'argomento: il documento chiede di mettere in
    evidenza la progettazione e di tenere i linguaggi di back-end come profondita'
@@ -1361,6 +1430,25 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   .mv-tag{justify-self:start;text-align:left;padding:0 24px 0 calc(24px + 20px)}
   .mv::before{top:calc(var(--pt) + .42em);width:20px}
   .mv-lead{font-size:19px;max-width:none}
+
+  /* IL CAMPO SU TELEFONO. Le foto si incolonnano e la tesi torna in cima, nel
+     suo ordine di DOM. L'altezza fissa se ne va: qui il campo e' alto quanto il
+     suo contenuto, e 140vh di scuro da scorrere non li vuole nessuno.
+     PERCHE' QUI NON C'E' PARALLASSE: sul dito il contenuto deve restare
+     incollato, e scrivere una transform a ogni frame e' esattamente il tremolio
+     che questo file ha gia' combattuto sui progetti — vedi il @media (hover)
+     poco sopra e il commento in applyProjects(). Le foto entrano con l'ingresso
+     scalettato che c'e' gia' e basta cosi'.
+     Lo sfalsamento alternato tiene una traccia della sparpagliatura del campo
+     senza chiedere nessun conto: una regola sola su nth-of-type. FUNZIONA
+     perche' le foto sono <figure> e la tesi e' un <div>: nth-of-type conta per
+     tipo di elemento, quindi qui conta le sole foto. Se un giorno la tesi
+     diventasse un <figure>, l'alternanza si sposterebbe di uno in silenzio. */
+  .gaze{height:auto;padding-bottom:8vh}
+  .gaze-ph{position:static;width:74vw;margin:18px 0 0;transform:none}
+  .gaze-ph:nth-of-type(even){margin-left:26vw}
+  .gaze-say{position:static;top:auto;max-width:none;margin:0}
+
   .sk h3{font-size:calc(var(--k,1) * 30px)}
   .lens p{font-size:19px;max-width:none}
   .after-end{grid-template-columns:1fr;padding-top:16vh;gap:18px}
@@ -1883,12 +1971,48 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
 
 <!-- ===================== dopo l'allagamento ===================== -->
 <section class="after" id="after" aria-label="Chi sono">
-  <article class="mv" id="mv1">
-    <h2 class="mv-tag">01 &mdash; posizionamento</h2>
-    <div class="mv-body">
-      <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti. <i>Il mio lavoro parte dal design</i>: scompongo processi complessi in flussi chiari, disegno interfacce ad alta fedelt&agrave; e scelgo la soluzione tecnica pi&ugrave; adatta a farle diventare prodotti reali, performanti e coerenti.</p>
-      <p class="mv-lead">Ho maturato esperienza specifica nel software B2B per la sostenibilit&agrave; (ESG), dove la visualizzazione di dati complessi &egrave; fondamentale per le decisioni aziendali. Mi sono laureato in Informatica per la Comunicazione Digitale all&rsquo;Universit&agrave; degli Studi di Milano. La fotografia ha educato il mio occhio compositivo; la pallacanestro mi ha insegnato a lavorare in squadra sotto pressione.</p>
+  <article class="mv gaze" id="mv1">
+    <!-- l'etichetta sta DENTRO il blocco della tesi, non fuori come negli altri
+         due movimenti. Fuori era in flusso, e le foto sono assolute: un elemento
+         posizionato dipinge sopra il contenuto in flusso, quindi la foto in
+         bianco e nero — che sta in alto a sinistra, dove cadeva l'etichetta — se
+         la mangiava. Dentro, etichetta e frase restano appese insieme allo
+         sticky e attraversano il campo come una cosa sola.
+         la tesi sta PRIMA delle foto nell'ordine del documento. Su desktop il
+         posizionamento assoluto lo ignora e le foto le colloca il CSS, ma su
+         telefono e per chi legge con uno screen reader la frase deve venire
+         prima delle immagini che la dimostrano: l'argomento, poi le prove. -->
+    <div class="mv-body gaze-say">
+      <h2 class="mv-tag">01 &mdash; come guardo</h2>
+      <p class="mv-lead">Prima del software, la fotografia era il mestiere. Ha educato l&rsquo;occhio all&rsquo;equilibrio, alla luce, al dettaglio: <i>la sensibilit&agrave; visiva del design &egrave; allenata, non innata</i>.</p>
     </div>
+    <!-- un numero solo per foto (--s): da li' escono larghezza E corsa, quindi
+         non c'e' una seconda tabella da tenere allineata. La posizione invece
+         sta in linea perche' e' composizione, non regola: sono quattro casi
+         unici, e quattro selettori in fondo al foglio direbbero la stessa cosa
+         molto piu' lontano da dove la si legge.
+         B/N e vetri ESCONO dai bordi: il campo non ha margini, ha un fuori. -->
+    <figure class="gaze-ph" style="--s:.72;top:6vh;left:-4vw">
+      <img src="img/ph-architettura-bn.webp" width="1280" height="1600" loading="lazy"
+           alt="Facciata in cemento in bianco e nero: pilastri e solette tagliati dalla luce diretta, senza mezzi toni.">
+    </figure>
+    <figure class="gaze-ph" style="--s:1;top:14vh;right:-5vw">
+      <img src="img/ph-architettura-vetri.webp" width="1600" height="1280" loading="lazy"
+           alt="Due facciate che si toccano ad angolo: una griglia di vetri turchesi e una parete bianca a finestre strette.">
+    </figure>
+    <figure class="gaze-ph" style="--s:.5;top:62vh;left:8vw">
+      <img src="img/ph-lampione.webp" width="1280" height="1600" loading="lazy"
+           alt="Un lampione a sei bracci acceso contro un cielo al tramonto, fra nuvole rosa e blu.">
+    </figure>
+    <!-- mensole a 8vw e non a 12: e' la piu' CHIARA delle quattro (mediana
+         230,185,188 contro un fondo 43,26,15) e a 12 il suo bordo cadeva a
+         quarantotto pixel dalla colonna di lettura. Non intersecava — la sonda
+         era verde — ma stare dentro il vincolo non basta quando la foto piu'
+         luminosa della pagina sta accanto alla riga che si deve leggere. -->
+    <figure class="gaze-ph" style="--s:.62;top:74vh;right:8vw">
+      <img src="img/ph-mensole.webp" width="1216" height="1600" loading="lazy"
+           alt="Due mensole triangolari nere a parete sopra un divano rosa; sul bordo di una cammina una figurina.">
+    </figure>
   </article>
 
   <article class="mv" id="mv2">
