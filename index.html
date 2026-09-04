@@ -363,15 +363,14 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    sola, o al primo ritocco le due sarebbero andate fuori registro. A cambiare
    e' solo chi accende il bordo — li' la riga accesa, qui il movimento
    arrivato sulla riga di lettura. */
-:is(.proj-tags,.sk-tags){list-style:none;display:flex;flex-wrap:wrap;gap:8px}
-:is(.proj-tags,.sk-tags) li{
+.proj-tags{list-style:none;display:flex;flex-wrap:wrap;gap:8px}
+.proj-tags li{
   font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:-.12px;
   color:#554135;padding:6px 10px;border-radius:999px;
   border:1px solid transparent;                       /* il bordo compare con la riga */
   transition:border-color .5s cubic-bezier(.16,1,.3,1);
 }
 :is(.proj.on,.proj.open,.proj:hover) .proj-tags li,
-.mv.on .sk-tags li{border-color:#BFCFFF}
 .proj-year{
   font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
   font-size:14px;letter-spacing:-.28px;color:#554135;
@@ -1087,11 +1086,60 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    aver spostato l'apertura PRIMA della sezione invece che dentro. */
 .after{
   --spine:30vw;
+  /* IL NUMERO CHE SCRIVE IL CICLO, col suo default. Ogni ramo che non lo
+     scrive — touch, reduced-motion, il frame prima che il ciclo parta — deve
+     vedere la coda ferma e leggibile, non una coda mezza sparita.
+       --q  quanto e' srotolata la sequenza del primo movimento, 0..1
+     Il default e' 1, cioe' l'ULTIMO fotogramma (il 916, le competenze): e' lo
+     stato in cui la sezione ha detto tutto quel che deve dire, ed e' quello
+     che i rami senza ciclo devono trovarsi davanti. Zero sarebbe uno schermo
+     con la sola parola, che sembra una sezione non caricata.
+     --w e --r se ne sono andati con la parallasse della parola e col nastro:
+     nessuno li scriveva piu' e nessuno li leggeva. */
+  --q:1;
+  /* il margine di lettura della coda. Prima era una colonna guida da 30vw che
+     serviva alle etichette numerate: senza quelle era solo un terzo di pagina
+     vuoto, ed e' il «non sfrutta lo spazio» segnalato dall'utente. */
+  --gut:10vw;
   position:relative;z-index:3;background:var(--ink);
+  /* will-change: la trasla il JS a ogni frame per rimetterla dove dice
+     l'inseguitore. Solo una traslazione, nessuna scala: il layer si rasterizza
+     una volta alla misura giusta e il testo resta nitido. */
+  will-change:transform;
   /* il fondo della pagina e' occupato dalla barra fissa dei social: senza
      questo l'ultima riga ci finisce sotto */
   padding-bottom:calc(80px + 20vh);
 }
+/* Col puntatore la coda ESCE DAL FLUSSO, come la sezione progetti, e la
+   posiziona solo il JS. Nel flusso la scorreva il browser: il resto del sito lo
+   muove l'inseguitore a molla, quindi la coda arrivava con un orologio diverso
+   e lo scroll ci tornava secco proprio dove tutto il resto e' morbido. Non e'
+   una sensazione: sono due percorsi diversi del browser, lo scorrimento e' del
+   compositore e la transform la scrive il main thread.
+   top:0 e non 100svh: la coda non comincia sotto la piega come i progetti, ci
+   arriva quando `over` raggiunge af0 — e la traslazione (af0 - over) vale
+   proprio zero in quel momento. Prima e' positiva e la tiene sotto lo schermo.
+   Solo con un puntatore: al dito lo scroll nativo del compositore e' gia' la
+   cosa giusta, e la sezione resta nel flusso. */
+@media (hover: hover){
+  .after{position:fixed;left:0;right:0;top:0}
+}
+/* LO SPAZIATORE E' ANCHE IL FONDO. La coda e' fissa e la muove l'inseguitore;
+   la linea del tempo sopra e' sticky e la muove il compositore. Sono due
+   percorsi diversi del browser, quindi scorrendo la coda resta INDIETRO di
+   qualche centinaio di pixel — misurati: fino a 734 a 1920x1000, 800 a
+   1280x1024 — e fra le due si scopriva questo spaziatore, che era trasparente:
+   sotto c'e' il body, crema piu' bg.webp. Era la striscia chiara segnalata.
+   Il fondo qui e' lo STESSO --ink dei due lati, quindi la giuntura non esiste
+   piu' qualunque sia il ritardo: e' lo stesso trucco dell'allagamento, che apre
+   il marrone PRIMA della sezione perche' i due bordi combacino da soli.
+   Non e' un cerotto sul sintomo: lo spaziatore E' la coda vista dal documento,
+   ed e' giusto che ne abbia il colore. Sincronizzare i due orologi vorrebbe
+   dire togliere la molla o mettere la linea del tempo fuori dal flusso: due
+   riscritture per un difetto che qui costa una riga.
+   Non serve ai rami touch e reduced-motion — li' l'altezza e' zero e la coda e'
+   nel flusso — ma non da' fastidio, ed e' una regola sola invece di due. */
+.after-space{height:0;background:var(--ink)}
 /* LA PALETTE DELLA CODA. Nessun valore nuovo: sono i colori che il file ha
    gia', con i ruoli scambiati. --blue #174FFE su --ink #2B1A0F sono due colori
    scuri — contrasto ~1.1:1, illeggibile — quindi nella SOLA coda l'azzurro
@@ -1100,10 +1148,9 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    Il peso 300 di DM Sans si sfilaccia sul fondo scuro: i tratti sottili su
    fondo scuro perdono. Qui va 400 — stesso carattere, stessa scala, solo il
    peso. Senza, il testo sembra sbiadito e dai la colpa allo schermo. */
-.after .mv-tag{color:#BFCFFF}
 .after .mv-lead{color:var(--tlbg);font-weight:400}
 .after .mv-lead i{color:#BFCFFF}
-.after .sk h3,.after .after-addr{color:var(--tlbg)}
+.after .after-addr{color:var(--tlbg)}
 /* LE TAG. Nascono col colore della carta chiara (#554135 in :is(.proj-tags,
    .sk-tags) li) e su --ink fanno circa 1.4:1 — si vedeva il bordo e non la
    parola. Difetto che c'era gia' prima di questa riscrittura, corretto qui
@@ -1111,77 +1158,271 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    Bianco e non #BFCFFF: l'accento resta la lingua di UNA cosa sola per volta
    — qui il titolo Design — e le tag sono contenuto, non enfasi. Il bordo
    #BFCFFF che compare con .on continua a dire da solo che la riga e' viva. */
-.after .sk-tags li{color:var(--tlbg)}
 .after .after-mail{color:#BFCFFF}
 .after .after-star{fill:#BFCFFF}
-.after .sk,.after .sk:last-child{border-color:#BFCFFF}
 /* l'UNICO accento dell'elenco, ed e' l'argomento: il design viene prima.
    :first-of-type e non :first-child — il primo figlio del corpo e' il
    paragrafo di posizionamento, che e' un <p>; il primo <div> e' Design. */
-.after .sk:first-of-type h3{color:#BFCFFF}
-.after .mv::before{background:#BFCFFF}
 
-/* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
-   confine fra le due colonne della griglia E' la guida: non c'e' un secondo
-   numero da tenere allineato. */
+/* IL MOVIMENTO. Un blocco, non piu' una griglia a due colonne: la colonna
+   stretta esisteva per l'etichetta numerata, e senza di lei restava vuota. */
 .mv{
-  --pt:24vh;   /* UN numero solo: lo usano il padding e il filetto qui sotto.
-                  Scriverlo due volte lo faceva gia' andare fuori registro alla
-                  prima modifica. */
-  position:relative;display:grid;grid-template-columns:var(--spine) 1fr;
-  align-items:start;padding-top:var(--pt);
+  --pt:24vh;
+  position:relative;padding-top:var(--pt);
 }
-/* IL RESPIRO DOPO L'ALLAGAMENTO. Il primo movimento parte piu' in basso degli
-   altri: sopra c'e' una linea del tempo lunga e un fondo che si e' appena
-   chiuso sopra la testa, e la coda deve arrivare calma.
-   40 E NON 80: gli ottanta servivano al cuneo, che si apriva DENTRO questa
-   sezione e doveva aver finito prima che ci fosse qualcosa da leggere. Adesso
-   l'apertura e' finita da un pezzo quando la sezione entra — succede nel pin
-   della linea del tempo — e ottanta sarebbero mezzo schermo di scuro vuoto da
-   scorrere per niente. Quaranta sono la pausa, non l'attesa. */
-.after .mv:first-of-type{--pt:40vh}
-.mv-body{padding:0 10vw 0 2.6vw}
-/* il filetto che aggancia il movimento alla guida: cresce dalla guida verso
-   l'etichetta quando il movimento arriva sulla riga di lettura. Stesso gesto e
-   stessa curva dei filetti delle esperienze (.tl-tick). */
-.mv::before{
-  content:"";position:absolute;left:var(--spine);top:calc(var(--pt) + .62em);
-  width:2.6vw;height:1px;background:#B2998C;
-  transform:scaleX(0);transform-origin:left center;
-  transition:transform .55s cubic-bezier(.16,1,.3,1);
+.mv-body{padding:0 var(--gut)}
+/* L'INGRESSO SU .on NON C'E' PIU', e con lui la classe .on e il pezzo di ciclo
+   che la dava. Non e' rimasto niente che la usasse: il primo movimento adesso
+   e' una sequenza governata da --q, il campo e' una diapositiva governata da
+   --t, e le due frasi dentro il palco le disegna dust(). Una classe che nessuno
+   legge e' peggio di niente: la si cerca per ore quando qualcosa non compare.
+
+/* ---------- LA SEQUENZA DEL PRIMO MOVIMENTO (fotogrammi 913-916) ----------
+   Quattro fotogrammi disegnati, e LI SROTOLA LO SCROLL. Non e' un filmato che
+   parte da solo e non e' una diapositiva che sequestra la rotella: e' un nastro
+   lungo due schermi, e la rotella e' la manopola. Ci si puo' fermare a meta',
+   tornare indietro, riguardarlo. Scelta dell'utente fra le tre.
+
+     913  la parola CHI SONO, in contorno, e nient'altro
+     914  il ritratto sale dal centro dello schermo e la frase si forma
+     915  ritratto e frase se ne vanno mentre la striscia si disegna da sinistra
+     916  la striscia sale sulla parola mentre entrano le competenze
+
+   TUTTO PENDE DA --q, 0..1, che il ciclo scrive sulla sezione. Ogni pezzo ha la
+   sua finestra dentro quel numero, e le finestre si accavallano dove il disegno
+   dice «nel mentre»:
+
+     parola      0    -> .06     compare
+     ritratto    .10  -> .34     sale dal centro e sfuma dentro
+     frase       .16  -> .40     si forma dalla polvere (dust, come il claim)
+     ritr.+frase .48  -> .62     se ne vanno insieme, in dissolvenza
+     striscia    .48  -> .70     si disegna da sinistra — NEL MENTRE del fade out
+     striscia    .72  -> .88     sale sulla parola
+     competenze  .74  -> .92     entrano — NEL MENTRE della salita
+
+   Le sovrapposizioni non sono approssimazioni: sono i due «nel mentre» della
+   richiesta, e toccando un estremo va guardato l'altro.
+   L'ultimo 8% di corsa non ha nessuna finestra ED E' VOLUTO: la composizione
+   finale dev'essere ferma e leggibile per un pezzo di scroll prima che la
+   sezione se ne vada, o l'ultima cosa che si vede e' un'animazione a meta'. */
+.m1{
+  /* tre schermi: uno lo occupa il palco, due sono la corsa. Cambiando questo
+     numero cambia solo QUANTO SCROLL serve a srotolare la sequenza — le
+     finestre restano dove sono, perche' sono frazioni della corsa e non
+     distanze. */
+  height:300vh;
+  --pt:0;
 }
-.mv.on::before{transform:scaleX(1)}
-/* l'etichetta e' appoggiata alla guida da sinistra, allineata a destra: e' lo
-   stesso gesto del marchio dei progetti e di quello della linea del tempo, che
-   si allineano al bordo del loro ancoraggio invece che a un margine.
-   E' un <h2> e non un <p>: dentro il movimento delle competenze ci sono <h3>, e
-   senza un livello sopra la pagina avrebbe un salto nella scaletta dei titoli.
-   Che sia piccola non c'entra — il peso lo decide la composizione, la gerarchia
-   del documento la decide il markup. */
-.mv-tag{
-  justify-self:end;text-align:right;padding-right:2.6vw;
-  font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--blue);
+/* IL PALCO. Alto uno schermo e tenuto fermo a schermo dal ciclo, che lo trasla
+   in giu' esattamente di quanto la coda sale: e' un pin fatto a mano, come
+   quello di .after e di .projects. NIENTE position:sticky — la coda e' fissa e
+   la muove una transform, e uno sticky la' dentro non ha un contenitore di
+   scorrimento a cui agganciarsi: resterebbe fermo rispetto a niente.
+   overflow:clip taglia la parola che sborda ai lati e il ritratto mentre e'
+   ancora sotto la piega. position:relative perche' TUTTO qui dentro e'
+   assoluto: senza, i figli si posizionerebbero su .after e uscirebbero dal
+   ritaglio come se non ci fosse. */
+.m1-stage{
+  position:relative;height:100vh;overflow:clip;
+  will-change:transform;
 }
-/* l'ingresso: opacita' e otto pixel, la stessa coppia di .tl-card e .tl-lab.
-   Scalettato per figli — e' la sequenza di ritardi CSS su .on che la sezione
-   precedente usa per i suoi eventi, cosi' qui non c'e' NIENTE da scrivere a
-   ogni frame: il ciclo dice solo quando, il resto lo fa il CSS. */
-.mv-tag,.mv-body > *{
-  opacity:0;transform:translateY(8px);
-  transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
+
+/* ---------- LA PAROLA, IN CONTORNO ----------
+   Non e' piu' un testo marrone su marrone: e' il tracciato disegnato nel Figma,
+   con la sua grana, esportato in SVG. Il tratto e' #B2998C, che nel foglio si
+   chiama gia' --line ed e' il filetto di THINKER / BUILDER: nessun colore
+   nuovo.
+   PERCHE' UN'IMMAGINE E NON PIU' UN <h2> di testo: il contorno ha un filtro di
+   disturbo per glifo, e -webkit-text-stroke darebbe una linea geometrica —
+   un'altra cosa. Il nome accessibile resta sull'<h2> con aria-label, quindi la
+   scaletta dei titoli non perde niente e chi legge con la voce sente «Chi
+   sono» come prima.
+   width:100% e altezza dal rapporto: il viewBox e' 2036x265, quindi la parola
+   e' alta un quarto di schermo su una finestra 16:10, come nei fotogrammi. Non
+   c'e' piu' nessun conto sui glifi da rifare cambiando parola — lo fa il file.
+   E NON SI MUOVE PIU'. La parallasse (--w, translate + fade) e' caduta: nei
+   quattro fotogrammi la parola sta ferma in cima a tutti e quattro, ed e' il
+   fondo su cui la sequenza si svolge. */
+.after-word{
+  position:absolute;top:0;left:0;right:0;z-index:0;
+  pointer-events:none;
+  opacity:clamp(0, calc(var(--q) / .06), 1);
 }
-/* :not(.gaze) — IL CAMPO NON USA QUESTO INGRESSO. La' la comparsa la scrive
-   dust() a ogni frame, e questa regola sarebbe un secondo padrone sulla stessa
-   opacita': .mv.on .mv-tag pesa piu' di .gaze-say .mv-tag, quindi vincerebbe
-   lei e l'etichetta resterebbe accesa anche nel fotogramma 905, che deve essere
-   uno schermo vuoto. Escluderlo qui e' piu' onesto che rincorrere la
-   specificita' dall'altra parte. */
-.mv.on:not(.gaze) .mv-tag,.mv.on:not(.gaze) .mv-body > *{opacity:1;transform:none}
-.mv.on .mv-body > :nth-child(2){transition-delay:.08s}
-.mv.on .mv-body > :nth-child(3){transition-delay:.16s}
-.mv.on .mv-body > :nth-child(4){transition-delay:.24s}
-.mv.on .mv-body > :nth-child(5){transition-delay:.32s}
+.after-word img{display:block;width:100%;height:auto}
+
+/* ---------- IL RITRATTO ----------
+   Ritaglio con canale alfa, la stessa forma organica del basket: il contorno E'
+   l'immagine e sul marrone stacca da solo.
+   --m1-top e' la sua posizione a riposo, e da li' si RICAVA la corsa: parte dal
+   centro dello schermo (50vh) e sale fino al suo posto, quindi la corsa e'
+   50vh meno quel top. Scrivendo i due numeri separati se ne sarebbe rotto uno
+   solo, e in silenzio.
+   translate per la centratura, transform per il movimento: sono due proprieta'
+   diverse e si compongono senza che nessuna debba sapere dell'altra. */
+.m1-me{
+  --m1-top:9.2vh;
+  position:absolute;z-index:1;
+  left:50%;top:var(--m1-top);width:27.6vw;
+  translate:-50% 0;
+  /* entra su .10 -> .34 salendo, se ne va su .48 -> .62 restando ferma */
+  transform:translateY(calc(
+      (1 - clamp(0, calc((var(--q) - .10) / .24), 1)) * (50vh - var(--m1-top))));
+  opacity:calc(
+      clamp(0, calc((var(--q) - .10) / .24), 1)
+    * (1 - clamp(0, calc((var(--q) - .48) / .14), 1)));
+}
+.m1-me img{display:block;width:100%;height:auto}
+
+/* ---------- LA FRASE ----------
+   Centrata e sopra il ritratto, come nel 914 — non piu' allineata al margine di
+   lettura. L'ombra non e' un vezzo: il testo passa sulla parte chiara della
+   fotografia, e senza quella si perde. E' lo stesso mestiere del terzo centrale
+   nel campo, risolto con l'ombra invece che con lo spazio, perche' qui la
+   composizione e' una sola cosa al centro.
+   Peso 500 e non 300: sul fondo scuro, sopra una fotografia, i tratti sottili
+   sparirebbero — stessa ragione per cui la coda porta gia' il 400 invece del
+   300.
+   L'ingresso lo scrive dust() sui due paragrafi, la stessa funzione del claim e
+   della frase del campo. L'uscita sta qui, sul contenitore: due padroni su due
+   elementi diversi, e le opacita' si moltiplicano da sole. */
+.m1-say{
+  position:absolute;z-index:2;
+  left:50%;top:50%;translate:-50% -50%;
+  width:min(57vw, 1150px);text-align:center;
+  opacity:calc(1 - clamp(0, calc((var(--q) - .48) / .14), 1));
+}
+.m1-say .mv-lead{
+  max-width:none;color:var(--tlbg);font-weight:500;
+  font-size:clamp(17px,2vw,40px);letter-spacing:-1.6px;line-height:1.25;
+  text-shadow:0 3px 14px var(--ink);
+}
+.m1-say .mv-lead + .mv-lead{margin-top:1.1em}
+.m1-say .mv-lead i{color:#BFCFFF;font-weight:300}
+
+/* ---------- LA STRISCIA ----------
+   Un path solo, tratto 20 e gradiente da --blue a #BFCFFF: i due azzurri che il
+   sito ha gia'.
+   SI DISEGNA DA SINISTRA con stroke-dashoffset, e per non doverne misurare la
+   lunghezza il path porta pathLength="1": dash e offset diventano frazioni, e
+   il conto non cambia se un giorno la curva viene ridisegnata. E' la stessa
+   idea del nastro dell'atto 2, senza il pezzo di JS che li' serviva.
+   INLINE E NON UN <img>: quel che si anima e' il path, e dentro un'immagine non
+   ci si arriva.
+   --m1-band-top e --m1-band-end sono le due quote dei fotogrammi 915 e 916, e
+   la salita e' la loro differenza — un numero ricavato, non un terzo numero.
+   Sborda di 2vw per lato: nei fotogrammi la curva entra ed esce dallo schermo,
+   non comincia e finisce dentro. */
+.m1-band{
+  --m1-band-top:50vh;
+  --m1-band-end:6.5vh;
+  position:absolute;z-index:3;
+  left:-2vw;width:104vw;top:var(--m1-band-top);
+  height:auto;overflow:visible;
+  transform:translateY(calc(
+      clamp(0, calc((var(--q) - .72) / .16), 1)
+    * (var(--m1-band-end) - var(--m1-band-top))));
+}
+.m1-band path{
+  stroke-dasharray:1;
+  stroke-dashoffset:calc(1 - clamp(0, calc((var(--q) - .48) / .22), 1));
+}
+
+/* ---------- IL BLOCCO DELLE COMPETENZE ----------
+   Titolo e colonne entrano insieme, mentre la striscia sale: e' l'ultimo «nel
+   mentre» della richiesta. La coppia e' quella di sempre — opacita' piu' otto
+   pixel — ma qui la guida --q e non una transizione, perche' qui il tempo non
+   esiste: esiste la posizione.
+   top a 37vh e' la quota del titolo nel 916; le colonne cadono sotto di lui per
+   conto loro. */
+.m1-skills{
+  position:absolute;z-index:2;left:0;right:0;top:37vh;
+  opacity:clamp(0, calc((var(--q) - .74) / .18), 1);
+  transform:translateY(calc(
+      (1 - clamp(0, calc((var(--q) - .74) / .18), 1)) * 8px));
+}
+/* «competenze tecniche», la stessa coppia tondo + corsivo azzurro della frase e
+   del claim: e' la lingua dell'enfasi in tutto il sito, e non ne serve una
+   nuova per un titolo di sezione. */
+.m1-title{
+  padding:0 var(--gut);margin-bottom:.5em;
+  font-family:var(--sans);font-variation-settings:"opsz" 40;font-weight:400;
+  font-size:clamp(24px,2.4vw,48px);letter-spacing:-1px;color:var(--tlbg);
+}
+.m1-title i{font-style:italic;font-weight:300;color:#BFCFFF}
+.mv,.after-end{position:relative;z-index:1}
+
+/* ---------- LE COMPETENZE, A COLONNE ----------
+   Erano tre fasce che scorrevano a velocita' diverse, ognuna col suo --v. Il
+   nastro e' stato tolto su richiesta: chiedeva di leggere una cosa che si
+   muove, e cinque aree sono un elenco da consultare, non un gesto.
+   Al suo posto una griglia: cinque blocchi su tre colonne, 3 + 2.
+   TRE COLONNE E NON CINQUE. Con --gut a 10vw per lato restano 80vw di
+   composizione: divisi per tre fanno circa un quarto di schermo a blocco a
+   qualunque larghezza, divisi per cinque fanno 170px sui 1280 e
+   «Prototipazione UI/UX» andrebbe a capo tre volte. Il conto e' quello, non
+   una preferenza.
+   IL FILETTO SOPRA E' L'UNICA CORNICE: niente schede, niente fondi, niente
+   pillole. Le pillole erano proprio quel che faceva leggere le competenze come
+   un elenco piatto, ed e' il difetto da cui questa sezione e' partita.
+   L'INGRESSO NON E' SCRITTO QUI: le colonne entrano con la stessa coppia
+   opacita' + otto pixel di tutti i movimenti, dichiarata piu' su insieme a
+   .mv-body > *. Qui ci sono solo i ritardi.
+   La griglia sta FUORI da .mv-body, come ci stava il nastro, ma per la ragione
+   opposta: il nastro doveva andare da bordo a bordo, questa deve avere il
+   margine di lettura senza ereditare la misura di 40ch del paragrafo. */
+/* COLONNE TIPOGRAFICHE E NON UNA GRIGLIA. Una `grid` a tre colonne mette i
+   blocchi su due righe, e la prima riga si alza fino al blocco piu' lungo:
+   sotto Design (quattro voci) e Web Tech (tre) restava un buco alto mezzo
+   schermo, perche' accanto Sviluppo ne ha sei. Con `columns` i blocchi si
+   impaccano da soli e il bilanciamento lo fa il browser — nessun vuoto da
+   riempire a mano e nessun ordine da riscrivere quando una voce si aggiunge.
+   Il prezzo e' che l'ordine di lettura diventa verticale, colonna per colonna:
+   qui va bene, sono cinque elenchi indipendenti e non un discorso.
+   break-inside:avoid non e' facoltativo: senza, una colonna puo' spezzarsi a
+   meta' e le sue voci finiscono sotto l'etichetta di un'altra area. */
+.sk-grid{
+  margin-top:0;padding:0 var(--gut);
+  columns:3;column-gap:4vw;
+}
+.sk-col{
+  break-inside:avoid;
+  border-top:1px solid #554135;padding-top:1.1em;margin-bottom:5vh;
+}
+.sk-lab{
+  font-family:var(--grotesk);font-weight:700;text-transform:uppercase;
+  font-size:clamp(13px,1vw,17px);letter-spacing:.06em;color:var(--tlbg);
+  margin-bottom:.9em;
+}
+/* L'UNICO ACCENTO, ed e' l'argomento: il design viene prima. Uno solo, come
+   nel nastro lo era la sola fascia del Design. */
+.sk-key{color:#BFCFFF}
+/* list-style:none e non un elenco puntato: i pallini aggiungerebbero una
+   colonna di segni davanti a quattro parole, e la griglia ha gia' il filetto a
+   dire dove comincia un blocco. Resta un <ul> perche' e' un elenco, e chi
+   legge con la voce sente quanti sono. */
+.sk-list{list-style:none}
+.sk-list li{
+  font-family:var(--sans);font-variation-settings:"opsz" 14;font-weight:300;
+  font-size:clamp(15px,1.15vw,20px);line-height:1.7;letter-spacing:-.2px;
+  color:#A08876;
+}
+/* LA SCALETTA E' DIVENTATA UNO SFALSAMENTO SU --q, non piu' un
+   transition-delay: dentro la sequenza il tempo non esiste, esiste la
+   posizione. Ogni colonna apre la sua finestra un pelo dopo la precedente
+   (--sk, un ventesimo di corsa a testa) e la chiude alla stessa distanza,
+   quindi l'ultima e' ferma prima della fine del blocco.
+   Scorrendo veloce entrano quasi insieme, ed e' giusto: e' la natura di una
+   cosa che si srotola invece di andare a tempo. */
+.sk-col{--sk:0}
+.sk-col:nth-child(2){--sk:.02}
+.sk-col:nth-child(3){--sk:.04}
+.sk-col:nth-child(4){--sk:.06}
+.sk-col:nth-child(5){--sk:.08}
+.sk-col{
+  opacity:clamp(0, calc((var(--q) - .74 - var(--sk)) / .10), 1);
+  transform:translateY(calc(
+      (1 - clamp(0, calc((var(--q) - .74 - var(--sk)) / .10), 1)) * 8px));
+}
 
 /* la bio. Stessa scala del lead di un progetto (.pd-lead), un gradino piu'
    grande: qui non e' un sottotitolo, e' il testo. */
@@ -1200,8 +1441,17 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
      905  schermo tutto marrone, vuoto
      906  primo scroll: la frase compare e le foto ENTRANO DA SOTTO
      907  punto statico: foto grandi al loro posto, frase su marrone pulito
-     908  secondo scroll: le foto ESCONO DALL'ALTO, la frase c'e' ancora
+     908  secondo scroll: le foto ESCONO DALL'ALTO
      909  vuoto di nuovo
+
+   DA CINQUE FOTOGRAMMI A DUE DIAPOSITIVE. La richiesta successiva ha unito il
+   campo e il basket: «dopo che con il primo scroll compaiono le fotografie, con
+   il secondo falle andare via insieme al testo e fai comparire la mia foto con
+   testo annesso». Quindi il palco non ospita piu' una sequenza sola ma DUE
+   composizioni che si danno il cambio, e il 908 cambia di significato: non e'
+   piu' un'uscita verso il vuoto, e' lo scambio. Con lui cade il vincolo 2 qui
+   sotto — la frase non esce piu' DOPO le foto, esce CON loro, perche' al suo
+   posto ne arriva un'altra e due cose che si scambiano si muovono insieme.
 
    Da qui tre vincoli che non vanno reinterpretati:
 
@@ -1210,19 +1460,30 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
       terzi laterali e il terzo centrale e' della frase: nessuna sovrapposizione,
       nessun velo, niente brightness. Una versione precedente le faceva passare
       dietro al testo scurendole — non e' questo.
-   2. LA FRASE ESCE DOPO LE FOTO. In 908 le fotografie se ne sono quasi andate e
-      la frase e' ancora intera; sparisce solo fra 908 e 909.
+   2. LA FRASE ESCE CON LE FOTO. Era il contrario finche' il 909 era il vuoto:
+      li' la frase restava intera mentre le fotografie se ne andavano. Adesso
+      dietro non c'e' il vuoto, c'e' il basket, e una frase che sopravvive alla
+      propria diapositiva si legge come una didascalia rimasta indietro.
    3. LO SCROLL SI BLOCCA. La sequenza parte da sola al primo scroll e non si
       puo' scorrere oltre finche' non e' finita. E' l'unico punto del sito in cui
       la rotella viene tolta all'utente, ed e' una richiesta esplicita: qui la
       pagina si comporta come una diapositiva, non come un documento.
 
-   TUTTO PENDE DA --t, che il ciclo scrive e vale 0, 1 o 2 (e i valori in mezzo
-   mentre si muove):
+   TUTTO PENDE DA --t, che il ciclo scrive e vale 0, 1, 2 o 3 (e i valori in
+   mezzo mentre si muove):
 
-     --t 0  vuoto        (905)
-     --t 1  pieno        (907)
-     --t 2  uscito       (909)
+     --t 0  vuoto                       (905)
+     --t 1  le fotografie, in posa      (907)
+     --t 2  il basket, in posa          (la seconda diapositiva)
+     --t 3  vuoto di nuovo              (909)
+
+   LE FINESTRE NON SI ACCAVALLANO A CASO, sono una staffetta:
+     foto     entrano  0   -> 1     escono  1   -> 1.8
+     frase    entra    0   -> 1     esce    1   -> 1.8   (con le foto)
+     basket   entra    1.3 -> 2     esce    2   -> 2.8
+   il mezzo passaggio di sovrapposizione fra 1.3 e 1.8 e' quel che impedisce
+   allo schermo di restare vuoto in mezzo allo scambio senza accavallare due
+   composizioni intere.
 
    La frase la disegna dust(), la STESSA funzione del claim e dei titoli delle
    sezioni precedenti — blur piu' opacita', scalettata riga per riga. Non e' una
@@ -1231,7 +1492,11 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    UN NUMERO SOLO PER FOTO. --s dice quanto e' grande, e da li' escono anche la
    corsa di entrata e quella di uscita: piu' e' grande piu' e' vicina, piu' e'
    vicina piu' si muove.
-   LE CORSE SONO GENEROSE (200vh e 180vh) e non e' spreco: a --t 0 e a --t 2 lo
+   L'USCITA SI COMPIE IN .8 DI PASSAGGIO E NON IN UNO INTERO: e' quel che
+   lascia gli ultimi due decimi al basket che sta arrivando, cosi' le foto sono
+   gia' fuori quando lui si ferma. Il numero e' uno solo e sta qui; la finestra
+   del basket, che comincia a 1.3, e' scritta accanto a lui.
+   LE CORSE SONO GENEROSE (200vh e 180vh) e non e' spreco: a --t 0 e a --t 3 lo
    schermo deve essere COMPLETAMENTE vuoto, e la foto piu' piccola e' anche
    quella che si muove meno. Il caso peggiore e' il bianco e nero, che parte da
    top -14vh: con 200vh di corsa il suo bordo alto finisce a 110vh, sotto la
@@ -1259,13 +1524,12 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    .gaze, escono dal palco come se il clip non ci fosse, e lo sbordo a destra dei
    vetri allarga il documento di 6vw — la pagina prende una barra orizzontale. */
 .gaze-stage{position:relative;height:100vh;overflow:clip}
-.gaze .mv-tag{justify-self:auto;text-align:left;padding:0;margin-bottom:1.4em}
 
 .gaze-ph{
-  position:absolute;width:calc(var(--s) * 35vw);
+  position:absolute;width:calc(var(--s) * 44vw);
   transform:translateY(calc(
       clamp(0, calc(1 - var(--t)), 1) * var(--s) * 200vh
-    - clamp(0, calc(var(--t) - 1), 1) * var(--s) * 180vh));
+    - clamp(0, calc((var(--t) - 1) / .8), 1) * var(--s) * 180vh));
 }
 /* height:auto con width e height dichiarati sull'<img>: il rapporto lo tiene il
    browser dalle dimensioni vere, e lo spazio e' riservato PRIMA che il file
@@ -1278,58 +1542,89 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
 /* LA FRASE. Nel terzo centrale, dove nei fotogrammi il marrone resta pulito.
    La larghezza e' in vw e non in ch: `ch` si risolve nel font dell'elemento su
    cui e' scritto — qui il genitore, 16px — non in quello del testo dentro, che
-   e' tre volte piu' grande. 30ch davano nove caratteri per riga. */
+   e' tre volte piu' grande. 30ch davano nove caratteri per riga.
+   40vw E NON 30: a 30 la frase andava su sette righe, il doppio delle tre del
+   segnaposto disegnato. Quaranta ne fanno quattro. E' anche il numero che tiene
+   in piedi il vincolo delle foto: il testo occupa da 30vw a 70vw, quindi le
+   fotografie stanno entro il 30 e oltre il 70 — con le larghezze e le posizioni
+   che hanno in linea nel markup. Allargando ancora, quel conto va rifatto. */
 .gaze-say{
   position:absolute;z-index:2;
   left:50%;top:50%;translate:-50% -50%;
-  width:min(30vw, 560px);
+  width:min(40vw, 780px);
+  /* NIENTE margine di lettura qui: .gaze-say e' un .mv-body, e i due 10vw di
+     --gut si mangiavano meta' della larghezza — la frase tornava a sette righe
+     su una colonna larga il doppio. La sua misura e' la larghezza, non il
+     padding. */
+  padding:0;
+  /* SE NE VA CON LE FOTO, nella loro stessa finestra (--t da 1 a 1.8). Trenta
+     viewport e non cento: a portarla via basta la dissolvenza di dust(), e una
+     frase che esce tutta da sola attraverserebbe il basket che sta entrando.
+     `transform` e non `translate`: quello lo usa gia' il centraggio, e le due
+     proprieta' si compongono senza che nessuna delle due debba sapere
+     dell'altra. */
+  transform:translateY(calc(
+      clamp(0, calc((var(--t) - 1) / .8), 1) * -30vh));
 }
-/* IL PARAGRAFO E' SEMPRE ACCESO. E' un .mv-body > *, quindi la regola generale
-   dei movimenti lo tiene a opacita' 0 finche' non arriva .on — e un genitore
-   trasparente rende invisibili anche i figli, dust() o non dust(). Le unita'
-   della polvere sono l'etichetta e gli SPAN dentro, non lui. */
-.gaze .mv-lead{opacity:1;transform:none;transition:none}
 /* stato PRIMA del primo frame: da qui in poi opacita' e sfocatura le scrive
    dust(), come per .claim span. Niente transizioni CSS: sarebbero un secondo
    padrone sulla stessa proprieta', e l'ultimo a scrivere vincerebbe. */
-.gaze .mv-tag,.gaze .mv-lead span{opacity:0;transition:none}
+.gaze .mv-lead span{opacity:0;transition:none}
 
-/* IL BASKET. Una foto sola, FERMA. E' il contrasto a fare l'argomento: la
-   fotografia e' come guarda il mondo, la pallacanestro e' come sta dentro una
-   squadra — una cosa si osserva, l'altra si abita. Se anche questa
-   galleggiasse, le due sezioni direbbero la stessa cosa con due contenuti
-   diversi, e il campo perderebbe l'unica cosa che ne fa un gesto: essere il
-   solo che si muove.
-   Nessuna riga di JS: entra con .on come tutto il resto della coda. */
-.shot{margin:0 0 2.4em}
-.shot img{display:block;width:100%;height:auto}
-/* il movimento. La colonna di sinistra e' larga esattamente --spine, quindi il
-   confine fra le due colonne della griglia E' la guida: non c'e' un secondo
-
-/* LE COMPETENZE. La gerarchia E' l'argomento: il documento chiede di mettere in
-   evidenza la progettazione e di tenere i linguaggi di back-end come profondita'
-   tecnica, senza far prevalere lo sviluppo sul ruolo.
-   PRIMA lo diceva la TAGLIA: --k moltiplicava la misura del titolo, un numero
-   per riga. Non va piu' bene da quando la coda e' portata dalle immagini —
-   cinque titoli di taglie diverse subito dopo cinque gesti fotografici forti
-   COMPETONO col campo invece di aiutarlo, e a vincere e' il rumore.
-   Adesso lo dicono L'ORDINE E UN ACCENTO: Design e' primo ed e' l'unico in
-   #BFCFFF. Stessa informazione, un terzo dello spazio, e una variabile in meno
-   da tenere allineata in tre posti (il foglio, il @media e i cinque style in
-   linea nel markup).
-   Filetto sopra, e sotto solo all'ultima: e' la stessa costruzione di .pd-facts
-   e di .proj-list — un elenco di righe separate da un capello, non schede. */
-.sk{padding:20px 0;border-top:1px solid #BFCFFF}
-.sk:last-child{border-bottom:1px solid #BFCFFF}
-.sk h3{
-  font-family:var(--grotesk);font-weight:700;color:#554135;
-  font-size:clamp(22px,2.6vw,44px);
-  line-height:1.05;letter-spacing:-.02em;margin-bottom:.5em;
+/* ---------- LA SECONDA DIAPOSITIVA: IL BASKET ----------
+   Non e' piu' un movimento incolonnato dopo il campo: e' la composizione che
+   PRENDE IL POSTO delle fotografie. Entra dal basso mentre quelle escono in
+   alto — stesso verso per tutti, cosi' il secondo gesto si legge come uno
+   scambio e non come due animazioni che capitano insieme.
+   PERCHE' NON GALLEGGIA COME LE FOTO: prima questa sezione stava ferma apposta,
+   e l'argomento era che una cosa si osserva e l'altra si abita. L'argomento
+   regge ancora, ed e' per questo che il basket non si sparpaglia: arriva
+   intero, in un blocco solo, e si ferma. E' il campo a essere sparpagliato.
+   inset:0 E NON UN'ALTEZZA: la slide e' esattamente il palco, quindi 100vh di
+   traslazione la portano fuori di preciso — sopra o sotto. Non c'e' nessun
+   numero da azzeccare, e cambiando l'altezza del palco il conto si rifa' da
+   solo.
+   z-index 3: sopra la frase del campo (2), che nel frattempo sta uscendo. */
+.gz-team{
+  position:absolute;inset:0;z-index:3;
+  display:flex;align-items:center;
+  transform:translateY(calc(
+      clamp(0, calc((2 - var(--t)) / .7), 1) * 100vh
+    - clamp(0, calc((var(--t) - 2) / .8), 1) * 100vh));
 }
-/* .lens NON C'E' PIU'. I due sguardi erano due paragrafi affiancati in fondo
-   all'ultimo movimento; adesso SONO le due sezioni — il campo delle fotografie
-   e il basket. Cancellato e non commentato: una regola commentata in un file di
-   questa lunghezza e' una regola che qualcuno rimette. */
+/* ENTRA A 1.3, NON A 1. Le foto se ne vanno su 1 -> 1.8: partendo insieme a
+   loro le due composizioni si attraverserebbero a meta' schermo, partendo dopo
+   il 1.8 lo schermo resterebbe vuoto per un istante e lo scambio diventerebbe
+   due gesti. 1.3 e' dove le foto hanno fatto poco piu' di un terzo di strada:
+   sono ancora in campo quando il basket si affaccia, e sono gia' fuori quando
+   si ferma. Il .7 qui e l'.8 delle foto sono LO STESSO NUMERO visto da due
+   parti: 1.3 + .7 = 2, e 1 + .8 = 1.8. Toccandone uno va ricontrollato
+   l'altro. */
+/* IL RITAGLIO ARRIVA DOPO IL TESTO, ed era gia' cosi' quando il basket era una
+   sezione ferma: la' erano 0.28s di transition-delay, qui e' una dissolvenza
+   agganciata a --t, perche' dentro il palco il tempo non esiste — esiste solo
+   il passaggio. Da 1.5 a 2: il testo e' fermo e leggibile quando la fotografia
+   finisce di comparire. */
+.gz-team .shot{opacity:clamp(0, calc((var(--t) - 1.5) / .5), 1)}
+/* IL RITAGLIO E IL TESTO, AFFIANCATI. La fotografia e' un ritaglio con canale
+   alfa: il contorno E' l'immagine, e sul marrone il verde del campo stacca da
+   solo — nessuna cornice, nessun filo di bordo.
+   Il testo sta a sinistra ed e' PRIMO nel markup: entra per primo, e il
+   ritaglio lo raggiunge dopo.
+   minmax(0,1fr) e non 1fr: un 1fr ha min-width auto, e la colonna del testo non
+   scenderebbe mai sotto la sua parola piu' lunga.
+   Centrati e non allineati in cima: il ritaglio e' quadrato e il testo fa
+   quattro righe, e appeso in alto lascerebbe sotto un buco alto mezza foto. */
+.gz-team .mv-body{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+  gap:4vw;align-items:center;
+}
+.shot{margin:0}
+.shot img{display:block;width:100%;height:auto}
+/* L'ELENCO E I DUE SGUARDI AFFIANCATI NON CI SONO PIU'. Le aree erano righe con titolo e
+   pillole, i due sguardi due paragrafi affiancati: adesso le aree sono il nastro
+   e gli sguardi SONO le due sezioni. Cancellati e non commentati — una regola
+   commentata in un file di questa lunghezza e' una regola che qualcuno rimette.
 
 /* LA CHIUSURA. La linea della carriera finisce sulla stellina del marchio, e
    accanto c'e' la mail — l'unico recapito che il sito ha gia', nell'header.
@@ -1339,7 +1634,20 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
    cade il suo centro per dire alla guida dove fermarsi. */
 .after-end{
   display:grid;grid-template-columns:var(--spine) 1fr;
-  align-items:center;padding-top:26vh;
+  align-items:center;
+  /* UNO SCHERMO ESATTO, e non e' aria decorativa: e' la corsa che serve al
+     salto d'uscita del palco. Uscendo dalla diapositiva gzEsci() sposta la
+     pagina di una schermata intera per non lasciar scorrere il marrone vuoto,
+     e se dopo il campo la coda finisce prima, quello scrollTo lo tronca il
+     browser: si resta col basket tagliato a meta' in cima allo schermo. E'
+     successo appena il basket e' uscito dal flusso — la coda si e' accorciata
+     di uno schermo e il salto atterrava a -606 invece che a -1000.
+     min-height e non un padding: cosi' e' l'altezza a essere garantita, non
+     una distanza che il contenuto puo' mangiarsi. E la mail ci guadagna, che
+     e' l'ultima cosa che si legge e adesso ha il suo schermo.
+     svh e non vh: e' la stessa unita' di .sticky e .tl-stage, e su mobile la
+     barra dell'indirizzo non deve aggiungere una striscia vuota. */
+  min-height:100svh;align-content:center;
 }
 .after-star{
   display:block;width:clamp(28px,3.4vw,52px);height:auto;overflow:visible;
@@ -1473,8 +1781,46 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
      --spine torna un margine, il contenuto gli sta a DESTRA — a 24px dal bordo
      non c'e' una colonna di sinistra in cui mettere niente. L'etichetta torna
      sopra il testo, che e' il suo posto quando le colonne diventano una. */
-  .after{--spine:24px;padding-bottom:calc(80px + 10vh)}
-  .mv{--pt:14vh;grid-template-columns:1fr;gap:14px}
+  .after{--spine:24px;--gut:24px;padding-bottom:calc(80px + 10vh)}
+  .mv{--pt:14vh;gap:14px}
+  /* ---------- LA SEQUENZA SI SROTOLA ----------
+     Sul dito nessuno scrive --q, e col suo default di 1 il palco mostrerebbe il
+     solo fotogramma 916: ritratto e frase sono la' dentro, spenti, e non
+     arriverebbe MAI un gesto a riaccenderli. Due terzi della sezione sarebbero
+     contenuto perduto — e la frase e' la bio, cioe' il testo piu' importante
+     della coda.
+     Quindi qui la sequenza smette di essere un palco e torna quello che e'
+     sotto: una colonna. Ognuno dei quattro fotogrammi diventa un blocco, nel
+     loro ordine di DOM, che e' gia' l'ordine del racconto — parola, ritratto,
+     frase, striscia, competenze.
+     L'altezza fissa se ne va da tutti e due: 300vh di corsa senza niente che le
+     corra dentro sono tre schermi di marrone da scorrere. */
+  .m1,.m1-stage{height:auto}
+  .m1-stage{position:static;overflow:visible;transform:none;will-change:auto}
+  /* niente piu' assoluto e niente piu' finestre di --q: tutto acceso, tutto nel
+     flusso. Una regola sola per i cinque pezzi, invece di cinque quasi
+     identiche. */
+  .after-word,.m1-me,.m1-say,.m1-band,.m1-skills{
+    position:static;transform:none;translate:none;opacity:1;
+    width:auto;
+  }
+  .after-word{padding:0 24px;margin-bottom:2vh}
+  .m1-me{width:74vw;margin:0 auto 4vh}
+  /* la frase torna allineata al margine come il resto della colonna: centrata e
+     larga mezzo schermo su 390px darebbe quattro parole per riga. L'ombra non
+     serve piu' — qui non passa sopra nessuna fotografia. */
+  .m1-say{padding:0 24px;text-align:left;margin-bottom:5vh}
+  .m1-say .mv-lead{font-size:19px;letter-spacing:-.4px;text-shadow:none}
+  /* la striscia resta, ma disegnata per intero: e' il segno della sezione, non
+     un gesto. Senza il dashoffset a zero resterebbe invisibile. */
+  .m1-band{margin:2vh 0 4vh}
+  .m1-band path{stroke-dashoffset:0}
+  .m1-skills .m1-title{padding:0 24px}
+  /* una colonna sola: tre su 375px darebbero 109px a blocco, e ogni voce
+     andrebbe a capo. Il filetto sopra ogni blocco basta a tenerli distinti
+     senza chiedere larghezza. */
+  .sk-grid{columns:1;padding:0 24px;margin-top:5vh}
+  .sk-col{margin-bottom:3.4vh}
   /* senza il gesto da accompagnare il respiro serve meno: 40vh di scuro vuoto
      su un telefono sono un bel po' di pollice. */
   .after .mv:first-of-type{--pt:20vh}
@@ -1482,8 +1828,6 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   /* l'allineamento a destra del desktop qui non ha senso: la colonna
      dell'etichetta non esiste piu', e appoggiata al bordo destro si leggerebbe
      come una didascalia di qualcos'altro. Torna sopra il testo, a filo con lui. */
-  .mv-tag{justify-self:start;text-align:left;padding:0 24px 0 calc(24px + 20px)}
-  .mv::before{top:calc(var(--pt) + .42em);width:20px}
   .mv-lead{font-size:19px;max-width:none}
 
   /* IL CAMPO SU TELEFONO. Le foto si incolonnano e la tesi torna in cima, nel
@@ -1516,7 +1860,7 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   }
   /* dust() qui non gira mai, quindi lo stato "prima del primo frame" resterebbe
      per sempre: la frase sarebbe invisibile. Si riaccende a mano. */
-  .gaze-say .mv-tag,.gaze-say .mv-lead span{opacity:1;filter:none}
+  .gaze-say .mv-lead span{opacity:1;filter:none}
   /* incolonnato la tesi torna PRIMA delle foto, che e' il suo ordine di DOM
      naturale... solo che nel markup sta dopo, per poterci dipingere sopra su
      desktop. Order lo rimette al suo posto senza toccare il markup, e senza
@@ -1524,12 +1868,21 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   .gaze-stage{display:flex;flex-direction:column}
   .gaze-say{order:-1}
   /* a piena larghezza della colonna: a 24px dal bordo non c'e' niente da
-     riservare a sinistra, e una foto rientrata sembrerebbe un errore. */
-  .shot{margin-bottom:1.6em}
+     riservare a sinistra, e una foto rientrata sembrerebbe un errore. E le due
+     colonne del basket tornano una: affiancate qui darebbero 170px per parte. */
+  /* NIENTE DIAPOSITIVA, QUINDI NIENTE SLIDE: il basket torna un blocco in
+     colonna sotto le foto, dov'e' nel DOM. Lo stage e' gia' un flex column qui
+     sopra, quindi basta rimetterlo nel flusso e disfare la traslazione: se
+     restasse assoluto starebbe sopra le fotografie, e --t vale 1, cioe' un
+     centinaio di viewport piu' in basso. */
+  .gz-team{position:static;transform:none;display:block;padding-top:2.4em}
+  .gz-team .mv-body{display:block}
+  .gz-team .shot{opacity:1;margin-top:1.6em}
 
-  .sk h3{font-size:30px}
 
-  .after-end{grid-template-columns:1fr;padding-top:16vh;gap:18px}
+  /* qui la coda e' nel flusso e non c'e' nessun salto d'uscita da far
+     atterrare: lo schermo intero sarebbe solo marrone da scorrere. */
+  .after-end{grid-template-columns:1fr;min-height:0;padding-top:16vh;gap:18px}
   .after-star{justify-self:start;translate:-50% 0;margin-left:24px}
   .after-out{padding-left:calc(24px + 20px)}
   .after-mail{font-size:22px}
@@ -1545,12 +1898,15 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
      c'è nulla da animare. Sta dopo il @media (hover: hover) apposta: stessa
      specificità, vince l'ultima. Lo spaziatore lo azzera measure(). */
   .projects{position:relative;top:auto}
+  /* stessa ragione per la coda: senza ciclo nessuno scriverebbe la sua
+     traslazione, e da fissa resterebbe inchiodata a schermo. Lo spaziatore lo
+     azzera measure(). */
+  .after{position:relative;top:auto;will-change:auto}
   /* nessuna corsa da guidare: la frase finale torna nel flusso, già leggibile.
      Senza questo resterebbero 500vh di pagina vuota e un testo mai acceso. */
   .finale{height:auto;padding:22vh 24px}
   .finale-claim{position:static;transform:none;width:auto}
   .finale-claim > span{opacity:1}
-  /* la scheda si apre e basta: nessuna altezza da animare, nessun ingresso */
 
   /* la linea del tempo senza nessun ciclo: la sezione torna nel flusso e la
      traccia si scorre a mano, in orizzontale, come una tabella larga. Tutto ciò
@@ -1567,7 +1923,6 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   .tl-track{transform:none}
   .tl-axis,.tl-bar{transform:scaleX(1)}
   .tl-stem,.tl-tick{transform:scaleY(1)}
-  .tl-now{opacity:1}
   /* senza hover da seguire, il dettaglio della scheda resta aperto */
   .tl-more{grid-template-rows:1fr}
   .tl-dot{scale:1}
@@ -1575,6 +1930,7 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
   /* impilati e senza nessuno che li accenda, gli otto anni si sommerebbero in
      una macchia sola: qui lo sfondo non serve a niente e se ne va. */
   .tl-year{display:none}
+  /* la scheda si apre e basta: nessuna altezza da animare, nessun ingresso */
   .proj-detail{transition:none}
   .pd-in{opacity:1;transform:none;transition:none}
 
@@ -1584,9 +1940,7 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
      Il fondo scuro pero' resta — quello e' la carta della coda, non un gesto —
      e ce l'ha .after per conto suo, senza che nessuno debba scrivere niente. */
   .tl-flood{display:none}
-  .mv::before{transform:scaleX(1)}
-  .mv-tag,.mv-body > *{opacity:1;transform:none;transition:none}
-  .sk-tags li{border-color:#BFCFFF}
+  .mv-body > *,.sk-col{opacity:1;transform:none;transition:none}
   /* IL CAMPO, senza ciclo e senza diapositiva. Qui non c'e' rAF, quindi non c'e'
      ne' il blocco dello scroll ne' dust(): --t resta al default di 1, cioe' il
      fotogramma 907 — il punto statico, con le foto al loro posto e la frase su.
@@ -1595,7 +1949,47 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
      vuole vedere la stessa pagina ferma, non una pagina diversa. E soprattutto
      non vuole trovarsi lo scroll sequestrato da una sequenza che non parte. */
   .gaze{--t:1}
-  .gaze-say .mv-tag,.gaze-say .mv-lead span{opacity:1;filter:none}
+  .gaze-say .mv-lead span{opacity:1;filter:none}
+  /* LE DUE DIAPOSITIVE SI SROTOLANO. A --t 1 il palco mostra le fotografie e
+     tiene il basket cento viewport piu' in basso: senza movimento, la seconda
+     slide non arriverebbe MAI. Due composizioni sovrapposte senza un gesto che
+     le scambi sono una composizione sola piu' una perduta.
+     Il palco resta alto uno schermo — quello e' il 907, e non cambia — e il
+     basket gli va sotto: e' quel che fa il padding-top, che spinge in giu' il
+     solo contenuto rimasto nel flusso mentre le fotografie, che sono assolute,
+     restano attaccate al bordo alto. L'altezza dello stage la fa il resto.
+     .gaze-say passa da top:50% a 50vh per la stessa ragione: la percentuale si
+     risolve su uno stage che adesso e' alto due schermi, e la frase scenderebbe
+     nel mezzo del basket.
+     overflow:clip RESTA: le fotografie sbordano di 14vw a destra, e senza il
+     ritaglio la pagina prenderebbe una barra orizzontale. */
+  .gaze{height:auto}
+  .gaze-stage{height:auto;padding-top:100vh}
+  .gaze-say{top:50vh}
+  .gz-team{position:static;transform:none;padding-top:12vh}
+  .gz-team .shot{opacity:1}
+  /* ---------- LA SEQUENZA SI SROTOLA, per la stessa ragione del dito ----------
+     Senza ciclo nessuno scrive --q, e col default di 1 il palco mostrerebbe il
+     solo ultimo fotogramma: il ritratto e la bio resterebbero spenti dentro un
+     palco che nessun gesto fara' mai avanzare.
+     Sparisce il MOVIMENTO, non la composizione — chi chiede meno animazione
+     vuole vedere la stessa pagina ferma, non una pagina con due terzi in meno.
+     E' la stessa scelta gia' fatta per le due diapositive del palco. */
+  .m1,.m1-stage{height:auto}
+  .m1-stage{position:static;overflow:visible;transform:none;will-change:auto}
+  .after-word,.m1-me,.m1-say,.m1-band,.m1-skills{
+    position:static;transform:none;translate:none;opacity:1;width:auto;
+  }
+  .m1-me{width:34vw;margin:4vh auto}
+  .m1-say{margin:0 auto 6vh;text-align:center}
+  .m1-say .mv-lead{text-shadow:none}
+  .m1-band{margin:4vh 0 6vh}
+  .m1-band path{stroke-dashoffset:0}
+  /* dust() qui non gira mai: senza questa riga i due paragrafi resterebbero
+     allo stato che il ciclo avrebbe scritto — cioe' a nessuno stato, il che va
+     bene solo finche' non ci si passa una volta. Dichiararlo e' gratis e toglie
+     un modo di rompersi in silenzio. */
+  .m1-say .mv-lead{opacity:1;filter:none}
 }
 </style>
 </head>
@@ -2058,51 +2452,137 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
 
 <!-- ===================== dopo l'allagamento ===================== -->
 <section class="after" id="after" aria-label="Chi sono">
-  <article class="mv" id="mv1">
-    <h2 class="mv-tag">01 &mdash; cosa so fare</h2>
-    <div class="mv-body">
-      <!-- il posizionamento APRE il blocco e non la coda: da quando la tesi
-           della sezione e' lo sguardo, questa e' una nota tecnica, ed e' il
-           ruolo che le spetta. Il testo e' il primo capoverso della bio Media
-           di doc/bio.md, invariato. -->
-      <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti. <i>Il mio lavoro parte dal design</i>: scompongo processi complessi in flussi chiari, disegno interfacce ad alta fedelt&agrave; e scelgo la soluzione tecnica pi&ugrave; adatta a farle diventare prodotti reali, performanti e coerenti.</p>
-      <!-- l'ordine e' quello del documento e ci sono TUTTE E CINQUE le aree,
-           per intero: il taglio non e' mai stato il modo di dire il peso. A
-           dirlo adesso sono l'ordine e UN accento — vedi il commento di .sk. -->
-      <div class="sk"><h3>Design</h3><ul class="sk-tags"><li>Figma</li><li>Wireframe e Prototipazione UI/UX</li><li>User Research</li><li>Design System</li></ul></div>
-      <div class="sk"><h3>Web Tech</h3><ul class="sk-tags"><li>HTML</li><li>CSS</li><li>JS</li></ul></div>
-      <div class="sk"><h3>Sviluppo</h3><ul class="sk-tags"><li>React</li><li>Python</li><li>Go</li><li>Java</li><li>Kotlin</li><li>SQL</li></ul></div>
-      <div class="sk"><h3>AI / Tooling</h3><ul class="sk-tags"><li>Figma Maker &amp; Agent</li><li>Claude Code</li><li>Antigravity</li></ul></div>
-      <div class="sk"><h3>Project Management</h3><ul class="sk-tags"><li>YouTrack</li><li>Planner</li></ul></div>
+  <!-- ===== il primo movimento: i quattro fotogrammi 913-916 =====
+       Un palco alto uno schermo dentro una sezione alta tre: i due schermi in
+       piu' sono la corsa su cui la sequenza si srotola. Tutto quel che sta qui
+       dentro e' assoluto e pende da --q — le finestre stanno nel foglio, sopra
+       .m1. -->
+  <div class="mv m1" id="mv1">
+    <div class="m1-stage" id="m1Stage">
+      <!-- LA PAROLA. E' l'<h2> della coda, e resta tale: il nome accessibile
+           sta sull'aria-label, perche' il contorno disegnato non e' testo che
+           un browser possa rendere — ha un filtro di disturbo per glifo, e
+           -webkit-text-stroke darebbe una linea geometrica, che e' un'altra
+           cosa. L'immagine e' aria-hidden per non farlo sentire due volte. -->
+      <h2 class="after-word" aria-label="Chi sono">
+        <img src="chi-sono.svg" width="2036" height="265" alt="" aria-hidden="true">
+      </h2>
+
+      <!-- IL RITRATTO. Ritaglio con canale alfa, come il basket: stessa forma
+           organica, stesso trattamento, stesso conv-foto.py. -->
+      <figure class="m1-me">
+        <img src="img/ph-ritratto.webp" width="1114" height="1114" loading="lazy"
+             alt="Ritratto di Oliviero Petrucci, occhiali scuri, su fondo azzurro.">
+      </figure>
+
+      <!-- LA FRASE. Stesso testo di prima — il primo capoverso della bio Media
+           di doc/bio.md — spezzato in due come nel fotogramma: la riga che dice
+           chi sei, e sotto quella che dice come lavori. I due <p> sono le unita'
+           di dust(): la stessa polvere del claim e della frase del campo. -->
+      <div class="m1-say">
+        <p class="mv-lead">Sono Oliviero Petrucci, Software Designer in Zucchetti.</p>
+        <p class="mv-lead">Il mio lavoro parte dal <i>design</i>: scompongo processi complessi in flussi chiari, disegno interfacce ad alta fedelt&agrave; e scelgo la soluzione tecnica pi&ugrave; adatta a farle diventare prodotti reali, performanti e coerenti.</p>
+      </div>
+
+      <!-- LA STRISCIA. Inline e non un <img>: quel che si anima e' il path.
+           pathLength="1" e' la ragione per cui il foglio puo' scrivere
+           stroke-dashoffset senza che nessuno misuri la curva.
+           preserveAspectRatio="none": la striscia deve stirarsi alla larghezza
+           dello schermo come nei fotogrammi, non mantenere il suo rapporto. -->
+      <svg class="m1-band" viewBox="0 0 2118.16 132.772" preserveAspectRatio="none"
+           fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="bandGrad" x1="0" y1="66.39" x2="2112" y2="66.39"
+                          gradientUnits="userSpaceOnUse">
+            <stop stop-color="#174FFE"/>
+            <stop offset="1" stop-color="#BFCFFF"/>
+          </linearGradient>
+        </defs>
+        <path pathLength="1" stroke="url(#bandGrad)" stroke-width="20"
+              d="M0.0798056 82.506C82.2792 81.85 139.246 -11.456 218.934 18.7872C250.002 30.578 247.576 53.0541 281.231 61.7284C342.568 77.5375 364.517 17.4921 430.097 10.7981C551.78 -1.62248 592.279 135.158 705.983 105.668C733.289 98.5865 741.352 86.1149 769.089 79.7038C846.284 61.8619 888.372 132.442 968.925 121.646C1052.76 110.411 1040.61 16.9966 1125.07 26.2769C1181.2 32.4434 1176.88 78.4069 1231.87 87.6929C1309.16 100.746 1337.01 32.7536 1417.14 33.2674C1495.56 33.7702 1519.25 85.1042 1597.56 87.6929C1685.63 90.6043 1720.58 18.5116 1805.48 33.2674C1858.49 42.48 1860.64 84.8402 1915.51 87.6929C1959.6 89.9846 1976.51 63.064 2020.69 61.7284C2062.95 60.4512 2086.94 83.6335 2112.02 103.128"/>
+      </svg>
+
+      <!-- LE COMPETENZE. Cinque aree, cinque blocchi, tre colonne tipografiche.
+           <h3> sotto l'<h2> della coda e <h4> per le aree: la scaletta dei
+           titoli resta vera, e chi legge con la voce puo' saltare da un'area
+           all'altra. <ul> per la stessa ragione — sente quante voci sono. -->
+      <div class="m1-skills">
+        <h3 class="m1-title">competenze <i>tecniche</i></h3>
+        <div class="sk-grid">
+          <div class="sk-col">
+            <h4 class="sk-lab sk-key">Design</h4>
+            <ul class="sk-list">
+              <li>Figma</li>
+              <li>Wireframe e Prototipazione UI/UX</li>
+              <li>User Research</li>
+              <li>Design System</li>
+            </ul>
+          </div>
+          <div class="sk-col">
+            <h4 class="sk-lab">Web Tech</h4>
+            <ul class="sk-list">
+              <li>HTML</li>
+              <li>CSS</li>
+              <li>JS</li>
+            </ul>
+          </div>
+          <div class="sk-col">
+            <h4 class="sk-lab">Sviluppo</h4>
+            <ul class="sk-list">
+              <li>React</li>
+              <li>Python</li>
+              <li>Go</li>
+              <li>Java</li>
+              <li>Kotlin</li>
+              <li>SQL</li>
+            </ul>
+          </div>
+          <div class="sk-col">
+            <h4 class="sk-lab">AI / Tooling</h4>
+            <ul class="sk-list">
+              <li>Figma Maker &amp; Agent</li>
+              <li>Claude Code</li>
+              <li>Antigravity</li>
+            </ul>
+          </div>
+          <div class="sk-col">
+            <h4 class="sk-lab">Project Management</h4>
+            <ul class="sk-list">
+              <li>YouTrack</li>
+              <li>Planner</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
-  </article>
+  </div>
 
   <article class="mv gaze" id="mv2">
     <!-- IL PALCO. .gaze e' alto uno schermo e non contiene niente di suo: tutto
-         sta qui dentro, appiccicato in cima. Quando il palco tocca il bordo alto
-         dello schermo lo scroll si BLOCCA e la sequenza parte da sola; si
-         sblocca solo quando e' finita. -->
+         sta qui dentro. Quando il palco tocca il bordo alto dello schermo lo
+         scroll si BLOCCA e la sequenza parte da sola; si sblocca solo quando e'
+         finita. -->
     <div class="gaze-stage">
       <!-- un numero solo per foto (--s): da li' escono larghezza, corsa di
            entrata e corsa di uscita. La posizione sta in linea perche' e'
            composizione, non regola.
-           Le foto stanno sui due terzi laterali e sbordano da sinistra, da
-           destra e dall'alto: il terzo centrale resta al testo, come nei
-           fotogrammi. NESSUNA passa dietro la frase, quindi niente scurimento —
-           nei fotogrammi le fotografie sono sempre a piena luce. -->
-      <figure class="gaze-ph" style="--s:.62;top:-14vh;left:-5vw">
+           Le foto sono cresciute e sbordano di piu' dai quattro lati: e' cosi'
+           che si fanno grandi senza entrare nel terzo centrale, che resta alla
+           frase come nei fotogrammi. NESSUNA passa dietro la frase da ferma,
+           quindi niente scurimento. -->
+      <figure class="gaze-ph" style="--s:.62;top:-18vh;left:-12vw">
         <img src="img/ph-architettura-bn.webp" width="1280" height="1600" loading="lazy"
              alt="Facciata in cemento in bianco e nero: pilastri e solette tagliati dalla luce diretta, senza mezzi toni.">
       </figure>
-      <figure class="gaze-ph" style="--s:.54;top:34vh;left:13vw">
+      <figure class="gaze-ph" style="--s:.54;top:36vh;left:-2vw">
         <img src="img/ph-mensole.webp" width="1216" height="1600" loading="lazy"
              alt="Due mensole triangolari nere a parete sopra un divano rosa; sul bordo di una cammina una figurina.">
       </figure>
-      <figure class="gaze-ph" style="--s:.72;top:16vh;right:6vw">
+      <figure class="gaze-ph" style="--s:.72;top:14vh;right:-4vw">
         <img src="img/ph-lampione.webp" width="1280" height="1600" loading="lazy"
              alt="Un lampione a sei bracci acceso contro un cielo al tramonto, fra nuvole rosa e blu.">
       </figure>
-      <figure class="gaze-ph" style="--s:.80;top:-10vh;right:-6vw">
+      <figure class="gaze-ph" style="--s:.80;top:-14vh;right:-14vw">
         <img src="img/ph-architettura-vetri.webp" width="1600" height="1280" loading="lazy"
              alt="Due facciate che si toccano ad angolo: una griglia di vetri turchesi e una parete bianca a finestre strette.">
       </figure>
@@ -2110,26 +2590,30 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
            blocchi: a scatola ognuna diventerebbe indivisibile e la riga andrebbe
            a capo dove capita. Per questo la comparsa e' blur + opacita' e non
            una traslazione — sugli inline le transform non si applicano. E' la
-           stessa dust() del claim e dei titoli delle sezioni precedenti, non una
-           dissolvenza nuova: lo spazio fra i tag e' testo vero, quindi gli a
-           capo cadono come se i tag non ci fossero. -->
+           stessa dust() del claim e dei titoli delle sezioni precedenti. -->
       <div class="mv-body gaze-say">
-        <h2 class="mv-tag">02 &mdash; come guardo</h2>
         <p class="mv-lead"><span>Prima del software, la fotografia era il mestiere.</span> <span>Ha educato l&rsquo;occhio all&rsquo;equilibrio, alla luce, al dettaglio:</span> <span><i>la sensibilit&agrave; visiva del design &egrave; allenata, non innata</i>.</span></p>
       </div>
-    </div>
-  </article>
 
-  <article class="mv" id="mv3">
-    <h2 class="mv-tag">03 &mdash; come sto in squadra</h2>
-    <div class="mv-body">
-      <!-- <figure> e non <div>: e' un'immagine di contenuto con una relazione
-           col testo che la segue, ed e' il tag che lo dice. -->
-      <figure class="shot">
-        <img src="img/ph-basket.webp" width="1322" height="1190" loading="lazy"
-             alt="In campo, in maglia numero 23, nel caricamento di un tiro.">
-      </figure>
-      <p class="mv-lead">Da sempre gioco a pallacanestro. Visione d&rsquo;insieme, decisioni rapide sotto pressione, e <i>capire il proprio ruolo dentro una squadra</i> &mdash; che &egrave; poi come si lavora su un prodotto.</p>
+      <!-- LA SECONDA DIAPOSITIVA. Era un movimento a se' dopo il campo; adesso
+           sta DENTRO il palco, perche' non viene dopo le fotografie: prende il
+           loro posto. Ultimo fra i figli e con lo z piu' alto — entrando passa
+           sopra la frase che se ne sta andando.
+           Non e' piu' un .mv: non ha un .on da ricevere ne' una posizione da cui
+           farsi accendere, lo governa --t come tutto quel che sta qui dentro. -->
+      <div class="gz-team" id="gzTeam">
+        <div class="mv-body">
+          <!-- il testo PRIMA del ritaglio, nel markup e nell'ordine di
+               comparsa: entra per primo e la fotografia lo raggiunge dopo. -->
+          <p class="mv-lead">Da sempre gioco a pallacanestro. Visione d&rsquo;insieme, decisioni rapide sotto pressione, e <i>capire il proprio ruolo dentro una squadra</i> &mdash; che &egrave; poi come si lavora su un prodotto.</p>
+          <!-- <figure> e non <div>: e' un'immagine di contenuto con una
+               relazione col testo che l'accompagna, ed e' il tag che lo dice. -->
+          <figure class="shot">
+            <img src="img/ph-basket.webp" width="1248" height="1248" loading="lazy"
+                 alt="In campo, in maglia numero 23, nel caricamento di un tiro.">
+          </figure>
+        </div>
+      </div>
     </div>
   </article>
 
@@ -2141,6 +2625,13 @@ body.dark .id em,body.dark .id .contact,body.dark .social a:hover{color:#BFCFFF}
     </div>
   </div>
 </section>
+<!-- lo spazio che la coda lasciava nel documento quando era nel flusso. Fuori
+     dal flusso non lo occupa piu' nessuno, e senza questo la pagina finirebbe
+     un'intera coda prima: non ci sarebbe scroll per vederla. L'altezza la mette
+     measure(), l'unico posto che sa se la sezione e' fuori dal flusso.
+     E' anche il RIGHELLO da cui si legge dove la coda comincia: .after fissa ha
+     un offsetTop che non vuol dire piu' niente. -->
+<div class="after-space" id="afterSpace" aria-hidden="true"></div>
 
 
 <!-- il marchio della sezione. La stellina qui dentro è ferma e serve solo a
@@ -2252,7 +2743,7 @@ const tlBarNow = tlExpNow.querySelector('.tl-bar');
 const tlLabNow = tlExpNow.querySelector('.tl-lab');
 /* le sezioni della coda */
 const after     = document.getElementById('after');
-const mvs       = [...document.querySelectorAll('.mv')].map(el => ({ el, top: 0 }));
+const afterSpace = document.getElementById('afterSpace');
 /* le righe del reticolo sono i confini d'anno: da loro vengono la larghezza di
    una colonna e l'anno in cui si e' */
 const tlGrids  = [...document.querySelectorAll('.tl-grid')];
@@ -2353,22 +2844,40 @@ function dust(els, prog, stagger = .28){
    subito, e una const usata prima della propria dichiarazione e' un errore di
    zona morta che si manifesta solo caricando la pagina — node --check non lo
    vede, perche' non e' un errore di sintassi. */
-const gazeM = mvs.find(m => m.el.classList.contains('gaze'));
+/* IL CAMPO SI CERCA PER CLASSE, e ora e' l'unico movimento che il ciclo deve
+   ritrovare: la lista `mvs` se n'e' andata con la classe .on, che nessuno
+   leggeva piu'. */
+const gazeM = { el: document.querySelector('.gaze'), top: 0 };
 let gazeH = 0;   // altezza del campo: MISURATA in measure(), non scritta a mano
 
-/* ---------- IL CAMPO: una diapositiva a tre stati ----------
+/* LA SEQUENZA DEL PRIMO MOVIMENTO. Il palco, la sezione che gli fa da corsa, e
+   le due unita' di polvere della frase. Le misure le prende measure(). */
+const m1El    = document.getElementById('mv1');
+const m1Stage = document.getElementById('m1Stage');
+const m1Dust  = [...m1El.querySelectorAll('.m1-say .mv-lead')];
+let m1Top = 0;   // dove comincia la sezione, nel metro di `over`
+let m1Run = 1;   // quanti pixel di corsa ha: la sezione meno il palco
+
+/* ---------- IL CAMPO: una diapositiva a quattro stati ----------
    Sta tutto qui: stato, disegno, aggancio, gesti e passo per frame. Prima era
    sparso in tre punti lontani del file — le funzioni stavano perfino sopra le
    variabili che leggevano — e ogni correzione ne toccava tre. Sta DOPO dust()
    perche' gzPaint() la usa: la frase del campo compare con la stessa funzione
    del claim e dei titoli delle sezioni precedenti.
 
-   I cinque fotogrammi (905-909) sono la specifica:
-     905  marrone vuoto      -> stato 0
-     906  primo scroll       -> il passaggio 0 -> 1
-     907  punto statico      -> stato 1
-     908  secondo scroll     -> il passaggio 1 -> 2
-     909  marrone vuoto      -> stato 2
+   I cinque fotogrammi (905-909) erano la specifica del solo campo. Poi il
+   basket e' entrato nel palco come seconda diapositiva, e gli stati sono
+   diventati quattro:
+     905  marrone vuoto        -> stato 0
+     906  primo scroll         -> il passaggio 0 -> 1
+     907  le fotografie        -> stato 1
+     ---  secondo scroll       -> il passaggio 1 -> 2, lo SCAMBIO: le foto e la
+                                  frase escono in alto mentre il basket sale da
+                                  sotto
+     ---  il basket            -> stato 2
+     909  terzo scroll         -> il passaggio 2 -> 3, e il marrone vuoto
+   Il disegno delle due composizioni e delle loro finestre sta nel foglio,
+   accanto a .gaze-ph e a .gz-team: qui c'e' solo chi conta i gesti.
 
    E' l'UNICO punto del sito in cui la rotella viene tolta a chi guarda. Vale la
    pena dire perche' si puo' fare qui e non altrove: il campo e' alto ESATTAMENTE
@@ -2382,12 +2891,12 @@ const GZ_QUIETE = 220;  // silenzio richiesto dopo un passaggio, in millisecondi
 
 const gzEl   = gazeM.el;
 const gzSay  = gzEl.querySelector('.gaze-say');
-/* le unita' della comparsa dalla polvere: l'etichetta e le tre righe della
-   frase. Stessa dust() del claim e dei titoli, non una dissolvenza nuova. */
-const gzDust = [gzSay.querySelector('.mv-tag'),
-                ...gzSay.querySelectorAll('.mv-lead span')];
+/* le unita' della comparsa dalla polvere: le righe della frase, e basta —
+   l'etichetta numerata non esiste piu'. Stessa dust() del claim e dei titoli,
+   non una dissolvenza nuova. */
+const gzDust = [...gzSay.querySelectorAll('.mv-lead span')];
 
-let gzStep = 1;      // lo stato verso cui si va: 0, 1 o 2
+let gzStep = 1;      // lo stato verso cui si va: 0, 1, 2 o 3
 let gzT    = 1;      // il valore mostrato, continuo; parte dal 907 come il foglio
 let gzFrom = 1;      // da dove e' partito il passaggio in corso
 let gzT0   = 0;      // quando e' partito
@@ -2398,18 +2907,21 @@ let gzAcc  = 0;      // rotella accumulata nella passata in corso
 let gzLast = 0;      // istante dell'ultimo evento di rotella
 let gzUsata = false; // la passata in corso ha gia' mosso di un passo?
 let gzDip  = '';     // ultimo --t scritto, per non riscrivere lo stesso
+let afQ    = '';     // ultimo --q scritto (la sequenza del primo movimento)
 
 const gzBusy = () => gzT !== gzStep;
 
 function gzPaint(){
   const v = gzT.toFixed(4);
   if (v !== gzDip){ gzEl.style.setProperty('--t', v); gzDip = v; }
-  /* LA FRASE ESCE DOPO LE FOTO, ed e' il 908 a dirlo: li' le fotografie se ne
-     sono quasi andate e la frase e' ancora INTERA. Entra su 0..1 e se ne va
-     sull'ultimo quinto. Sembra una finestra stretta e non lo e': out3 carica il
-     movimento all'inizio, quindi in --t si arriva a 1.8 nel primo quarto del
-     tempo e i restanti tre quarti se li prende tutti la frase. */
-  dust(gzDust, gzT <= 1 ? gzT : 1 - clamp((gzT - 1.8) / .2), .18);
+  /* LA FRASE ESCE CON LE FOTO, nella loro stessa finestra: --t da 1 a 1.8.
+     Prima usciva DOPO, sull'ultimo quinto, ed era il 908 a chiederlo — li'
+     dietro le fotografie c'era il vuoto, e una frase che restava era l'ultima
+     cosa da leggere. Adesso dietro c'e' il basket, e una frase che sopravvive
+     alla propria diapositiva si legge come una didascalia rimasta indietro.
+     Il .8 e' LO STESSO che il foglio usa per l'uscita delle foto e per la
+     traslazione di .gaze-say: se si tocca la', va toccato anche qui. */
+  dust(gzDust, gzT <= 1 ? gzT : 1 - clamp((gzT - 1) / .8), .18);
 }
 
 /* dove deve stare la pagina perche' il campo riempia lo schermo. Si ricava dalle
@@ -2441,12 +2953,16 @@ function gzArma(){
    campo e' vuoto, quindi non c'e' niente di visibile da spostare. Senza il
    salto resterebbe da scorrere uno schermo di marrone vuoto — che e' esattamente
    la "sezione scomparsa" segnalata dall'utente.
-   Subito dopo si torna al 907: chi ripassa di qui scorrendo all'insu' deve
-   trovare la composizione, non il vuoto. */
+   Subito dopo si sceglie lo stato di riposo, e non e' piu' uno solo: uscendo di
+   SOTTO resta il basket (2), l'ultima composizione vista, perche' risalendo ci
+   si aspetta di ritrovarla; uscendo di SOPRA resta il vuoto (0), perche' chi
+   ridiscende deve avere qualcosa da far entrare col primo gesto. E' la stessa
+   regola del ramo sbloccato in fondo a gzTick(), scritta due volte perche' li'
+   si legge dalla posizione e qui dal verso dell'uscita. */
 function gzEsci(dir){
   gzLock = false;
   gzVai(dir > 0 ? gzY + gazeH : gzY - 1);
-  gzStep = gzFrom = gzT = 1;
+  gzStep = gzFrom = gzT = dir > 0 ? 2 : 0;
   gzPaint();
   gzPrev = dir > 0 ? -gazeH - 1 : 1;
 }
@@ -2474,7 +2990,7 @@ function gzRotella(dy, ora){
   const dir = Math.sign(gzAcc);
   gzAcc = 0; gzUsata = true;
   const next = gzStep + dir;
-  if (next < 0 || next > 2){ gzEsci(dir); return; }
+  if (next < 0 || next > 3){ gzEsci(dir); return; }
   gzFrom = gzT; gzStep = next; gzT0 = ora;
 }
 
@@ -2517,7 +3033,13 @@ function gzTick(top){
          mentre e' bloccata — la riporterebbe indietro nello stesso giro,
          annullando il salto. gzLock e' gia' false, ma questo blocco l'ha letto
          all'inizio. */
-      if (k >= 1 && gzStep !== 1){ gzEsci(gzStep > gzFrom ? 1 : -1); return; }
+      /* GLI ESTREMI SONO DUE, 0 e 3, e in mezzo ci sono DUE composizioni: le
+         fotografie (1) e il basket (2). Prima l'unica posa era la 1 e bastava
+         negarla; adesso servono i due estremi per nome, o uscirebbe dal palco
+         appena arrivato sul basket. */
+      if (k >= 1 && (gzStep === 0 || gzStep === 3)){
+        gzEsci(gzStep > gzFrom ? 1 : -1); return;
+      }
     }
     /* preventDefault copre la rotella; questa riga copre tutto il resto —
        barra di scorrimento trascinata, inerzia che arriva dopo il rilascio,
@@ -2533,9 +3055,19 @@ function gzTick(top){
      dentro?" lo mancherebbe, chiedere "l'ha appena superato?" no. */
   if (gzPrev > 0 && top <= 0) gzArma();
   else {
-    /* fuori dalla diapositiva il campo mostra il 907. Ripassandoci all'insu' si
-       vede la composizione ferma, e non uno schermo vuoto senza spiegazione. */
-    if (gzT !== 1){ gzStep = gzFrom = gzT = 1; gzPaint(); }
+    /* IL CAMPO SI VEDE MONTATO SOLO ARRIVANDOCI DA SOTTO. Prima mostrava il 907
+       da tutte e due le parti, e scendendo si vedevano le foto al loro posto,
+       poi allo scatto della diapositiva sparire e rientrare: e' il difetto
+       segnalato — «vedo gia' gli elementi, poi si resetta e parte».
+       Sopra il campo (bordo alto ancora sotto la piega, top > 0) lo stato e' il
+       905, cioe' vuoto: chi scende trova lo schermo pulito e il primo gesto ha
+       qualcosa da far entrare. Sotto — e mentre lo si risale — resta il BASKET,
+       cioe' lo stato 2: e' l'ultima composizione che si e' vista uscendo di
+       sotto, ed e' quella che ci si aspetta di ritrovare tornando indietro. Un
+       1 qui rimetterebbe le fotografie sotto gli occhi di chi ha appena finito
+       di guardare il basket. */
+    const fermo = top > 0 ? 0 : 2;
+    if (gzT !== fermo){ gzStep = gzFrom = gzT = fermo; gzPaint(); }
     gzPrev = top;
   }
 }
@@ -2673,9 +3205,6 @@ let af0 = 0;                   // dove comincia .after
 /* il valore di `over` a cui header e footer passano alla palette scura: e' il
    momento in cui la carta scura arriva sotto di loro, e lo ricava measure(). */
 let darkFrom = Infinity;
-/* dove passa la riga di lettura, in frazioni di schermo: un movimento si accende
-   poco prima, quando il suo bordo alto ha passato AF_ON. */
-const AF_ON   = .84;
 let tlWas = false, tlFo = '';
 const tlEvX = [], tlExpX = [], tlExpW = [], tlLabW = [];
 
@@ -2945,7 +3474,16 @@ function measure(){
      elementi SVG — sono roba di HTMLElement, li' tornano undefined e il conto
      diventa NaN senza sollevare niente. Sugli <svg> si misura con
      getBoundingClientRect. */
-  af0 = after.offsetTop - (scroller.offsetHeight - innerHeight);
+  /* PRIMA si riempie lo spaziatore, POI si legge dove comincia: fuori dal flusso
+     .after non occupa piu' spazio nel documento, e questo glielo restituisce —
+     `over` continua a correre esattamente come quando ci stava dentro. Su touch
+     e in reduced-motion la sezione e' ancora nel flusso e lo spazio se lo
+     prende da se', quindi zero.
+     Il righello e' lo SPAZIATORE e non .after: da fissa, offsetTop di .after e'
+     misurato dal blocco contenitore iniziale e vale zero, cioe' un numero che
+     sembra giusto e non lo e'. */
+  afterSpace.style.height = (canHover && !reduce) ? after.offsetHeight + 'px' : '0px';
+  af0 = afterSpace.offsetTop - (scroller.offsetHeight - innerHeight);
 
   /* QUANDO L'HEADER DIVENTA CHIARO. Non e' un momento scelto a occhio: e' il
      frame in cui il bordo alto della forma raggiunge il bordo alto dello stage,
@@ -2971,7 +3509,11 @@ function measure(){
     darkFrom = af0;
   }
 
-  mvs.forEach(m => m.top = af0 + m.el.offsetTop);
+  gazeM.top = af0 + gazeM.el.offsetTop;
+  /* la corsa della sequenza si RICAVA: quanto la sezione e' piu' alta del suo
+     palco. Cambiando i 300vh nel foglio non si tocca una riga di qui. */
+  m1Top = af0 + m1El.offsetTop;
+  m1Run = Math.max(1, m1El.offsetHeight - m1Stage.offsetHeight);
   /* LA CORSA AGGANCIATA SI RICAVA, non si scrive. L'altezza del campo sta nel
      foglio (250vh) e qui si LEGGE: cambiarla in CSS non deve obbligare a
      toccare il JS, o i due numeri divergono alla prima modifica e nessuno se ne
@@ -3236,6 +3778,11 @@ function applyProjects(){
      Su touch la sezione è rimasta nel flusso: là scorre il compositore, il
      contenuto resta incollato al dito, e questa riga non deve toccarla. */
   if (canHover) projects.style.transform = `translateY(${(-over).toFixed(1)}px)`;
+  /* La coda, con lo stesso segnale e per la stessa ragione. af0 - over: a over
+     = af0 vale zero e il bordo alto della coda tocca quello dello schermo,
+     prima e' positiva e la tiene sotto la piega. Sta qui e non dopo il ritorno
+     anticipato qui sotto perche' deve essere scritta anche al primo frame. */
+  if (canHover) after.style.transform = `translateY(${(af0 - over).toFixed(1)}px)`;
 
   /* Il comando passa alla sezione quando lo dice l'INSEGUITORE, mai lo scroll
      grezzo. La condizione conteneva anche una lettura non filtrata della
@@ -3421,7 +3968,45 @@ function applyProjects(){
      sotto di loro c'e' la carta scura, il resto lo fa il CSS. classList.toggle
      con un booleano non scrive niente se lo stato non cambia, quindi a ogni
      frame costa un confronto. */
-  mvs.forEach(m => m.el.classList.toggle('on', m.top - over < innerHeight * AF_ON));
+  /* LA PAROLA DI FONDO E IL NASTRO, due letture dello stesso segnale.
+     --q: quanto e' srotolata la sequenza del primo movimento, 0..1 sulla sua
+     corsa — la sezione e' alta tre schermi e il palco ne occupa uno, quindi la
+     corsa e' due. E' l'unico numero della sequenza: le finestre dei singoli
+     pezzi (parola, ritratto, frase, striscia, competenze) sono frazioni di
+     questo, scritte nel foglio accanto a .m1.
+
+     IL PALCO E' PINNATO A MANO, e la riga qui sotto e' tutto il pin: lo si
+     trasla in giu' esattamente dei pixel di cui la coda e' salita, e resta
+     fermo a schermo. Niente position:sticky — la coda e' fissa e la muove una
+     transform, e uno sticky la' dentro non avrebbe un contenitore di
+     scorrimento a cui agganciarsi.
+     I due valori sono lo stesso conto letto due volte, uno in pixel e uno in
+     frazione: si scrivono insieme o si sfasano.
+
+     Quel che se n'e' andato di qui:
+          Da li' il foglio ricava la traslazione (resta indietro) e la sfumatura.
+       --w, la parallasse della parola: adesso la parola sta ferma in cima a
+       tutti e quattro i fotogrammi, ed e' il fondo su cui la sequenza si
+       svolge, non una cosa che scorre via.
+       --r, la corsa del nastro: il nastro non c'e' piu'.
+
+     (nota storica) --r era: i pixel di coda percorsi, che le fasce
+          --v, quindi qui non c'e' nessuna velocita' scritta: una riga sola
+          muove tre fasce a tre andature diverse.
+     Solo col puntatore: al dito nessuna scrittura per frame, la' la coda e' nel
+     flusso e il contenuto deve restare incollato. */
+  if (canHover && !reduce){
+    const px = Math.min(Math.max(0, over - m1Top), m1Run);
+    const q  = (px / m1Run).toFixed(4);
+    if (q !== afQ){ m1El.style.setProperty('--q', q); afQ = q; }
+    m1Stage.style.transform = `translateY(${px.toFixed(1)}px)`;
+    /* LA FRASE SI FORMA DALLA POLVERE, con la stessa dust() del claim e della
+       frase del campo: due unita', i due paragrafi, sfalsate. La finestra e' la
+       sua, .16 -> .40, e sta qui perche' dust() e' JS; l'USCITA invece e' sul
+       contenitore, nel foglio. Due padroni, ma su due elementi diversi, e le
+       opacita' si moltiplicano da sole. */
+    dust(m1Dust, clamp((+q - .16) / .24), .30);
+  }
 
   /* IL CAMPO. Tutta la diapositiva sta nel suo blocco, sopra: qui c'e' solo il
      via, con la posizione del suo bordo alto nel metro del ciclo.
@@ -3999,7 +4584,7 @@ document.fonts.ready.then(() => {
     applyProjects();
     eyes(now);
     requestAnimationFrame(loop);
-  })(introStart);
+  });
 });
 </script>
 </body>

@@ -2,6 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **PIANO ESEGUITO, E IN PARTE SUPERATO IN CORSA.** Le fasi 1, 3, 4 e 5 sono
+> andate come sono scritte. **La fase 2 no:** la parallasse è stata sostituita da
+> una diapositiva a tre stati, sui cinque fotogrammi (905-909) che l'utente ha
+> disegnato dopo. Anche l'ordine dei tre movimenti è cambiato — la nota tecnica
+> apre, il campo sta in mezzo. Questo documento resta com'era, perché è il
+> racconto di quello che si era deciso di fare; **quello che c'è a schermo lo
+> descrive la spec**, `docs/superpowers/specs/2026-09-02-coda-scura-design.md`,
+> che è stata riallineata. In caso di disaccordo fra i due, vince la spec.
+>
+> I riferimenti a riga di questo piano sono quelli di prima della riscrittura e
+> non puntano più dove dicono.
+
 **Goal:** Le sezioni della coda smettono di elencare e cominciano a guardare: quattro fotografie salgono in parallasse dietro una tesi ferma, il basket resta immobile accanto, le competenze scendono a nota tecnica.
 
 **Architecture:** Un solo file, `index.html` (CSS e JS in linea, ~3600 righe). Nessuna build, nessuna dipendenza, nessun file nuovo. Restano le tre `.mv` che ci sono già, con la stessa `.on` e lo stesso `mvs.forEach`: cambia cosa contengono. L'unica aggiunta al ciclo è **una** scrittura di stile per frame — `--p` sul campo — e il CSS la distribuisce alle quattro foto con un solo numero per foto.
@@ -202,6 +214,18 @@ Messaggio in inglese, in prosa, che dica **perché** il campo apre la coda e per
 ---
 
 ## Task 2: La parallasse
+
+> **SUPERATA.** Quello che segue non è stato spedito. La parallasse continua —
+> `--p` cubico scritto a ogni frame, tesi `sticky`, campo alto 140vh — è arrivata
+> a schermo e non ha convinto: l'utente ha disegnato cinque fotogrammi in cui la
+> pagina si ferma e avanza a scatti, e quella è diventata la specifica. Al posto
+> di `--p` c'è `--t`, che vale 0, 1 o 2; al posto della corsa c'è il blocco dello
+> scroll. Il meccanismo sta tutto in un blocco solo di `index.html`, ed è
+> descritto nel §5 della spec.
+>
+> Resta qui per intero perché la fase 1 ne dipendeva e perché dice *perché* la
+> composizione veniva prima del movimento — che è rimasto vero.
+
 
 **Files:**
 - Modify: `index.html` — `measure()` intorno a `2547`, il ciclo intorno a `3003`, e la dichiarazione delle variabili vicino a `2256`
@@ -528,6 +552,8 @@ Chiedigli le tre cose che la spec lascia aperte:
    è mai stato segnalato, e **non va corretto di iniziativa**: si propone, e si
    tocca solo se dice di sì.
 
+   *Fatto: proposto, e poi corretto su sua richiesta. La chiamata non c'è più.*
+
 - [ ] **Step 5: Aggiorna la spec**
 
 Riporta in `docs/superpowers/specs/2026-09-02-coda-scura-design.md` quel che è stato **deciso a schermo** e che la spec dava per aperto: l'esponente finale della cubica, le posizioni finali delle foto, l'esito dei due nodi cromatici, gli URL social. Una spec che resta ferma alle ipotesi è una spec che mente al prossimo.
@@ -545,5 +571,7 @@ Dichiara, separandoli: **cosa è stato misurato** (intersezioni, altezza del doc
 Ogni fase è un commit. Per tornare indietro di una fase: `git revert <sha>`.
 
 Le fasi 1 e 2 sono separate apposta — se la parallasse non convince, si revoca la 2 e resta un campo fermo che regge da solo. È il motivo per cui la composizione viene prima del movimento e non insieme.
+
+*Ed è servito davvero: la parallasse non ha convinto. Non è stata revocata con un `revert` ma riscritta in diapositiva, e il campo fermo della fase 1 è quello che è rimasto sotto — il 907.*
 
 Le fasi 3 e 4 sono indipendenti fra loro e dalla 2: si possono revocare da sole.
